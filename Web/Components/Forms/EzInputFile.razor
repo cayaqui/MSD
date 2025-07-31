@@ -1,0 +1,416 @@
+﻿@implements IDisposable
+@inject IJSRuntime JSRuntime
+
+<div class="form-group @ContainerClass">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="form-label @LabelClass">
+            @Label
+            @if (IsRequired)
+            {
+                <span class="text-danger">*</span>
+            }
+        </label>
+    }
+
+    <div class="file-upload-wrapper @WrapperClass @(_isDragOver ? "drag-over" : "") @(_hasFiles ? "has-files" : "")">
+        <input type="file"
+               @ref="_fileInput"
+               id="@_inputId"
+               class="file-input"
+               @onchange="OnFileChange"
+               accept="@Accept"
+               multiple="@Multiple"
+               disabled="@IsDisabled"
+               @attributes="AdditionalAttributes" />
+
+        <div class="file-upload-area" @onclick="TriggerFileInput"
+             @ondragenter="OnDragEnter"
+             @ondragleave="OnDragLeave"
+             @ondragover="OnDragOver"
+             @ondrop="OnDrop"
+             @ondragenter:preventDefault="true"
+             @ondragleave:preventDefault="true"
+             @ondragover:preventDefault="true"
+             @ondrop:preventDefault="true">
+
+            @if (!_hasFiles)
+            {
+                <div class="upload-prompt">
+                    <i class="@Icon upload-icon"></i>
+                    <div class="upload-text">
+                        <span class="upload-primary">@PrimaryText</span>
+                        <span class="upload-secondary">@SecondaryText</span>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm">
+                        @ButtonText
+                    </button>
+                </div>
+            }
+            else if (ShowPreview)
+            {
+                <div class="file-preview-grid">
+                    @foreach (var file in _uploadedFiles)
+                    {
+                        <div class="file-preview-item @(file.IsValid ? "" : "invalid")">
+                            @if (file.IsImage && file.PreviewUrl != null)
+                            {
+                                <img src="@file.PreviewUrl" alt="@file.Name" class="file-preview-image" />
+                            }
+                            else
+                            {
+                                <div class="file-preview-icon">
+                                    <i class="@GetFileIcon(file.Extension)"></i>
+                                </div>
+                            }
+
+                            <div class="file-info">
+                                <span class="file-name" title="@file.Name">@file.Name</span>
+                                <span class="file-size">@FormatFileSize(file.Size)</span>
+                                @if (!file.IsValid)
+                                {
+                                    <span class="file-error">@file.ErrorMessage</span>
+                                }
+                            </div>
+
+                            @if (file.UploadProgress > 0 && file.UploadProgress < 100)
+                            {
+                                <div class="progress">
+                                    <div class="progress-bar" style="width: @(file.UploadProgress)%"></div>
+                                </div>
+                            }
+
+                            @if (!IsDisabled)
+                            {
+                                <button type="button" class="btn-remove" @onclick="() => RemoveFile(file)">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        @if (_hasFiles && ShowFileList)
+        {
+            <div class="file-list">
+                @foreach (var file in _uploadedFiles)
+                {
+                    <div class="file-list-item @(file.IsValid ? "" : "invalid")">
+                        <i class="@GetFileIcon(file.Extension) file-icon"></i>
+                        <div class="file-details">
+                            <span class="file-name">@file.Name</span>
+                            <div class="file-meta">
+                                <span class="file-size">@FormatFileSize(file.Size)</span>
+                                @if (file.UploadProgress > 0 && file.UploadProgress < 100)
+                                {
+                                    <span class="file-progress">@file.UploadProgress%</span>
+                                }
+                                @if (!file.IsValid)
+                                {
+                                    <span class="file-error">@file.ErrorMessage</span>
+                                }
+                            </div>
+                        </div>
+                        @if (!IsDisabled)
+                        {
+                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFile(file)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(HelpText))
+    {
+        <small class="form-text text-muted">@HelpText</small>
+    }
+
+    @if (ShowRestrictions)
+    {
+        <small class="form-text text-muted">
+            @if (!string.IsNullOrEmpty(Accept))
+            {
+                <span>Tipos permitidos: @Accept</span>
+            }
+            @if (MaxFileSize > 0)
+            {
+                <span> • Tamaño máximo: @FormatFileSize(MaxFileSize)</span>
+            }
+            @if (MaxFiles > 0 && Multiple)
+            {
+                <span> • Máximo @MaxFiles archivos</span>
+            }
+        </small>
+    }
+
+    @if (_uploadedFiles.Any(f => !f.IsValid))
+    {
+        <div class="invalid-feedback d-block">
+            <ul class="mb-0">
+                @foreach (var error in _uploadedFiles.Where(f => !f.IsValid).Select(f => f.ErrorMessage).Distinct())
+                {
+                    <li>@error</li>
+                }
+            </ul>
+        </div>
+    }
+</div>
+
+@code {
+    private string _inputId = $"file-{Guid.NewGuid():N}";
+    private ElementReference _fileInput;
+    private bool _isDragOver = false;
+    private bool _hasFiles = false;
+    private List<FileUploadModel> _uploadedFiles = new();
+
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string HelpText { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "bi bi-cloud-upload";
+    [Parameter] public string PrimaryText { get; set; } = "Arrastra archivos aquí o haz clic para seleccionar";
+    [Parameter] public string SecondaryText { get; set; } = "o";
+    [Parameter] public string ButtonText { get; set; } = "Seleccionar archivos";
+    [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool Multiple { get; set; }
+    [Parameter] public bool ShowPreview { get; set; } = true;
+    [Parameter] public bool ShowFileList { get; set; }
+    [Parameter] public bool ShowRestrictions { get; set; } = true;
+    [Parameter] public bool AutoUpload { get; set; }
+    [Parameter] public string Accept { get; set; } = "";
+    [Parameter] public long MaxFileSize { get; set; } = 10 * 1024 * 1024; // 10MB default
+    [Parameter] public int MaxFiles { get; set; } = 10;
+    [Parameter] public string[] AllowedExtensions { get; set; } = Array.Empty<string>();
+
+    // CSS Classes customization
+    [Parameter] public string ContainerClass { get; set; } = "";
+    [Parameter] public string LabelClass { get; set; } = "";
+    [Parameter] public string WrapperClass { get; set; } = "";
+
+    // Events
+    [Parameter] public EventCallback<FileUploadEventArgs> OnFileSelected { get; set; }
+    [Parameter] public EventCallback<FileUploadEventArgs> OnFileRemoved { get; set; }
+    [Parameter] public EventCallback<FileUploadProgressEventArgs> OnUploadProgress { get; set; }
+    [Parameter] public EventCallback<List<FileUploadModel>> OnFilesChanged { get; set; }
+
+    // Capture any additional HTML attributes
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(Accept) && AllowedExtensions.Length > 0)
+        {
+            Accept = string.Join(",", AllowedExtensions.Select(ext => $".{ext.TrimStart('.')}"));
+        }
+    }
+
+    private async Task TriggerFileInput()
+    {
+        if (!IsDisabled)
+        {
+            await _fileInput.FocusAsync();
+            // In a real implementation, we'd use JS interop to click the input
+        }
+    }
+
+    private async Task OnFileChange(ChangeEventArgs e)
+    {
+        // In a real Blazor app, this would use InputFileChangeEventArgs
+        // This is a simplified version for demonstration
+        await ProcessFiles(new List<string> { "file1.pdf", "file2.jpg" }); // Mock files
+    }
+
+    private void OnDragEnter(DragEventArgs e)
+    {
+        if (!IsDisabled)
+        {
+            _isDragOver = true;
+        }
+    }
+
+    private void OnDragLeave(DragEventArgs e)
+    {
+        _isDragOver = false;
+    }
+
+    private void OnDragOver(DragEventArgs e)
+    {
+        if (!IsDisabled)
+        {
+            _isDragOver = true;
+        }
+    }
+
+    private async Task OnDrop(DragEventArgs e)
+    {
+        if (!IsDisabled)
+        {
+            _isDragOver = false;
+            // In a real implementation, process dropped files
+            await ProcessFiles(new List<string> { "dropped-file.doc" });
+        }
+    }
+
+    private async Task ProcessFiles(List<string> fileNames)
+    {
+        foreach (var fileName in fileNames)
+        {
+            if (!Multiple && _uploadedFiles.Count > 0)
+            {
+                _uploadedFiles.Clear();
+            }
+
+            if (Multiple && _uploadedFiles.Count >= MaxFiles)
+            {
+                break;
+            }
+
+            var file = new FileUploadModel
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = fileName,
+                Size = new Random().Next(100000, 5000000), // Mock size
+                Extension = Path.GetExtension(fileName).ToLowerInvariant(),
+                IsValid = true,
+                UploadProgress = 0
+            };
+
+            // Validate file
+            ValidateFile(file);
+
+            // Check if image for preview
+            file.IsImage = IsImageFile(file.Extension);
+            if (file.IsImage && ShowPreview)
+            {
+                // In real implementation, create preview URL
+                file.PreviewUrl = $"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='%23845adf'/></svg>";
+            }
+
+            _uploadedFiles.Add(file);
+
+            if (file.IsValid)
+            {
+                await OnFileSelected.InvokeAsync(new FileUploadEventArgs { File = file });
+
+                if (AutoUpload)
+                {
+                    await UploadFile(file);
+                }
+            }
+        }
+
+        _hasFiles = _uploadedFiles.Count > 0;
+        await OnFilesChanged.InvokeAsync(_uploadedFiles);
+        StateHasChanged();
+    }
+
+    private void ValidateFile(FileUploadModel file)
+    {
+        // Size validation
+        if (MaxFileSize > 0 && file.Size > MaxFileSize)
+        {
+            file.IsValid = false;
+            file.ErrorMessage = $"El archivo excede el tamaño máximo de {FormatFileSize(MaxFileSize)}";
+            return;
+        }
+
+        // Extension validation
+        if (AllowedExtensions.Length > 0)
+        {
+            var ext = file.Extension.TrimStart('.');
+            if (!AllowedExtensions.Any(e => e.TrimStart('.').Equals(ext, StringComparison.OrdinalIgnoreCase)))
+            {
+                file.IsValid = false;
+                file.ErrorMessage = $"Tipo de archivo no permitido";
+                return;
+            }
+        }
+    }
+
+    private async Task RemoveFile(FileUploadModel file)
+    {
+        _uploadedFiles.Remove(file);
+        _hasFiles = _uploadedFiles.Count > 0;
+
+        await OnFileRemoved.InvokeAsync(new FileUploadEventArgs { File = file });
+        await OnFilesChanged.InvokeAsync(_uploadedFiles);
+
+        // Clean up preview URL if needed
+        if (!string.IsNullOrEmpty(file.PreviewUrl))
+        {
+            // In real implementation, revoke object URL
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task UploadFile(FileUploadModel file)
+    {
+        // Simulate upload progress
+        for (int i = 0; i <= 100; i += 10)
+        {
+            file.UploadProgress = i;
+            await OnUploadProgress.InvokeAsync(new FileUploadProgressEventArgs
+            {
+                File = file,
+                Progress = i
+            });
+            StateHasChanged();
+            await Task.Delay(200);
+        }
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        int order = 0;
+        double size = bytes;
+
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+
+        return $"{size:0.##} {sizes[order]}";
+    }
+
+    private string GetFileIcon(string extension)
+    {
+        return extension.ToLowerInvariant() switch
+        {
+            ".pdf" => "bi bi-file-earmark-pdf text-danger",
+            ".doc" or ".docx" => "bi bi-file-earmark-word text-primary",
+            ".xls" or ".xlsx" => "bi bi-file-earmark-excel text-success",
+            ".ppt" or ".pptx" => "bi bi-file-earmark-ppt text-warning",
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" => "bi bi-file-earmark-image text-info",
+            ".zip" or ".rar" or ".7z" => "bi bi-file-earmark-zip text-secondary",
+            ".txt" => "bi bi-file-earmark-text",
+            ".csv" => "bi bi-file-earmark-spreadsheet text-success",
+            ".mp4" or ".avi" or ".mov" => "bi bi-file-earmark-play text-danger",
+            ".mp3" or ".wav" => "bi bi-file-earmark-music text-info",
+            ".dwg" or ".dxf" => "bi bi-file-earmark-ruled text-primary",
+            _ => "bi bi-file-earmark"
+        };
+    }
+
+    private bool IsImageFile(string extension)
+    {
+        var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg" };
+        return imageExtensions.Contains(extension.ToLowerInvariant());
+    }
+
+    public void Dispose()
+    {
+        // Clean up preview URLs
+        foreach (var file in _uploadedFiles.Where(f => !string.IsNullOrEmpty(f.PreviewUrl)))
+        {
+            // In real implementation, revoke object URLs
+        }
+    }
+}

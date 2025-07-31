@@ -1,0 +1,157 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject IToastService ToastService
+
+<div class="main-layout">
+    <!-- Sidebar con binding bidireccional -->
+    <Sidebar @bind-IsCollapsed="sidebarCollapsed" />
+    
+    <!-- Main Container -->
+    <div class="main-container @(sidebarCollapsed ? "sidebar-collapsed" : "")">
+        <!-- TopBar -->
+        <TopBar OnToggleSidebar="ToggleSidebar" />
+        
+        <!-- Main Content -->
+        <main class="main-content" role="main">
+            <!-- Breadcrumb -->
+            <BreadCrumb />
+            
+            <!-- Page Content -->
+            <div class="page-content">
+                <CascadingValue Value="this">
+                    <EzErrorBoundary @ref="errorBoundary">
+                        <ChildContent>
+                            @Body
+                        </ChildContent>
+                    </EzErrorBoundary>
+                </CascadingValue>
+            </div>
+        </main>
+        
+        <!-- Footer -->
+        <Footer />
+    </div>
+    
+    <!-- Toast Container -->
+    <EzToast @ref="toastContainer" />
+    
+    <!-- Confirm Dialog Global -->
+    <EzConfirmDialog @ref="confirmDialog" />
+</div>
+
+@code {
+    private EzToast? toastContainer;
+    private EzConfirmDialog? confirmDialog;
+    private EzErrorBoundary? errorBoundary;
+    private bool sidebarCollapsed = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Cargar estado del sidebar desde localStorage si existe
+            try
+            {
+                var savedState = await JS.InvokeAsync<string>("localStorage.getItem", "sidebarState");
+                if (savedState == "collapsed")
+                {
+                    sidebarCollapsed = true;
+                    StateHasChanged();
+                }
+            }
+            catch
+            {
+                // Si hay error al acceder a localStorage, usar estado por defecto
+            }
+
+            // Agregar función JS para verificar si es móvil
+            await JS.InvokeVoidAsync("eval", @"
+                window.checkIfMobile = function() {
+                    return window.innerWidth <= 768;
+                }
+            ");
+        }
+    }
+
+    private async Task ToggleSidebar()
+    {
+        sidebarCollapsed = !sidebarCollapsed;
+        
+        // Guardar estado en localStorage
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "sidebarState", sidebarCollapsed ? "collapsed" : "expanded");
+        }
+        catch
+        {
+            // Ignorar errores de localStorage
+        }
+        
+        StateHasChanged();
+    }
+
+    // Métodos públicos para que las páginas hijas puedan usar toast y confirm
+    public void ShowToast(string message, ToastType type = ToastType.Info)
+    {
+        // Usar el servicio en lugar de acceder directamente al componente
+        switch (type)
+        {
+            case ToastType.Success:
+                ToastService.ShowSuccess(message);
+                break;
+            case ToastType.Error:
+                ToastService.ShowError(message);
+                break;
+            case ToastType.Warning:
+                ToastService.ShowWarning(message);
+                break;
+            default:
+                ToastService.ShowInfo(message);
+                break;
+        }
+    }
+
+    public async Task<bool> ShowConfirmAsync(string message, string? title = null, string? confirmText = null, string? cancelText = null)
+    {
+        if (confirmDialog != null)
+        {
+            return await confirmDialog.ShowAsync(message, title, confirmText, cancelText);
+        }
+        return false;
+    }
+
+    public async Task<bool> ShowDeleteConfirmAsync(string itemName)
+    {
+        if (confirmDialog != null)
+        {
+            return await confirmDialog.ShowDeleteAsync(itemName);
+        }
+        return false;
+    }
+
+    // Método adicional para mostrar confirmación con opciones avanzadas
+    public async Task<bool> ShowAdvancedConfirmAsync(EzConfirmDialog.DialogOptions options)
+    {
+        if (confirmDialog != null)
+        {
+            return await confirmDialog.ShowAsync(options);
+        }
+        return false;
+    }
+
+    // Método para recuperar del error
+    private void RecoverError()
+    {
+        // Aquí podrías implementar lógica para recuperar del error, como recargar datos o navegar a otra página
+    }
+
+    // Enums locales para evitar dependencias
+    public enum ToastType
+    {
+        Info,
+        Success,
+        Warning,
+        Error
+    }
+}

@@ -1,0 +1,169 @@
+﻿@using Core.DTOs.ControlAccounts
+@using Core.DTOs.Cost
+
+<li class="tree-node">
+    <div class="node-content @(IsSelected ? "selected" : "")" @onclick="SelectAccount">
+        <span class="node-toggle" @onclick:stopPropagation="true" @onclick="ToggleExpanded">
+            @if (HasChildren)
+            {
+                <i class="fa-light @(isExpanded ? "fa-chevron-down" : "fa-chevron-right")"></i>
+            }
+            else
+            {
+                <i class="fa-light fa-circle" style="font-size: 0.5rem;"></i>
+            }
+        </span>
+
+        <span class="node-icon">
+            <i class="fa-light @GetAccountIcon(Account.Type)"></i>
+        </span>
+
+        <span class="node-code">@Account.Code</span>
+        <span class="node-name">@Account.Name</span>
+
+        <span class="node-info ms-auto">
+            @if (Account.BAC> 0)
+            {
+                <span class="badge bg-light text-dark">@FormatCurrency(Account.BAC)</span>
+            }
+            @if (Account.AC > 0)
+            {
+                <span class="badge @GetCostBadgeClass(Account.AC, Account.BAC)">
+                    @GetPercentage(Account.AC, Account.BAC).ToString("F0")%
+                </span>
+            }
+        </span>
+    </div>
+
+    @if (HasChildren && isExpanded)
+    {
+        <ul>
+            @foreach (var child in GetChildren())
+            {
+                <CBSTreeNode Account="child"
+                             AllAccounts="AllAccounts"
+                             SelectedAccountId="SelectedAccountId"
+                             OnAccountSelected="OnAccountSelected" />
+            }
+        </ul>
+    }
+</li>
+
+@code {
+    [Parameter, EditorRequired] public ControlAccountDto Account { get; set; } = null!;
+    [Parameter, EditorRequired] public List<ControlAccountDto> AllAccounts { get; set; } = new();
+    [Parameter] public Guid? SelectedAccountId { get; set; }
+    [Parameter] public EventCallback<Guid> OnAccountSelected { get; set; }
+
+    private bool isExpanded = false;
+    private bool IsSelected => Account.Id == SelectedAccountId;
+    private bool HasChildren => AllAccounts.Any(a => a.ParentId == Account.Id);
+
+    private List<ControlAccountDto> GetChildren()
+    {
+        return AllAccounts.Where(a => a.ParentId == Account.Id).OrderBy(a => a.Code).ToList();
+    }
+
+    private void ToggleExpanded()
+    {
+        if (HasChildren)
+        {
+            isExpanded = !isExpanded;
+        }
+    }
+
+    private async Task SelectAccount()
+    {
+        await OnAccountSelected.InvokeAsync(Account.Id);
+    }
+
+    private string GetAccountIcon(string? type)
+    {
+        return type?.ToLower() switch
+        {
+            "labor" => "fa-users",
+            "material" => "fa-box",
+            "equipment" => "fa-truck",
+            "subcontract" => "fa-handshake",
+            "indirect" => "fa-building",
+            "contingency" => "fa-shield",
+            _ => "fa-folder"
+        };
+    }
+
+    private string FormatCurrency(decimal amount)
+    {
+        return $"${amount:N0}";
+    }
+
+    private decimal GetPercentage(decimal value, decimal total)
+    {
+        return total > 0 ? (value / total) * 100 : 0;
+    }
+
+    private string GetCostBadgeClass(decimal actual, decimal budget)
+    {
+        var percentage = GetPercentage(actual, budget);
+        return percentage > 100 ? "bg-danger" : percentage > 90 ? "bg-warning" : "bg-success";
+    }
+}
+
+<style>
+    .tree-node {
+        margin: 2px 0;
+    }
+
+    .node-content {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+        .node-content:hover {
+            background-color: var(--bs-gray-100);
+        }
+
+        .node-content.selected {
+            background-color: var(--bs-primary);
+            color: white;
+        }
+
+            .node-content.selected .badge {
+                background-color: rgba(255, 255, 255, 0.2) !important;
+                color: white !important;
+            }
+
+    .node-toggle {
+        width: 20px;
+        text-align: center;
+        cursor: pointer;
+    }
+
+    .node-icon {
+        margin: 0 0.5rem;
+        color: var(--bs-gray-600);
+    }
+
+    .node-content.selected .node-icon {
+        color: white;
+    }
+
+    .node-code {
+        font-family: var(--bs-font-monospace);
+        font-size: 0.875rem;
+        margin-right: 0.5rem;
+    }
+
+    .node-name {
+        flex: 1;
+    }
+
+    .node-info {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+</style>

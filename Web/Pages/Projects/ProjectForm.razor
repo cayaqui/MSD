@@ -1,0 +1,229 @@
+﻿@page "/projects/new"
+@using Web.Components.Common
+@using Web.Components.Forms
+@attribute [Authorize]
+
+<PageTitle>Nuevo Proyecto - EzPro</PageTitle>
+
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <h1 class="page-title">
+                <i class="fa-light fa-plus-circle me-2"></i>Nuevo Proyecto
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="/projects">Proyectos</a></li>
+                    <li class="breadcrumb-item active">Nuevo</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<form @onsubmit="HandleSubmit" @onsubmit:preventDefault="true">
+    <div class="row">
+        <div class="col-lg-8">
+            <EzCard>
+                <Header>
+                    <h5 class="card-title mb-0">Información General</h5>
+                </Header>
+                <Body>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                Código del Proyecto <span class="text-danger">*</span>
+                                <EzTooltip Text="Código único del proyecto (ej: PRY-001)" Icon="fa-light fa-circle-question" />
+                            </label>
+                            <EzInputText @bind-Value="projectCode" Placeholder="PRY-001" Required="true" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                Tipo de Proyecto <span class="text-danger">*</span>
+                            </label>
+                            <EzInputSelect @bind-Value="projectType" Required="true">
+                                <option value="">Seleccione...</option>
+                                <option value="construction">Construcción</option>
+                                <option value="engineering">Ingeniería</option>
+                                <option value="industrial">Industrial</option>
+                                <option value="infrastructure">Infraestructura</option>
+                            </EzInputSelect>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Nombre del Proyecto <span class="text-danger">*</span>
+                        </label>
+                        <EzInputText @bind-Value="projectName" Placeholder="Nombre descriptivo del proyecto" Required="true" />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Descripción</label>
+                        <EzInputTextArea @bind-Value="projectDescription" Rows="4" Placeholder="Descripción detallada del proyecto..." />
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Cliente</label>
+                            <EzInputSelect @bind-Value="clientId">
+                                <option value="">Seleccione cliente...</option>
+                                <option value="1">Empresa ABC</option>
+                                <option value="2">Corporación XYZ</option>
+                            </EzInputSelect>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Gerente de Proyecto</label>
+                            <EzInputSelect @bind-Value="projectManagerId">
+                                <option value="">Seleccione gerente...</option>
+                                <option value="1">Juan Pérez</option>
+                                <option value="2">María López</option>
+                            </EzInputSelect>
+                        </div>
+                    </div>
+                </Body>
+            </EzCard>
+            
+            <EzCard Class="mt-4">
+                <Header>
+                    <h5 class="card-title mb-0">Programación y Presupuesto</h5>
+                </Header>
+                <Body>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fecha de Inicio Planificada</label>
+                            <EzInputDate @bind-Value="plannedStartDate" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fecha de Fin Planificada</label>
+                            <EzInputDate @bind-Value="plannedEndDate" />
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Presupuesto Estimado</label>
+                            <EzInputCurrency @bind-Value="estimatedBudget" CurrencySymbol="$" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Moneda</label>
+                            <EzInputSelect @bind-Value="currency">
+                                <option value="USD">USD - Dólar Americano</option>
+                                <option value="EUR">EUR - Euro</option>
+                                <option value="CLP">CLP - Peso Chileno</option>
+                            </EzInputSelect>
+                        </div>
+                    </div>
+                </Body>
+            </EzCard>
+        </div>
+        
+        <div class="col-lg-4">
+            <EzCard>
+                <Header>
+                    <h5 class="card-title mb-0">Estado y Control</h5>
+                </Header>
+                <Body>
+                    <div class="mb-3">
+                        <label class="form-label">Estado Inicial</label>
+                        <EzInputSelect @bind-Value="projectStatus">
+                            <option value="planning">Planificación</option>
+                            <option value="active">Activo</option>
+                            <option value="on-hold">En Pausa</option>
+                        </EzInputSelect>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Prioridad</label>
+                        <EzInputSelect @bind-Value="priority">
+                            <option value="low">Baja</option>
+                            <option value="medium">Media</option>
+                            <option value="high">Alta</option>
+                            <option value="critical">Crítica</option>
+                        </EzInputSelect>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Categoría</label>
+                        <EzInputSelect @bind-Value="category">
+                            <option value="">Sin categoría</option>
+                            <option value="public">Sector Público</option>
+                            <option value="private">Sector Privado</option>
+                            <option value="mining">Minería</option>
+                            <option value="energy">Energía</option>
+                        </EzInputSelect>
+                    </div>
+                </Body>
+            </EzCard>
+            
+            <EzCard Class="mt-4">
+                <Header>
+                    <h5 class="card-title mb-0">Ubicación</h5>
+                </Header>
+                <Body>
+                    <div class="mb-3">
+                        <label class="form-label">País</label>
+                        <EzInputSelect @bind-Value="country">
+                            <option value="CL">Chile</option>
+                            <option value="PE">Perú</option>
+                            <option value="AR">Argentina</option>
+                        </EzInputSelect>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Ciudad</label>
+                        <EzInputText @bind-Value="city" Placeholder="Ciudad" />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Dirección</label>
+                        <EzInputTextArea @bind-Value="address" Rows="2" Placeholder="Dirección del proyecto" />
+                    </div>
+                </Body>
+            </EzCard>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-light" @onclick="Cancel">
+                    <i class="fa-light fa-times me-2"></i>Cancelar
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-light fa-save me-2"></i>Crear Proyecto
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+@code {
+    private string projectCode = "";
+    private string projectType = "";
+    private string projectName = "";
+    private string projectDescription = "";
+    private string clientId = "";
+    private string projectManagerId = "";
+    private DateTime? plannedStartDate;
+    private DateTime? plannedEndDate;
+    private decimal estimatedBudget;
+    private string currency = "USD";
+    private string projectStatus = "planning";
+    private string priority = "medium";
+    private string category = "";
+    private string country = "CL";
+    private string city = "";
+    private string address = "";
+    
+    private async Task HandleSubmit()
+    {
+        // Validar y guardar
+    }
+    
+    private void Cancel()
+    {
+        // Navegar de vuelta
+    }
+}

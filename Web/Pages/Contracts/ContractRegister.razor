@@ -1,0 +1,103 @@
+﻿
+@page "/contracts/new"
+@using Web.Components.Common
+@using Web.Components.Forms
+@attribute [Authorize(Policy = "CanCreateContracts")]
+
+<PageTitle>Nuevo Contrato - EzPro</PageTitle>
+
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-light fa-file-plus me-2"></i>Nuevo Contrato
+    </h1>
+</div>
+
+<form @onsubmit="HandleSubmit" @onsubmit:preventDefault="true">
+    <EzCard>
+        <Header>
+            <h5 class="card-title mb-0">Información del Contrato</h5>
+        </Header>
+        <Body>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Código del Contrato <span class="text-danger">*</span></label>
+                    <EzInputText @bind-Value="contractCode" Required="true" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Tipo de Contrato <span class="text-danger">*</span></label>
+                    <EzInputSelect @bind-Value="contractType" Required="true">
+                        <option value="">Seleccione...</option>
+                        <option value="construction">Construcción</option>
+                        <option value="services">Servicios</option>
+                        <option value="supply">Suministro</option>
+                        <option value="consultancy">Consultoría</option>
+                    </EzInputSelect>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Contratista <span class="text-danger">*</span></label>
+                    <EzInputSelect @bind-Value="contractorId" Required="true">
+                        <option value="">Seleccione contratista...</option>
+                        <option value="1">Constructora ABC</option>
+                        <option value="2">Servicios XYZ</option>
+                    </EzInputSelect>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Proyecto <span class="text-danger">*</span></label>
+                    <EzInputSelect @bind-Value="projectId" Required="true">
+                        <option value="">Seleccione proyecto...</option>
+                        <option value="1">Planta Industrial Norte</option>
+                        <option value="2">Edificio Corporativo</option>
+                    </EzInputSelect>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Descripción</label>
+                <EzInputTextArea @bind-Value="description" Rows="3" />
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Monto del Contrato</label>
+                    <EzInputCurrency @bind-Value="contractAmount" />
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Fecha de Inicio</label>
+                    <EzInputDate @bind-Value="startDate" />
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Fecha de Término</label>
+                    <EzInputDate @bind-Value="endDate" />
+                </div>
+            </div>
+        </Body>
+        <Footer>
+            <button type="button" class="btn btn-light" @onclick="Cancel">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Crear Contrato</button>
+        </Footer>
+    </EzCard>
+</form>
+
+@code {
+    private string contractCode = "";
+    private string contractType = "";
+    private string contractorId = "";
+    private string projectId = "";
+    private string description = "";
+    private decimal contractAmount;
+    private DateTime? startDate;
+    private DateTime? endDate;
+    
+    private async Task HandleSubmit()
+    {
+        // Guardar contrato
+    }
+    
+    private void Cancel()
+    {
+        // Navegar atrás
+    }
+}

@@ -1,0 +1,52 @@
+﻿@page "/costs/control"
+@using Web.Components.Common
+@attribute [Authorize]
+
+<PageTitle>Control de Costos - EzPro</PageTitle>
+
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-light fa-chart-pie me-2"></i>Control de Costos
+    </h1>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <EzCard>
+            <Header>
+                <h5 class="card-title mb-0">Distribución de Costos por Categoría</h5>
+            </Header>
+            <Body>
+                <div class="text-center py-5">
+                    <i class="fa-light fa-chart-pie fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">Gráfico de distribución de costos</p>
+                </div>
+            </Body>
+        </EzCard>
+    </div>
+    <div class="col-lg-4">
+        <EzCard>
+            <Header>
+                <h5 class="card-title mb-0">Resumen</h5>
+            </Header>
+            <Body>
+                <div class="mb-3">
+                    <small class="text-muted">Costo Total Planificado</small>
+                    <h4>$2,450,000</h4>
+                </div>
+                <div class="mb-3">
+                    <small class="text-muted">Costo Real a la Fecha</small>
+                    <h4 class="text-warning">$1,890,000</h4>
+                </div>
+                <div>
+                    <small class="text-muted">Variación</small>
+                    <h4 class="text-success">$560,000</h4>
+                </div>
+            </Body>
+        </EzCard>
+    </div>
+</div>
+
+@code {
+    // Lógica de control de costos
+}

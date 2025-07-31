@@ -1,0 +1,502 @@
+﻿@using DTOs.Auth
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using Web.Interfaces.Auth
+@using Web.Models.UI
+@using Web.Services.Auth
+@using Web.Interfaces.UI
+@inject IAuthService AuthService
+@inject INotificationService NotificationService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
+<header class="top-bar">
+    <div class="top-bar-left">
+        <!-- Toggle Sidebar Button -->
+        <button class="btn btn-link sidebar-toggle" @onclick="ToggleSidebar" title="Toggle Sidebar">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <!-- Project Selector -->
+        <div class="project-selector">
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" 
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-project-diagram me-2"></i>
+                    @if (!string.IsNullOrEmpty(currentUser?.ProjectId))
+                    {
+                        <span>@selectedProjectName</span>
+                    }
+                    else
+                    {
+                        <span>Seleccione un Proyecto</span>
+                    }
+                </button>
+                <ul class="dropdown-menu">
+                    <li><h6 class="dropdown-header">Proyectos Recientes</h6></li>
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-project-diagram me-2"></i>Project Alpha</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-project-diagram me-2"></i>Project Beta</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="/setup/projects"><i class="fas fa-list me-2"></i>View All Projects</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="top-bar-right">
+        <!-- Search Button -->
+        <button class="btn btn-link top-bar-btn" @onclick="OpenSearch" 
+                data-bs-toggle="tooltip" data-bs-placement="bottom" title="Search (Ctrl+K)">
+            <i class="fas fa-search"></i>
+        </button>
+
+        <!-- Notifications -->
+        <div class="dropdown">
+            <button class="btn btn-link top-bar-btn position-relative" 
+                    data-bs-toggle="tooltip" data-bs-placement="bottom" title="Notifications"
+                    @onclick="LoadNotifications">
+                <i class="fas fa-bell"></i>
+                @if (unreadCount > 0)
+                {
+                    <span class="notification-badge">@(unreadCount > 99 ? "99+" : unreadCount.ToString())</span>
+                }
+            </button>
+            <div class="dropdown-menu dropdown-menu-end notification-dropdown">
+                <div class="dropdown-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-0">Notifications</h6>
+                        <small class="text-muted">
+                            @if (unreadCount > 0)
+                            {
+                                <span>You have @unreadCount unread notification@(unreadCount == 1 ? "" : "s")</span>
+                            }
+                            else
+                            {
+                                <span>All caught up!</span>
+                            }
+                        </small>
+                    </div>
+                    @if (unreadCount > 0)
+                    {
+                        <button class="btn btn-link btn-sm p-0" @onclick="MarkAllAsRead" title="Mark all as read">
+                            <i class="fas fa-check-double"></i>
+                        </button>
+                    }
+                </div>
+                <div class="dropdown-divider"></div>
+                <div class="notification-list">
+                    @if (isLoadingNotifications)
+                    {
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (notifications.Any())
+                    {
+                        @foreach (var notification in notifications.Take(5))
+                        {
+                            <a class="dropdown-item notification-item @(!notification.IsRead ? "unread" : "")" 
+                               @onclick="() => HandleNotificationClick(notification)">
+                                <div class="d-flex">
+                                    <div class="notification-icon">
+                                        <i class="@GetNotificationIcon(notification.Type)" style="color: @GetNotificationColor(notification.Type)"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="notification-title">@notification.Title</h6>
+                                        <p class="notification-text">@notification.Message</p>
+                                        <small class="text-muted">@notification.TimeAgo</small>
+                                    </div>
+                                    @if (!notification.IsRead)
+                                    {
+                                        <div class="notification-unread-indicator"></div>
+                                    }
+                                </div>
+                            </a>
+                        }
+                        @if (notifications.Count > 5)
+                        {
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item text-center text-muted" @onclick="OpenNotificationPanel">
+                                <i class="fas fa-plus me-2"></i>View @(notifications.Count - 5) more notification@(notifications.Count - 5 == 1 ? "" : "s")
+                            </a>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <i class="fas fa-bell-slash text-muted mb-2" style="font-size: 2rem;"></i>
+                            <p class="text-muted mb-0">No notifications</p>
+                        </div>
+                    }
+                </div>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item text-center" @onclick="OpenNotificationPanel">
+                    <i class="fas fa-bell me-2"></i>View all notifications
+                </a>
+            </div>
+        </div>
+
+        <!-- User Menu -->
+        <div class="dropdown">
+            <button class="btn btn-link top-bar-btn user-menu-btn" 
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                <div class="user-avatar">
+                    @if (!string.IsNullOrEmpty(currentUser?.Name))
+                    {
+                        <span>@GetInitials(currentUser.Name)</span>
+                    }
+                    else
+                    {
+                        <i class="fas fa-user"></i>
+                    }
+                </div>
+                @if (currentUser != null)
+                {
+                    <span class="user-name d-none d-md-inline">@currentUser.Name</span>
+                }
+                <i class="fas fa-chevron-down ms-1"></i>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end user-dropdown">
+                <div class="dropdown-header">
+                    <div class="d-flex align-items-center">
+                        <div class="user-avatar-large">
+                            <span>@GetInitials(currentUser?.Name ?? "U")</span>
+                        </div>
+                        <div class="ms-3">
+                            <h6 class="mb-0">@currentUser?.Name</h6>
+                            <small class="text-muted">@currentUser?.Email</small>
+                            <br />
+                            <span class="badge bg-primary mt-1">@currentUser?.MainRole</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="/profile">
+                    <i class="fas fa-user-circle me-2"></i> My Profile
+                </a>
+                <a class="dropdown-item" href="/settings">
+                    <i class="fas fa-cog me-2"></i> Settings
+                </a>
+                <a class="dropdown-item" href="/help">
+                    <i class="fas fa-question-circle me-2"></i> Help & Support
+                </a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item text-danger" @onclick="BeginLogout">
+                    <i class="fas fa-sign-out-alt me-2"></i> Logout
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+
+@code {
+    [Parameter] public EventCallback OnToggleSidebar { get; set; }
+    [Parameter] public EventCallback OnOpenSearch { get; set; }
+    [Parameter] public EventCallback OnOpenNotificationPanel { get; set; }
+
+    private CurrentUserDto? currentUser;
+    private List<NotificationDto> notifications = new();
+    private int unreadCount = 0;
+    private bool isLoadingNotifications = false;
+    private string selectedProjectName = "No Project Selected";
+    private bool isAuthenticated = false;
+    protected override async Task OnInitializedAsync()
+    {
+        // Verificar autenticación primero
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
+
+        if (isAuthenticated)
+        {
+            // Solo cargar datos si está autenticado
+            await LoadUserData();
+        }
+    }
+
+    private async Task LoadUserData()
+    {
+        // Usar un Task.WhenAll para cargar todo en paralelo
+        var loadTasks = new List<Task>
+        {
+            LoadCurrentUserSafe(),
+            LoadUnreadCountSafe(),
+            LoadRecentNotificationsSafe()
+        };
+
+        await Task.WhenAll(loadTasks);
+    }
+
+    private async Task LoadCurrentUserSafe()
+    {
+        try
+        {
+            var response = await AuthService.GetCurrentUserAsync();
+            if (response.IsSuccess && response.Data != null)
+            {
+                currentUser = response.Data;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading current user: {ex.Message}");
+        }
+    }
+
+    private async Task LoadUnreadCountSafe()
+    {
+        try
+        {
+            var response = await NotificationService.GetUnreadCountAsync();
+            if (response.IsSuccess)
+            {
+                unreadCount = response.Data;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading unread count: {ex.Message}");
+        }
+    }
+
+    private async Task LoadRecentNotificationsSafe()
+    {
+        try
+        {
+            var filter = new NotificationFilterDto
+            {
+                PageNumber = 1,
+                PageSize = 10
+            };
+
+            var response = await NotificationService.GetNotificationsAsync(filter);
+            if (response.IsSuccess && response.Data?.Items != null)
+            {
+                notifications = response.Data.Items.ToList();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading notifications: {ex.Message}");
+        }
+    }
+
+   
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("blazorHelpers.initializeTooltips");
+            await JSRuntime.InvokeVoidAsync("blazorHelpers.initializeDropdowns");
+        }
+    }
+
+
+
+    private async Task LoadCurrentUser()
+    {
+        try
+        {
+            var response = await AuthService.GetCurrentUserAsync();
+            if (response.IsSuccess && response.Data != null)
+            {
+                currentUser = response.Data;
+            }
+        }
+        catch (AccessTokenNotAvailableException)
+        {
+            // Usuario no autenticado aún - es esperado
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading current user: {ex.Message}");
+        }
+    }
+
+    private async Task LoadUnreadCount()
+    {
+        try
+        {
+            var response = await NotificationService.GetUnreadCountAsync();
+            if (response.IsSuccess)
+            {
+                unreadCount = response.Data;
+            }
+        }
+        catch (AccessTokenNotAvailableException)
+        {
+            // Usuario no autenticado aún - es esperado
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading unread count: {ex.Message}");
+        }
+    }
+
+
+    private async Task LoadRecentNotifications()
+    {
+        try
+        {
+            var filter = new NotificationFilterDto
+            {
+                PageNumber = 1,
+                PageSize = 10
+            };
+
+            var response = await NotificationService.GetNotificationsAsync(filter);
+            if (response.IsSuccess && response.Data?.Items != null)
+            {
+                notifications = response.Data.Items.ToList();
+            }
+        }
+        catch (AccessTokenNotAvailableException)
+        {
+            // Usuario no autenticado aún - es esperado
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading notifications: {ex.Message}");
+        }
+    }
+
+    private async Task LoadNotifications()
+    {
+        if (isLoadingNotifications) return;
+
+        isLoadingNotifications = true;
+        StateHasChanged();
+
+        await LoadRecentNotifications();
+        await LoadUnreadCount();
+
+        isLoadingNotifications = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleNotificationClick(NotificationDto notification)
+    {
+        if (!notification.IsRead)
+        {
+            await MarkAsRead(notification.Id);
+        }
+
+        if (!string.IsNullOrEmpty(notification.ActionUrl))
+        {
+            Navigation.NavigateTo(notification.ActionUrl);
+        }
+    }
+
+    private async Task MarkAsRead(Guid notificationId)
+    {
+        try
+        {
+            var response = await NotificationService.MarkAsReadAsync(notificationId);
+            if (response.IsSuccess)
+            {
+                var notification = notifications.FirstOrDefault(n => n.Id == notificationId);
+                if (notification != null && !notification.IsRead)
+                {
+                    notification.IsRead = true;
+                    unreadCount = Math.Max(0, unreadCount - 1);
+                    StateHasChanged();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error marking notification as read: {ex.Message}");
+        }
+    }
+
+    private async Task MarkAllAsRead()
+    {
+        try
+        {
+            var response = await NotificationService.MarkAllAsReadAsync();
+            if (response.IsSuccess)
+            {
+                foreach (var notification in notifications)
+                {
+                    notification.IsRead = true;
+                }
+                unreadCount = 0;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error marking all notifications as read: {ex.Message}");
+        }
+    }
+
+    private void ToggleSidebar()
+    {
+        OnToggleSidebar.InvokeAsync();
+    }
+
+    private void OpenSearch()
+    {
+        OnOpenSearch.InvokeAsync();
+    }
+
+    private void OpenNotificationPanel()
+    {
+        OnOpenNotificationPanel.InvokeAsync();
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "U";
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        
+        return name.Substring(0, Math.Min(2, name.Length)).ToUpper();
+    }
+
+    private string GetNotificationIcon(NotificationType type)
+    {
+        return type switch
+        {
+            NotificationType.Info => "fas fa-info-circle",
+            NotificationType.Warning => "fas fa-exclamation-triangle",
+            NotificationType.Error => "fas fa-exclamation-circle",
+            NotificationType.Success => "fas fa-check-circle",
+            NotificationType.Budget => "fas fa-dollar-sign",
+            NotificationType.Invoice => "fas fa-file-invoice-dollar",
+            NotificationType.Project => "fas fa-project-diagram",
+            NotificationType.Task => "fas fa-tasks",
+            NotificationType.System => "fas fa-cog",
+            _ => "fas fa-bell"
+        };
+    }
+
+    private string GetNotificationColor(NotificationType type)
+    {
+        return type switch
+        {
+            NotificationType.Info => "#17a2b8",
+            NotificationType.Warning => "#ffc107",
+            NotificationType.Error => "#dc3545",
+            NotificationType.Success => "#28a745",
+            NotificationType.Budget => "#fd7e14",
+            NotificationType.Invoice => "#6f42c1",
+            NotificationType.Project => "#007bff",
+            NotificationType.Task => "#20c997",
+            NotificationType.System => "#6c757d",
+            _ => "#6c757d"
+        };
+    }
+
+    private async Task BeginLogout()
+    {
+        Navigation.NavigateTo("authentication/logout");
+        await Task.CompletedTask;
+    }
+}

@@ -1,0 +1,247 @@
+﻿@implements IEzAccordionItem
+@implements IDisposable
+
+<div class="accordion-item @ItemClass">
+    <h2 class="accordion-header" id="@headerId">
+        <button class="@GetButtonClass()"
+                type="button"
+                @onclick="ToggleAsync"
+                aria-expanded="@IsExpanded.ToString().ToLower()"
+                aria-controls="@collapseId"
+                disabled="@Disabled">
+            @if (HeaderTemplate != null)
+            {
+                @HeaderTemplate
+            }
+            else
+            {
+                @if (!string.IsNullOrEmpty(Icon))
+                {
+                    <i class="@Icon @IconClass me-2"></i>
+                }
+                <span class="@TitleClass">@Title</span>
+                @if (BadgeContent != null)
+                {
+                    <span class="ms-auto">
+                        @BadgeContent
+                    </span>
+                }
+            }
+        </button>
+    </h2>
+    <div id="@collapseId"
+         class="@GetCollapseClass()"
+         aria-labelledby="@headerId"
+         @ref="collapseElement">
+        <div class="accordion-body @BodyClass">
+            @ChildContent
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] private IEzAccordion? ParentAccordion { get; set; }
+
+    [Parameter] public string ItemId { get; set; } = Guid.NewGuid().ToString();
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? HeaderTemplate { get; set; }
+    [Parameter] public RenderFragment? BadgeContent { get; set; }
+    [Parameter] public bool IsExpanded { get; set; } = false;
+    [Parameter] public EventCallback<bool> IsExpandedChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; } = false;
+
+    // CSS Classes
+    [Parameter] public string? ItemClass { get; set; }
+    [Parameter] public string? ButtonClass { get; set; }
+    [Parameter] public string? IconClass { get; set; }
+    [Parameter] public string? TitleClass { get; set; }
+    [Parameter] public string? BodyClass { get; set; }
+
+    private string headerId = $"heading-{Guid.NewGuid():N}";
+    private string collapseId = $"collapse-{Guid.NewGuid():N}";
+    private ElementReference collapseElement;
+    private bool isTransitioning = false;
+
+    protected override void OnInitialized()
+    {
+        if (ParentAccordion != null)
+        {
+            ParentAccordion.RegisterItem(this);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && IsExpanded && ParentAccordion != null)
+        {
+            await ParentAccordion.ToggleItemAsync(ItemId);
+        }
+    }
+
+    private async Task ToggleAsync()
+    {
+        if (Disabled || isTransitioning) return;
+
+        if (ParentAccordion != null)
+        {
+            await ParentAccordion.ToggleItemAsync(ItemId);
+        }
+        else
+        {
+            // Standalone mode
+            await UpdateExpandedStateAsync(!IsExpanded);
+        }
+    }
+
+    public async Task UpdateExpandedStateAsync(bool expanded)
+    {
+        if (IsExpanded != expanded)
+        {
+            isTransitioning = true;
+            IsExpanded = expanded;
+            await IsExpandedChanged.InvokeAsync(expanded);
+            StateHasChanged();
+
+            // Simular transición
+            await Task.Delay(350);
+            isTransitioning = false;
+        }
+    }
+
+    private string GetButtonClass()
+    {
+        var classes = new List<string> { "accordion-button" };
+
+        if (!IsExpanded)
+        {
+            classes.Add("collapsed");
+        }
+
+        if (Disabled)
+        {
+            classes.Add("disabled");
+        }
+
+        if (!string.IsNullOrEmpty(ButtonClass))
+        {
+            classes.Add(ButtonClass);
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetCollapseClass()
+    {
+        var classes = new List<string> { "accordion-collapse", "collapse" };
+
+        if (IsExpanded)
+        {
+            classes.Add("show");
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    public void Dispose()
+    {
+        ParentAccordion?.UnregisterItem(this);
+    }
+}
+
+<style>
+    /* Estilos personalizados para el accordion */
+    .accordion-button {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+        padding: 1rem 1.25rem;
+        font-size: 1rem;
+        color: var(--bs-body-color);
+        text-align: left;
+        background-color: var(--bs-accordion-btn-bg);
+        border: 0;
+        border-radius: 0;
+        overflow-anchor: none;
+        transition: var(--bs-accordion-transition);
+    }
+
+        .accordion-button:not(.collapsed) {
+            color: var(--bs-accordion-active-color);
+            background-color: var(--bs-accordion-active-bg);
+            box-shadow: inset 0 calc(-1 * var(--bs-accordion-border-width)) 0 var(--bs-accordion-border-color);
+        }
+
+            .accordion-button:not(.collapsed)::after {
+                background-image: var(--bs-accordion-btn-active-icon);
+                transform: rotate(-180deg);
+            }
+
+        .accordion-button::after {
+            flex-shrink: 0;
+            width: 1.25rem;
+            height: 1.25rem;
+            margin-left: auto;
+            content: "";
+            background-image: var(--bs-accordion-btn-icon);
+            background-repeat: no-repeat;
+            background-size: 1.25rem;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .accordion-button:hover {
+            z-index: 2;
+        }
+
+        .accordion-button:focus {
+            z-index: 3;
+            border-color: var(--bs-accordion-btn-focus-border-color);
+            outline: 0;
+            box-shadow: var(--bs-accordion-btn-focus-box-shadow);
+        }
+
+        .accordion-button.disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
+    /* Transiciones suaves */
+    .accordion-collapse {
+        transition: height 0.35s ease;
+    }
+
+        .accordion-collapse.collapsing {
+            height: 0;
+            overflow: hidden;
+            transition: height 0.35s ease;
+        }
+
+        .accordion-collapse.show {
+            height: auto;
+        }
+
+    /* Estilo flush */
+    .accordion-flush .accordion-collapse {
+        border-width: 0;
+    }
+
+    .accordion-flush .accordion-item {
+        border-right: 0;
+        border-left: 0;
+        border-radius: 0;
+    }
+
+        .accordion-flush .accordion-item:first-child {
+            border-top: 0;
+        }
+
+        .accordion-flush .accordion-item:last-child {
+            border-bottom: 0;
+        }
+
+        .accordion-flush .accordion-item .accordion-button {
+            border-radius: 0;
+        }
+</style>

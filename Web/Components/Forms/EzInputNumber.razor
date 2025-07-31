@@ -1,0 +1,528 @@
+﻿@typeparam TValue
+@inherits InputBase<TValue>
+@implements IDisposable
+
+<div class="form-group @ContainerClass">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label for="@_inputId" class="form-label @LabelClass">
+            @Label
+            @if (IsRequired)
+            {
+                <span class="text-danger">*</span>
+            }
+        </label>
+    }
+
+    <div class="input-group @InputGroupClass">
+        @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Start)
+        {
+            <span class="input-group-text">
+                <i class="@Icon"></i>
+            </span>
+        }
+
+        @if (!string.IsNullOrEmpty(Prefix))
+        {
+            <span class="input-group-text">@Prefix</span>
+        }
+
+        @if (ShowSpinButtons && !IsDisabled && !IsReadOnly)
+        {
+            <button type="button" class="btn btn-outline-secondary" @onclick="DecrementValue" disabled="@(!CanDecrement())">
+                <i class="bi bi-dash"></i>
+            </button>
+        }
+
+        <input @ref="_inputElement"
+               id="@_inputId"
+               type="@(_showFormatted ? "text" : "number")"
+               class="@CssClass"
+               value="@DisplayValue"
+               @oninput="OnInputHandler"
+               @onblur="OnBlurHandler"
+               @onfocus="OnFocusHandler"
+               @onkeydown="OnKeyDownHandler"
+               placeholder="@Placeholder"
+               disabled="@IsDisabled"
+               readonly="@IsReadOnly"
+               step="@GetStepValue()"
+               min="@GetMinValue()"
+               max="@GetMaxValue()"
+               autocomplete="@AutoComplete"
+               @attributes="AdditionalAttributes" />
+
+        @if (ShowSpinButtons && !IsDisabled && !IsReadOnly)
+        {
+            <button type="button" class="btn btn-outline-secondary" @onclick="IncrementValue" disabled="@(!CanIncrement())">
+                <i class="bi bi-plus"></i>
+            </button>
+        }
+
+        @if (!string.IsNullOrEmpty(Suffix))
+        {
+            <span class="input-group-text">@Suffix</span>
+        }
+
+        @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.End)
+        {
+            <span class="input-group-text">
+                <i class="@Icon"></i>
+            </span>
+        }
+
+        @if (ShowClearButton && HasValue() && !IsDisabled && !IsReadOnly)
+        {
+            <button type="button" class="btn btn-outline-secondary" @onclick="ClearValue">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(HelpText))
+    {
+        <small class="form-text text-muted">@HelpText</small>
+    }
+
+    @if (ShowRange && (Min != null || Max != null))
+    {
+        <small class="form-text text-muted float-end">
+            @if (Min != null && Max != null)
+            {
+                @($"Rango: {FormatForDisplay(Min)} - {FormatForDisplay(Max)}")
+            }
+            else if (Min != null)
+            {
+                @($"Mínimo: {FormatForDisplay(Min)}")
+            }
+            else
+            {
+                @($"Máximo: {FormatForDisplay(Max!)}")
+            }
+        </small>
+    }
+
+    <div class="invalid-feedback @(_showValidation ? "d-block" : "")">
+        <ValidationMessage For="@ValueExpression" />
+    </div>
+</div>
+
+@code {
+    private string _inputId = $"input-{Guid.NewGuid():N}";
+    private ElementReference _inputElement;
+    private bool _showValidation = false;
+    private Timer? _debounceTimer;
+    private string _cssClass = "";
+    private bool _showFormatted = true;
+    private string _rawValue = "";
+
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Placeholder { get; set; } = "";
+    [Parameter] public string HelpText { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Start;
+    [Parameter] public string Prefix { get; set; } = "";
+    [Parameter] public string Suffix { get; set; } = "";
+    [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public bool ShowClearButton { get; set; }
+    [Parameter] public bool ShowSpinButtons { get; set; }
+    [Parameter] public bool ShowRange { get; set; }
+    [Parameter] public string AutoComplete { get; set; } = "off";
+    [Parameter] public int DebounceDelay { get; set; } = 0;
+
+    // Number specific parameters
+    [Parameter] public TValue? Min { get; set; }
+    [Parameter] public TValue? Max { get; set; }
+    [Parameter] public TValue? Step { get; set; }
+    [Parameter] public int DecimalPlaces { get; set; } = 2;
+    [Parameter] public bool UseThousandsSeparator { get; set; } = true;
+    [Parameter] public string Format { get; set; } = "";
+    [Parameter] public bool AllowNegative { get; set; } = true;
+
+    // CSS Classes customization
+    [Parameter] public string ContainerClass { get; set; } = "";
+    [Parameter] public string LabelClass { get; set; } = "";
+    [Parameter] public string InputGroupClass { get; set; } = "";
+
+    // Events
+    [Parameter] public EventCallback<TValue> OnInput { get; set; }
+    [Parameter] public EventCallback<TValue> OnChange { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+
+    protected new string CssClass => _cssClass;
+
+    private string DisplayValue
+    {
+        get
+        {
+            if (_showFormatted && CurrentValue != null)
+            {
+                return FormatForDisplay(CurrentValue);
+            }
+            return _rawValue;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        BuildCssClass();
+        UpdateRawValue();
+
+        if (EditContext != null)
+        {
+            EditContext.OnValidationStateChanged += OnValidationStateChanged;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        BuildCssClass();
+        UpdateRawValue();
+    }
+
+    private void BuildCssClass()
+    {
+        var baseClass = "form-control";
+
+        if (ShowSpinButtons)
+        {
+            baseClass += " text-center";
+        }
+
+        // Add size class if specified
+        if (AdditionalAttributes?.TryGetValue("size", out var size) == true)
+        {
+            baseClass += $" form-control-{size}";
+        }
+
+        // Add validation state classes
+        if (EditContext != null && FieldIdentifier.FieldName != null)
+        {
+            var fieldState = EditContext.GetValidationMessages(FieldIdentifier).Any();
+            if (fieldState && _showValidation)
+            {
+                baseClass += " is-invalid";
+            }
+        }
+
+        // Add custom classes from AdditionalAttributes
+        if (AdditionalAttributes?.TryGetValue("class", out var customClass) == true)
+        {
+            baseClass += $" {customClass}";
+        }
+
+        _cssClass = baseClass;
+    }
+
+    private void UpdateRawValue()
+    {
+        if (CurrentValue != null)
+        {
+            _rawValue = CurrentValue.ToString() ?? "";
+        }
+        else
+        {
+            _rawValue = "";
+        }
+    }
+
+    private string FormatForDisplay(TValue value)
+    {
+        if (!string.IsNullOrEmpty(Format))
+        {
+            return string.Format($"{{0:{Format}}}", value);
+        }
+
+        if (value is decimal || value is double || value is float)
+        {
+            var numericValue = Convert.ToDecimal(value);
+            var formatString = UseThousandsSeparator ? $"N{DecimalPlaces}" : $"F{DecimalPlaces}";
+            return numericValue.ToString(formatString);
+        }
+
+        return value?.ToString() ?? "";
+    }
+
+    protected override string FormatValueAsString(TValue? value)
+    {
+        return value?.ToString() ?? "";
+    }
+
+    protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            result = default!;
+            validationErrorMessage = "";
+            return true;
+        }
+
+        // Remove formatting characters
+        var cleanValue = value.Replace(",", "").Replace(" ", "").Trim();
+
+        // Check for negative values
+        if (!AllowNegative && cleanValue.StartsWith("-"))
+        {
+            result = default!;
+            validationErrorMessage = "Los valores negativos no están permitidos";
+            return false;
+        }
+
+        try
+        {
+            if (typeof(TValue) == typeof(int) || typeof(TValue) == typeof(int?))
+            {
+                if (int.TryParse(cleanValue, out var intValue))
+                {
+                    result = (TValue)(object)intValue;
+                    validationErrorMessage = "";
+                    return true;
+                }
+            }
+            else if (typeof(TValue) == typeof(long) || typeof(TValue) == typeof(long?))
+            {
+                if (long.TryParse(cleanValue, out var longValue))
+                {
+                    result = (TValue)(object)longValue;
+                    validationErrorMessage = "";
+                    return true;
+                }
+            }
+            else if (typeof(TValue) == typeof(decimal) || typeof(TValue) == typeof(decimal?))
+            {
+                if (decimal.TryParse(cleanValue, out var decimalValue))
+                {
+                    result = (TValue)(object)decimalValue;
+                    validationErrorMessage = "";
+                    return true;
+                }
+            }
+            else if (typeof(TValue) == typeof(double) || typeof(TValue) == typeof(double?))
+            {
+                if (double.TryParse(cleanValue, out var doubleValue))
+                {
+                    result = (TValue)(object)doubleValue;
+                    validationErrorMessage = "";
+                    return true;
+                }
+            }
+            else if (typeof(TValue) == typeof(float) || typeof(TValue) == typeof(float?))
+            {
+                if (float.TryParse(cleanValue, out var floatValue))
+                {
+                    result = (TValue)(object)floatValue;
+                    validationErrorMessage = "";
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // Fall through to error
+        }
+
+        result = default!;
+        validationErrorMessage = $"El valor '{value}' no es un número válido";
+        return false;
+    }
+
+    private async Task OnInputHandler(ChangeEventArgs e)
+    {
+        _rawValue = e.Value?.ToString() ?? "";
+
+        if (DebounceDelay > 0)
+        {
+            _debounceTimer?.Dispose();
+            _debounceTimer = new Timer(async _ =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    await ProcessValueChange(_rawValue);
+                });
+            }, null, DebounceDelay, Timeout.Infinite);
+        }
+        else
+        {
+            await ProcessValueChange(_rawValue);
+        }
+    }
+
+    private async Task ProcessValueChange(string value)
+    {
+        if (TryParseValueFromString(value, out var parsedValue, out _))
+        {
+            // Apply constraints
+            if (Min != null && Comparer<TValue>.Default.Compare(parsedValue, Min) < 0)
+            {
+                parsedValue = Min;
+            }
+            if (Max != null && Comparer<TValue>.Default.Compare(parsedValue, Max) > 0)
+            {
+                parsedValue = Max;
+            }
+
+            CurrentValue = parsedValue;
+            await OnInput.InvokeAsync(CurrentValue);
+        }
+        StateHasChanged();
+    }
+
+    private async Task OnFocusHandler(FocusEventArgs e)
+    {
+        _showFormatted = false;
+        await OnFocus.InvokeAsync(e);
+    }
+
+    private async Task OnBlurHandler(FocusEventArgs e)
+    {
+        _showValidation = true;
+        _showFormatted = true;
+
+        // Reformat the value on blur
+        if (CurrentValue != null)
+        {
+            _rawValue = FormatValueAsString(CurrentValue);
+        }
+
+        await OnBlur.InvokeAsync(e);
+        await OnChange.InvokeAsync(CurrentValue);
+    }
+
+    private async Task OnKeyDownHandler(KeyboardEventArgs e)
+    {
+        if (ShowSpinButtons)
+        {
+            if (e.Key == "ArrowUp")
+            {
+                await IncrementValue();
+            }
+            else if (e.Key == "ArrowDown")
+            {
+                await DecrementValue();
+            }
+        }
+    }
+
+    private async Task IncrementValue()
+    {
+        if (!CanIncrement()) return;
+
+        var step = GetStepAsDecimal();
+        var current = GetCurrentAsDecimal();
+        var newValue = current + step;
+
+        await SetNumericValue(newValue);
+    }
+
+    private async Task DecrementValue()
+    {
+        if (!CanDecrement()) return;
+
+        var step = GetStepAsDecimal();
+        var current = GetCurrentAsDecimal();
+        var newValue = current - step;
+
+        await SetNumericValue(newValue);
+    }
+
+    private bool CanIncrement()
+    {
+        if (Max == null) return true;
+        if (CurrentValue == null) return true;
+        return Comparer<TValue>.Default.Compare(CurrentValue, Max) < 0;
+    }
+
+    private bool CanDecrement()
+    {
+        if (Min == null) return true;
+        if (CurrentValue == null) return true;
+        return Comparer<TValue>.Default.Compare(CurrentValue, Min) > 0;
+    }
+
+    private decimal GetStepAsDecimal()
+    {
+        if (Step != null)
+        {
+            return Convert.ToDecimal(Step);
+        }
+        return 1m;
+    }
+
+    private decimal GetCurrentAsDecimal()
+    {
+        if (CurrentValue != null)
+        {
+            return Convert.ToDecimal(CurrentValue);
+        }
+        return 0m;
+    }
+
+    private async Task SetNumericValue(decimal value)
+    {
+        try
+        {
+            object convertedValue = Convert.ChangeType(value, typeof(TValue).IsGenericType ?
+                Nullable.GetUnderlyingType(typeof(TValue))! : typeof(TValue));
+
+            CurrentValue = (TValue)convertedValue;
+            _rawValue = FormatValueAsString(CurrentValue);
+            await OnInput.InvokeAsync(CurrentValue);
+            await OnChange.InvokeAsync(CurrentValue);
+        }
+        catch
+        {
+            // Handle conversion errors silently
+        }
+    }
+
+    private async Task ClearValue()
+    {
+        CurrentValue = default!;
+        _rawValue = "";
+        _showValidation = false;
+        await OnClear.InvokeAsync();
+        await _inputElement.FocusAsync();
+    }
+
+    private bool HasValue()
+    {
+        return CurrentValue != null && !CurrentValue.Equals(default(TValue));
+    }
+
+    private string? GetStepValue()
+    {
+        return Step?.ToString();
+    }
+
+    private string? GetMinValue()
+    {
+        return Min?.ToString();
+    }
+
+    private string? GetMaxValue()
+    {
+        return Max?.ToString();
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e)
+    {
+        BuildCssClass();
+        InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask FocusAsync() => await _inputElement.FocusAsync();
+
+    public void Dispose()
+    {
+        _debounceTimer?.Dispose();
+        if (EditContext != null)
+        {
+            EditContext.OnValidationStateChanged -= OnValidationStateChanged;
+        }
+    }
+}

@@ -1,0 +1,192 @@
+﻿@inherits InputBase<double?>
+
+<div class="form-group @ContainerClass">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label for="@Id" class="form-label">
+            @Label
+            @if (Required)
+            {
+                <span class="text-danger">*</span>
+            }
+        </label>
+    }
+
+    <div class="input-group">
+        <input @ref="inputElement"
+               @attributes="AdditionalAttributes"
+               id="@Id"
+               type="number"
+               class="@CssClass"
+               value="@CurrentValueAsString"
+               @onchange="EventCallback.Factory.CreateBinder<string>(this, __value => CurrentValueAsString = __value, CurrentValueAsString)"
+               placeholder="@Placeholder"
+               disabled="@Disabled"
+               readonly="@ReadOnly"
+               min="@Min"
+               max="@Max"
+               step="@Step" />
+
+        <span class="input-group-text">%</span>
+
+        @if (ShowSlider)
+        {
+            <span class="input-group-text p-0" style="width: 200px;">
+                <input type="range" class="form-range px-2"
+                       value="@CurrentValue"
+                       @oninput="OnSliderChange"
+                       min="@Min"
+                       max="@Max"
+                       step="@Step"
+                       disabled="@(Disabled || ReadOnly)" />
+            </span>
+        }
+    </div>
+
+    @if (ShowProgressBar)
+    {
+        <div class="progress mt-2" style="height: 20px;">
+            <div class="progress-bar @GetProgressBarClass()"
+                 role="progressbar"
+                 style="width: @(CurrentValue ?? 0)%"
+                 aria-valuenow="@(CurrentValue ?? 0)"
+                 aria-valuemin="0"
+                 aria-valuemax="100">
+                @((CurrentValue ?? 0).ToString("F1"))%
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(HelpText))
+    {
+        <small class="form-text text-muted">@HelpText</small>
+    }
+
+    <div class="invalid-feedback">
+        <ValidationMessage For="@ValueExpression" />
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Placeholder { get; set; } = "0";
+    [Parameter] public string HelpText { get; set; } = "";
+    [Parameter] public string ContainerClass { get; set; } = "";
+    [Parameter] public bool Required { get; set; } = false;
+    [Parameter] public bool Disabled { get; set; } = false;
+    [Parameter] public bool ReadOnly { get; set; } = false;
+    [Parameter] public bool ShowSlider { get; set; } = false;
+    [Parameter] public bool ShowProgressBar { get; set; } = false;
+    [Parameter] public double Min { get; set; } = 0;
+    [Parameter] public double Max { get; set; } = 100;
+    [Parameter] public double Step { get; set; } = 1;
+    [Parameter] public string ProgressBarThresholds { get; set; } = "25,50,75"; // Valores separados por coma
+    [Parameter] public new string? CssClass { get; set; }
+
+    private string Id { get; } = $"percentage-{Guid.NewGuid():N}";
+    private ElementReference inputElement;
+    private double[] thresholds = { 25, 50, 75 };
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(CssClass))
+        {
+            CssClass = "form-control";
+        }
+
+        // Parsear thresholds
+        if (!string.IsNullOrEmpty(ProgressBarThresholds))
+        {
+            try
+            {
+                thresholds = ProgressBarThresholds.Split(',')
+                    .Select(s => double.Parse(s.Trim()))
+                    .OrderBy(d => d)
+                    .ToArray();
+            }
+            catch
+            {
+                // Usar valores por defecto si hay error
+            }
+        }
+    }
+
+    protected override string? FormatValueAsString(double? value)
+    {
+        return value?.ToString("F2");
+    }
+
+    protected override bool TryParseValueFromString(string? value, out double? result, out string validationErrorMessage)
+    {
+        validationErrorMessage = string.Empty;
+        result = null;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return true;
+        }
+
+        // Remover el símbolo de porcentaje si existe
+        var cleanValue = value.Replace("%", "").Trim();
+
+        if (double.TryParse(cleanValue, out var parsed))
+        {
+            // Aplicar restricciones
+            if (parsed < Min)
+            {
+                parsed = Min;
+            }
+            else if (parsed > Max)
+            {
+                parsed = Max;
+            }
+
+            result = parsed;
+            return true;
+        }
+
+        validationErrorMessage = $"El valor '{value}' no es un porcentaje válido.";
+        return false;
+    }
+
+    private void OnSliderChange(ChangeEventArgs args)
+    {
+        if (double.TryParse(args.Value?.ToString(), out var value))
+        {
+            CurrentValue = value;
+        }
+    }
+
+    private string GetProgressBarClass()
+    {
+        if (CurrentValue == null)
+            return "bg-secondary";
+
+        var value = CurrentValue.Value;
+
+        if (thresholds.Length >= 3)
+        {
+            if (value < thresholds[0]) return "bg-danger";
+            if (value < thresholds[1]) return "bg-warning";
+            if (value < thresholds[2]) return "bg-info";
+            return "bg-success";
+        }
+
+        // Fallback si no hay thresholds definidos correctamente
+        if (value < 25) return "bg-danger";
+        if (value < 50) return "bg-warning";
+        if (value < 75) return "bg-info";
+        return "bg-success";
+    }
+}
+
+<style>
+    .form-range {
+        width: 100%;
+        margin: 0;
+    }
+
+    .progress {
+        background-color: var(--bs-gray-200);
+    }
+</style>

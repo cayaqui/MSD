@@ -1,0 +1,52 @@
+﻿<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated != true)
+                    {
+                        <RedirectToLogin />
+                    }
+                    else
+                    {
+                        <AccessDenied />
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <div class="d-flex justify-content-center align-items-center vh-100">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary mb-3" role="status">
+                                <span class="visually-hidden">Verificando autorización...</span>
+                            </div>
+                            <p class="text-muted">Verificando autorización...</p>
+                        </div>
+                    </div>
+                </Authorizing>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>No encontrado</PageTitle>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <div class="container-fluid">
+                    <div class="row justify-content-center mt-5">
+                        <div class="col-md-6 text-center">
+                            <div class="error-page">
+                                <h1 class="display-1 fw-bold text-primary">404</h1>
+                                <p class="fs-3">
+                                    <span class="text-danger">¡Oops!</span> Página no encontrada.
+                                </p>
+                                <p class="lead">
+                                    La página que está buscando no existe o ha sido movida.
+                                </p>
+                                <a href="/" class="btn btn-primary">
+                                    <i class="fa-light fa-home me-2"></i>Ir al Inicio
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

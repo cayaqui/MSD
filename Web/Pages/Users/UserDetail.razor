@@ -1,0 +1,286 @@
+﻿@page "/users/{Id:guid}"
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@inject IToastService Toast
+@attribute [Authorize]
+
+<PageTitle>@user?.Name - Usuario - EzPro</PageTitle>
+
+@if (isLoading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+    </div>
+}
+else if (user != null)
+{
+    <div class="page-header">
+        <div class="row align-items-center">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="/users">Usuarios</a></li>
+                        <li class="breadcrumb-item active">@user.Name</li>
+                    </ol>
+                </nav>
+                <h1 class="page-title mt-2">
+                    <i class="fa-light fa-user me-2"></i>@user.Name
+                </h1>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary" @onclick="EditUser">
+                    <i class="fa-light fa-edit me-2"></i>Editar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <!-- Perfil del usuario -->
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    @if (!string.IsNullOrEmpty(user.PhotoUrl))
+                    {
+                        <img src="@user.PhotoUrl" alt="@user.Name"
+                             class="rounded-circle mb-3"
+                             style="width: 120px; height: 120px; object-fit: cover;">
+                    }
+                    else
+                    {
+                        <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center mx-auto mb-3"
+                             style="width: 120px; height: 120px;">
+                            <i class="fa-light fa-user fa-3x text-primary"></i>
+                        </div>
+                    }
+
+                    <h4 class="mb-1">@user.Name</h4>
+                    <p class="text-muted mb-3">@user.JobTitle</p>
+
+                    @if (user.IsActive)
+                    {
+                        <span class="badge bg-success mb-3">Activo</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger mb-3">Inactivo</span>
+                    }
+
+                    <div class="list-group list-group-flush text-start">
+                        <div class="list-group-item px-0">
+                            <i class="fa-light fa-envelope me-2 text-muted"></i>
+                            <a href="mailto:@user.Email">@user.Email</a>
+                        </div>
+                        @if (!string.IsNullOrEmpty(user.PhoneNumber))
+                        {
+                            <div class="list-group-item px-0">
+                                <i class="fa-light fa-phone me-2 text-muted"></i>
+                                @user.PhoneNumber
+                            </div>
+                        }
+                        @if (user.LastLoginAt.HasValue)
+                        {
+                            <div class="list-group-item px-0">
+                                <i class="fa-light fa-clock me-2 text-muted"></i>
+                                Último acceso: @user.LastLoginAt.Value.ToString("dd/MM/yyyy HH:mm")
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información adicional -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Información del sistema</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">ID Usuario:</dt>
+                        <dd class="col-sm-7"><code>@user.Id</code></dd>
+
+                        @if (!string.IsNullOrEmpty(user.EntraId))
+                        {
+                            <dt class="col-sm-5">Azure AD ID:</dt>
+                            <dd class="col-sm-7"><code>@user.EntraId</code></dd>
+                        }
+
+                        <dt class="col-sm-5">Creado:</dt>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <!-- Proyectos asignados -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Proyectos asignados</h5>
+                </div>
+                <div class="card-body">
+                    @if (userProjects.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Proyecto</th>
+                                        <th>Rol</th>
+                                        <th>Asignación</th>
+                                        <th>Estado</th>
+                                        <th width="100">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var project in userProjects)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div>
+                                                    <div class="fw-medium">@project.ProjectName</div>
+                                                    <small class="text-muted">@project.ProjectCode</small>
+                                                </div>
+                                            </td>
+                                            <td>@project.Role</td>
+                                            <td>@project.AllocationPercentage%</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary"
+                                                        @onclick="() => ViewProject(project.ProjectId)">
+                                                    <i class="fa-light fa-eye"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <i class="fa-light fa-folder-open fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No hay proyectos asignados</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Roles y permisos -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Roles y permisos</h5>
+                </div>
+                <div class="card-body">
+
+                    <h6 class="mb-3">Permisos efectivos:</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="text-muted small mb-2">PROYECTOS</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" checked disabled>
+                                    <label class="form-check-label small">Ver proyectos asignados</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" checked disabled>
+                                    <label class="form-check-label small">Actualizar tareas</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="text-muted small mb-2">REPORTES</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" checked disabled>
+                                    <label class="form-check-label small">Ver reportes de proyecto</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" disabled>
+                                    <label class="form-check-label small">Exportar reportes</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-danger">
+        <i class="fa-light fa-exclamation-triangle me-2"></i>
+        Usuario no encontrado
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private UserDto? user;
+    private List<ProjectTeamMemberDto> userProjects = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserData();
+    }
+
+    private async Task LoadUserData()
+    {
+        isLoading = true;
+        try
+        {
+            // Cargar información del usuario
+            var userResponse = await UserService.GetUserByIdAsync(Id);
+            if (userResponse.IsSuccess && userResponse.Data != null)
+            {
+                user = userResponse.Data;
+
+                // Cargar proyectos del usuario
+                var projectsResponse = await UserService.GetUserProjectsAsync(Id);
+                if (projectsResponse.IsSuccess && projectsResponse.Data != null)
+                {
+                    userProjects = projectsResponse.Data;
+                }
+            }
+            else
+            {
+                await Toast.ShowErrorAsync("Error al cargar el usuario");
+            }
+        }
+        catch (Exception ex)
+        {
+            await Toast.ShowErrorAsync("Error inesperado al cargar los datos");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void EditUser()
+    {
+        Navigation.NavigateTo($"/users/{Id}/edit");
+    }
+
+    private void ViewProject(Guid projectId)
+    {
+        Navigation.NavigateTo($"/projects/{projectId}");
+    }
+
+    private string GetProjectStatusClass(string? status)
+    {
+        return status?.ToLower() switch
+        {
+            "active" => "bg-success",
+            "planning" => "bg-info",
+            "on hold" => "bg-warning",
+            "completed" => "bg-secondary",
+            "cancelled" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+}

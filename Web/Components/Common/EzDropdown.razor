@@ -1,0 +1,452 @@
+﻿@implements IEzDropdown
+@implements IDisposable
+@inject IJSRuntime JS
+
+<div class="@GetDropdownClass()" @ref="dropdownElement">
+    @if (Split)
+    {
+        <button type="button"
+                class="@GetMainButtonClass()"
+                @onclick="OnMainButtonClick"
+                disabled="@Disabled">
+            @if (ButtonContent != null)
+            {
+                @ButtonContent
+            }
+            else
+            {
+                @ButtonText
+            }
+        </button>
+        <button type="button"
+                class="@GetToggleButtonClass()"
+                @onclick="Toggle"
+                aria-expanded="@isOpen.ToString().ToLower()"
+                disabled="@Disabled">
+            <span class="visually-hidden">Toggle Dropdown</span>
+        </button>
+    }
+    else
+    {
+        <button type="button"
+                class="@GetToggleButtonClass()"
+                @onclick="Toggle"
+                aria-expanded="@isOpen.ToString().ToLower()"
+                disabled="@Disabled">
+            @if (ButtonContent != null)
+            {
+                @ButtonContent
+            }
+            else
+            {
+                @ButtonText
+                @if (ShowCaret)
+                {
+                    <span class="dropdown-toggle-split ms-1"></span>
+                }
+            }
+        </button>
+    }
+
+    <div class="@GetMenuClass()" @ref="menuElement">
+        <CascadingValue Value="(IEzDropdown)this">
+            @ChildContent
+        </CascadingValue>
+    </div>
+</div>
+
+@if (isOpen && CloseOnOutsideClick)
+{
+    <div class="dropdown-backdrop" @onclick="Close"></div>
+}
+
+@code {
+    // Parámetros principales
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? ButtonContent { get; set; }
+    [Parameter] public string ButtonText { get; set; } = "Dropdown";
+    [Parameter] public bool Disabled { get; set; } = false;
+
+    // Comportamiento
+    [Parameter] public bool Split { get; set; } = false;
+    [Parameter] public bool ShowCaret { get; set; } = true;
+    [Parameter] public DropdownDirection Direction { get; set; } = DropdownDirection.Down;
+    [Parameter] public DropdownAlignment Alignment { get; set; } = DropdownAlignment.Start;
+    [Parameter] public bool AutoClose { get; set; } = true;
+    [Parameter] public bool CloseOnOutsideClick { get; set; } = true;
+    [Parameter] public bool CloseOnEscape { get; set; } = true;
+    [Parameter] public int Offset { get; set; } = 0;
+
+    // Apariencia
+    [Parameter] public ButtonVariant Variant { get; set; } = ButtonVariant.Primary;
+    [Parameter] public ButtonSize Size { get; set; } = ButtonSize.Default;
+    [Parameter] public bool Dark { get; set; } = false;
+
+    // Clases CSS
+    [Parameter] public string? DropdownClass { get; set; }
+    [Parameter] public string? ButtonClass { get; set; }
+    [Parameter] public string? MenuClass { get; set; }
+
+    // Eventos
+    [Parameter] public EventCallback OnShow { get; set; }
+    [Parameter] public EventCallback OnShown { get; set; }
+    [Parameter] public EventCallback OnHide { get; set; }
+    [Parameter] public EventCallback OnHidden { get; set; }
+    [Parameter] public EventCallback OnMainButtonClick { get; set; }
+
+    // Enums
+    public enum DropdownDirection
+    {
+        Down,
+        Up,
+        Start,
+        End
+    }
+
+    public enum DropdownAlignment
+    {
+        Start,
+        End,
+        Center
+    }
+
+    public enum ButtonVariant
+    {
+        Primary,
+        Secondary,
+        Success,
+        Danger,
+        Warning,
+        Info,
+        Light,
+        Dark,
+        Link
+    }
+
+    public enum ButtonSize
+    {
+        Small,
+        Default,
+        Large
+    }
+
+    private ElementReference dropdownElement;
+    private ElementReference menuElement;
+    private bool isOpen = false;
+    private object? dotNetRef; // Almacenar como object para evitar problemas de tipado
+
+    protected override void OnInitialized()
+    {
+        dotNetRef = DotNetObjectReference.Create(this);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && CloseOnEscape)
+        {
+            await JS.InvokeVoidAsync("EzDropdown.initialize", dotNetRef, dropdownElement);
+        }
+
+        if (isOpen)
+        {
+            await UpdatePosition();
+        }
+    }
+
+    public async Task ToggleAsync()
+    {
+        if (isOpen)
+        {
+            await CloseAsync();
+        }
+        else
+        {
+            await OpenAsync();
+        }
+    }
+
+    private async Task Toggle()
+    {
+        await ToggleAsync();
+    }
+
+    public async Task OpenAsync()
+    {
+        if (!isOpen && !Disabled)
+        {
+            await OnShow.InvokeAsync();
+
+            isOpen = true;
+            StateHasChanged();
+
+            await Task.Yield();
+            await UpdatePosition();
+
+            await OnShown.InvokeAsync();
+        }
+    }
+
+    private async Task Open()
+    {
+        await OpenAsync();
+    }
+
+    public async Task CloseAsync()
+    {
+        if (isOpen)
+        {
+            await OnHide.InvokeAsync();
+
+            isOpen = false;
+            StateHasChanged();
+
+            await OnHidden.InvokeAsync();
+        }
+    }
+
+    private async Task Close()
+    {
+        await CloseAsync();
+    }
+
+    public async Task OnItemClickAsync(bool shouldClose)
+    {
+        if (AutoClose && shouldClose)
+        {
+            await CloseAsync();
+        }
+    }
+
+    internal async Task OnItemClick(bool shouldClose)
+    {
+        await OnItemClickAsync(shouldClose);
+    }
+
+    [JSInvokable]
+    public async Task HandleEscapeKey()
+    {
+        if (CloseOnEscape && isOpen)
+        {
+            await CloseAsync();
+        }
+    }
+
+    private async Task UpdatePosition()
+    {
+        if (isOpen)
+        {
+            await JS.InvokeVoidAsync("EzDropdown.updatePosition",
+                dropdownElement, menuElement, Direction.ToString().ToLower(),
+                Alignment.ToString().ToLower(), Offset);
+        }
+    }
+
+    private string GetDropdownClass()
+    {
+        var classes = new List<string>();
+
+        if (Direction != DropdownDirection.Down)
+        {
+            classes.Add($"drop{Direction.ToString().ToLower()}");
+        }
+        else
+        {
+            classes.Add("dropdown");
+        }
+
+        if (Split)
+        {
+            classes.Add("btn-group");
+        }
+
+        if (!string.IsNullOrEmpty(DropdownClass))
+        {
+            classes.Add(DropdownClass);
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetMainButtonClass()
+    {
+        var classes = new List<string> { "btn" };
+
+        classes.Add($"btn-{Variant.ToString().ToLower()}");
+
+        if (Size != ButtonSize.Default)
+        {
+            classes.Add($"btn-{Size.ToString().ToLower()}");
+        }
+
+        if (!string.IsNullOrEmpty(ButtonClass))
+        {
+            classes.Add(ButtonClass);
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetToggleButtonClass()
+    {
+        var classes = new List<string> { "btn" };
+
+        classes.Add($"btn-{Variant.ToString().ToLower()}");
+
+        if (Size != ButtonSize.Default)
+        {
+            classes.Add($"btn-{Size.ToString().ToLower()}");
+        }
+
+        if (!Split)
+        {
+            classes.Add("dropdown-toggle");
+        }
+        else
+        {
+            classes.Add("dropdown-toggle");
+            classes.Add("dropdown-toggle-split");
+        }
+
+        if (!string.IsNullOrEmpty(ButtonClass))
+        {
+            classes.Add(ButtonClass);
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetMenuClass()
+    {
+        var classes = new List<string> { "dropdown-menu" };
+
+        if (isOpen)
+        {
+            classes.Add("show");
+        }
+
+        if (Dark)
+        {
+            classes.Add("dropdown-menu-dark");
+        }
+
+        if (Alignment == DropdownAlignment.End)
+        {
+            classes.Add("dropdown-menu-end");
+        }
+        else if (Alignment == DropdownAlignment.Center)
+        {
+            classes.Add("dropdown-center");
+        }
+
+        if (!string.IsNullOrEmpty(MenuClass))
+        {
+            classes.Add(MenuClass);
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    public void Dispose()
+    {
+        if (dotNetRef != null)
+        {
+            _ = JS.InvokeVoidAsync("EzDropdown.dispose", dropdownElement);
+            (dotNetRef as IDisposable)?.Dispose();
+            dotNetRef = null;
+        }
+    }
+}
+
+<style>
+    .dropdown-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1040;
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        z-index: 1050;
+        display: none;
+        min-width: 10rem;
+        padding: 0.5rem 0;
+        margin: 0;
+        font-size: 1rem;
+        color: var(--bs-body-color);
+        text-align: left;
+        list-style: none;
+        background-color: var(--bs-dropdown-bg);
+        background-clip: padding-box;
+        border: var(--bs-dropdown-border-width) solid var(--bs-dropdown-border-color);
+        border-radius: var(--bs-dropdown-border-radius);
+        box-shadow: var(--bs-dropdown-box-shadow);
+    }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+    .dropdown-menu-dark {
+        color: var(--bs-dropdown-dark-color);
+        background-color: var(--bs-dropdown-dark-bg);
+        border-color: var(--bs-dropdown-dark-border-color);
+    }
+
+    .dropdown-menu-end {
+        right: 0;
+        left: auto;
+    }
+
+    .dropdown-center .dropdown-menu {
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    /* Animación */
+    .dropdown-menu {
+        animation: dropdownFadeIn 0.15s ease-out;
+    }
+
+    @@keyframes dropdownFadeIn {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+
+    /* Direcciones */
+    .dropup .dropdown-menu {
+        top: auto;
+        bottom: 100%;
+        margin-top: 0;
+        margin-bottom: var(--bs-dropdown-spacer);
+    }
+
+    .dropstart .dropdown-menu {
+        top: 0;
+        right: 100%;
+        left: auto;
+        margin-top: 0;
+        margin-right: var(--bs-dropdown-spacer);
+    }
+
+    .dropend .dropdown-menu {
+        top: 0;
+        right: auto;
+        left: 100%;
+        margin-top: 0;
+        margin-left: var(--bs-dropdown-spacer);
+    }
+</style>

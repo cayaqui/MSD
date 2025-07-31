@@ -1,0 +1,74 @@
+﻿<span class="badge @GetBadgeClass() @Class">
+    <i class="@GetIcon() me-1"></i>@GetStatusText()
+</span>
+
+@code {
+    [Parameter, EditorRequired] public string Status { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+
+    private string GetBadgeClass()
+    {
+        return Status?.ToLower() switch
+        {
+            "planning" => "badge-planning",
+            "active" => "badge-active",
+            "onhold" => "badge-on-hold",
+            "completed" => "badge-completed",
+            "cancelled" => "badge-cancelled",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetIcon()
+    {
+        return Status?.ToLower() switch
+        {
+            "planning" => "fa-light fa-pencil-ruler",
+            "active" => "fa-light fa-play-circle",
+            "onhold" => "fa-light fa-pause-circle",
+            "completed" => "fa-light fa-check-circle",
+            "cancelled" => "fa-light fa-times-circle",
+            _ => "fa-light fa-question-circle"
+        };
+    }
+
+    private string GetStatusText()
+    {
+        return Status?.ToLower() switch
+        {
+            "planning" => "Planificación",
+            "active" => "Activo",
+            "onhold" => "En Espera",
+            "completed" => "Completado",
+            "cancelled" => "Cancelado",
+            _ => Status ?? "Desconocido"
+        };
+    }
+}
+
+<style>
+    .badge-planning {
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge-active {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge-on-hold {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+
+    .badge-completed {
+        background-color: #e0e7ff;
+        color: #3730a3;
+    }
+
+    .badge-cancelled {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+</style>

@@ -1,0 +1,383 @@
+﻿@inherits InputBase<string>
+@implements IDisposable
+
+<div class="form-group @ContainerClass">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label for="@_textAreaId" class="form-label @LabelClass">
+            @Label
+            @if (IsRequired)
+            {
+                <span class="text-danger">*</span>
+            }
+        </label>
+    }
+
+    <div class="textarea-wrapper @WrapperClass">
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <span class="textarea-icon">
+                <i class="@Icon"></i>
+            </span>
+        }
+
+        <textarea @ref="_textAreaElement"
+                  id="@_textAreaId"
+                  class="@CssClass"
+                  value="@CurrentValue"
+                  @oninput="OnInputHandler"
+                  @onblur="OnBlurHandler"
+                  @onfocus="OnFocusHandler"
+                  @onkeydown="OnKeyDownHandler"
+                  placeholder="@Placeholder"
+                  disabled="@IsDisabled"
+                  readonly="@IsReadOnly"
+                  rows="@Rows"
+                  maxlength="@MaxLength"
+                  @attributes="AdditionalAttributes">@CurrentValue</textarea>
+
+        @if (Resizable && !IsDisabled && !IsReadOnly)
+        {
+            <div class="resize-handle">
+                <i class="bi bi-grip-horizontal"></i>
+            </div>
+        }
+        @{
+            string[] formats = { "*", "**", "~~", "bullet", "number" };
+        }
+        
+        @if (ShowToolbar && !IsDisabled && !IsReadOnly)
+        {
+            <div class="textarea-toolbar">
+                <button type="button" class="toolbar-btn" @onclick="() => InsertFormat(formats[1], formats[1])" title="Negrita">
+                    <i class="bi bi-type-bold"></i>
+                </button>
+                <button type="button" class="toolbar-btn" @onclick="() => InsertFormat(formats[0], formats[0])" title="Cursiva">
+                    <i class="bi bi-type-italic"></i>
+                </button>
+                <button type="button" class="toolbar-btn" @onclick="() => InsertFormat(formats[2], formats[2])" title="Tachado">
+                    <i class="bi bi-type-strikethrough"></i>
+                </button>
+                <div class="toolbar-separator"></div>
+                <button type="button" class="toolbar-btn" @onclick="() => InsertList(formats[3])" title="Lista">
+                    <i class="bi bi-list-ul"></i>
+                </button>
+                <button type="button" class="toolbar-btn" @onclick="() => InsertList(formats[4])" title="Lista numerada">
+                    <i class="bi bi-list-ol"></i>
+                </button>
+                <div class="toolbar-separator"></div>
+                <button type="button" class="toolbar-btn" @onclick="InsertLink" title="Enlace">
+                    <i class="bi bi-link-45deg"></i>
+                </button>
+                @if (ShowClearButton && !string.IsNullOrEmpty(CurrentValue))
+                {
+                    <button type="button" class="toolbar-btn ms-auto" @onclick="ClearValue" title="Limpiar">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="textarea-footer">
+        @if (!string.IsNullOrEmpty(HelpText))
+        {
+            <small class="form-text text-muted">@HelpText</small>
+        }
+
+        @if (ShowCharacterCount && MaxLength.HasValue)
+        {
+            <small class="form-text text-muted character-count @(IsNearLimit() ? "text-warning" : "")">
+                @($"{CurrentValue?.Length ?? 0}/{MaxLength}")
+                @if (ShowWordCount)
+                {
+                    @($" • {CountWords()} palabras")
+                }
+            </small>
+        }
+        else if (ShowWordCount)
+        {
+            <small class="form-text text-muted character-count">
+                @($"{CountWords()} palabras")
+            </small>
+        }
+    </div>
+
+    <div class="invalid-feedback @(_showValidation ? "d-block" : "")">
+        <ValidationMessage For="@ValueExpression" />
+    </div>
+</div>
+
+@code {
+    private string _textAreaId = $"textarea-{Guid.NewGuid():N}";
+    private ElementReference _textAreaElement;
+    private bool _showValidation = false;
+    private Timer? _debounceTimer;
+    private Timer? _autoSaveTimer;
+    private string _cssClass = "";
+    private int _selectionStart = 0;
+    private int _selectionEnd = 0;
+
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Placeholder { get; set; } = "";
+    [Parameter] public string HelpText { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public bool ShowClearButton { get; set; }
+    [Parameter] public bool ShowCharacterCount { get; set; }
+    [Parameter] public bool ShowWordCount { get; set; }
+    [Parameter] public bool ShowToolbar { get; set; }
+    [Parameter] public bool Resizable { get; set; } = true;
+    [Parameter] public bool AutoResize { get; set; }
+    [Parameter] public int? MaxLength { get; set; }
+    [Parameter] public int Rows { get; set; } = 3;
+    [Parameter] public int MinRows { get; set; } = 3;
+    [Parameter] public int MaxRows { get; set; } = 10;
+    [Parameter] public int DebounceDelay { get; set; } = 0;
+    [Parameter] public int AutoSaveDelay { get; set; } = 0;
+
+    // CSS Classes customization
+    [Parameter] public string ContainerClass { get; set; } = "";
+    [Parameter] public string LabelClass { get; set; } = "";
+    [Parameter] public string WrapperClass { get; set; } = "";
+
+    // Events
+    [Parameter] public EventCallback<string> OnInput { get; set; }
+    [Parameter] public EventCallback<string> OnChange { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+    [Parameter] public EventCallback<string> OnAutoSave { get; set; }
+
+    protected string CssClass => _cssClass;
+
+    protected override string FormatValueAsString(string? value) => value ?? string.Empty;
+
+    protected override bool TryParseValueFromString(string? value, out string result, out string validationErrorMessage)
+    {
+        result = value ?? string.Empty;
+        validationErrorMessage = "";
+        return true;
+    }
+
+    protected override void OnInitialized()
+    {
+        BuildCssClass();
+
+        if (EditContext != null)
+        {
+            EditContext.OnValidationStateChanged += OnValidationStateChanged;
+        }
+
+        if (AutoSaveDelay > 0)
+        {
+            StartAutoSaveTimer();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        BuildCssClass();
+    }
+
+    private void BuildCssClass()
+    {
+        var baseClass = "form-control";
+
+        if (ShowToolbar)
+        {
+            baseClass += " has-toolbar";
+        }
+
+        if (AutoResize)
+        {
+            baseClass += " auto-resize";
+        }
+
+        if (!Resizable)
+        {
+            baseClass += " resize-none";
+        }
+
+        // Add size class if specified
+        if (AdditionalAttributes?.TryGetValue("size", out var size) == true)
+        {
+            baseClass += $" form-control-{size}";
+        }
+
+        // Add validation state classes
+        if (EditContext != null && FieldIdentifier.FieldName != null)
+        {
+            var fieldState = EditContext.GetValidationMessages(FieldIdentifier).Any();
+            if (fieldState && _showValidation)
+            {
+                baseClass += " is-invalid";
+            }
+        }
+
+        // Add custom classes from AdditionalAttributes
+        if (AdditionalAttributes?.TryGetValue("class", out var customClass) == true)
+        {
+            baseClass += $" {customClass}";
+        }
+
+        _cssClass = baseClass;
+    }
+
+    private async Task OnInputHandler(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? "";
+
+        if (AutoResize)
+        {
+            await AdjustHeight();
+        }
+
+        if (DebounceDelay > 0)
+        {
+            _debounceTimer?.Dispose();
+            _debounceTimer = new Timer(async _ =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    CurrentValue = value;
+                    await OnInput.InvokeAsync(value);
+                    StateHasChanged();
+                });
+            }, null, DebounceDelay, Timeout.Infinite);
+        }
+        else
+        {
+            CurrentValue = value;
+            await OnInput.InvokeAsync(value);
+        }
+
+        // Reset auto-save timer
+        if (AutoSaveDelay > 0)
+        {
+            RestartAutoSaveTimer();
+        }
+    }
+
+    private async Task OnBlurHandler(FocusEventArgs e)
+    {
+        _showValidation = true;
+        await OnBlur.InvokeAsync(e);
+        await OnChange.InvokeAsync(CurrentValue);
+    }
+
+    private async Task OnFocusHandler(FocusEventArgs e)
+    {
+        await OnFocus.InvokeAsync(e);
+    }
+
+    private async Task OnKeyDownHandler(KeyboardEventArgs e)
+    {
+        // Tab key handling for toolbar
+        if (e.Key == "Tab" && ShowToolbar)
+        {
+            // Could implement tab insertion here
+        }
+    }
+
+    private async Task ClearValue()
+    {
+        CurrentValue = string.Empty;
+        _showValidation = false;
+        await OnClear.InvokeAsync();
+        await _textAreaElement.FocusAsync();
+
+        if (AutoResize)
+        {
+            await AdjustHeight();
+        }
+    }
+
+    private async Task AdjustHeight()
+    {
+        // This would require JS interop in a real implementation
+        await Task.CompletedTask;
+    }
+
+    private int CountWords()
+    {
+        if (string.IsNullOrWhiteSpace(CurrentValue))
+            return 0;
+
+        return CurrentValue.Split(new[] { ' ', '\n', '\r', '\t' },
+            StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+
+    private bool IsNearLimit()
+    {
+        if (!MaxLength.HasValue || string.IsNullOrEmpty(CurrentValue))
+            return false;
+
+        var percentage = (double)CurrentValue.Length / MaxLength.Value;
+        return percentage >= 0.9; // 90% of limit
+    }
+
+    private async Task InsertFormat(string prefix, string suffix)
+    {
+        // In a real implementation, this would:
+        // 1. Get current selection
+        // 2. Wrap selected text with prefix/suffix
+        // 3. Update CurrentValue
+        // 4. Restore cursor position
+        await Task.CompletedTask;
+    }
+
+    private async Task InsertList(string listType)
+    {
+        var bullet = listType == "bullet" ? "• " : "1. ";
+        // Insert at cursor position
+        await Task.CompletedTask;
+    }
+
+    private async Task InsertLink()
+    {
+        // Would show a dialog or insert [text](url) format
+        await Task.CompletedTask;
+    }
+
+    private void StartAutoSaveTimer()
+    {
+        _autoSaveTimer = new Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                if (!string.IsNullOrEmpty(CurrentValue))
+                {
+                    await OnAutoSave.InvokeAsync(CurrentValue);
+                }
+            });
+        }, null, AutoSaveDelay, AutoSaveDelay);
+    }
+
+    private void RestartAutoSaveTimer()
+    {
+        _autoSaveTimer?.Dispose();
+        StartAutoSaveTimer();
+    }
+
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e)
+    {
+        BuildCssClass();
+        InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask FocusAsync() => await _textAreaElement.FocusAsync();
+
+    public void Dispose()
+    {
+        _debounceTimer?.Dispose();
+        _autoSaveTimer?.Dispose();
+        if (EditContext != null)
+        {
+            EditContext.OnValidationStateChanged -= OnValidationStateChanged;
+        }
+    }
+}

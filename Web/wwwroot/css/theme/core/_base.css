@@ -1,0 +1,458 @@
+﻿/* =================================
+   EzPro.SD - Base CSS
+   Estilos fundamentales del sistema
+   ================================= */
+
+/* ===== ELEMENTOS BASE ===== */
+
+/* HTML y Body */
+html {
+    font-size: 16px;
+    height: 100%;
+}
+
+body {
+    font-family: var(--font-sans);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-normal);
+    line-height: var(--line-height-normal);
+    color: var(--text-primary);
+    background-color: var(--bg-body);
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* ===== TIPOGRAFÍA ===== */
+
+/* Encabezados */
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+    margin-bottom: var(--spacing-3);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-tight);
+    color: var(--text-primary);
+}
+
+h1, .h1 {
+    font-size: var(--font-size-4xl);
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+h2, .h2 {
+    font-size: var(--font-size-3xl);
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+h3, .h3 {
+    font-size: var(--font-size-2xl);
+}
+
+h4, .h4 {
+    font-size: var(--font-size-xl);
+}
+
+h5, .h5 {
+    font-size: var(--font-size-lg);
+}
+
+h6, .h6 {
+    font-size: var(--font-size-base);
+}
+
+/* Párrafos */
+p {
+    margin-bottom: var(--spacing-4);
+}
+
+.lead {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-light);
+    line-height: var(--line-height-relaxed);
+}
+
+/* Enlaces */
+a {
+    color: var(--primary);
+    text-decoration: none;
+    transition: color var(--transition-base);
+}
+
+    a:hover {
+        color: var(--primary-dark);
+        text-decoration: none;
+    }
+
+    a:focus {
+        outline: none;
+    }
+
+/* Listas */
+ul,
+ol {
+    padding-left: var(--spacing-6);
+    margin-bottom: var(--spacing-4);
+}
+
+    ul ul,
+    ol ol,
+    ul ol,
+    ol ul {
+        margin-bottom: 0;
+    }
+
+li {
+    margin-bottom: var(--spacing-2);
+}
+
+/* Texto pequeño */
+small,
+.small {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-normal);
+}
+
+/* Texto en negrita */
+b,
+strong {
+    font-weight: var(--font-weight-bold);
+}
+
+/* Énfasis */
+em,
+i {
+    font-style: italic;
+}
+
+/* Marca */
+mark,
+.mark {
+    padding: 0.2em;
+    background-color: rgba(var(--warning-rgb), 0.2);
+    color: var(--text-primary);
+}
+
+/* Código */
+code,
+kbd,
+pre,
+samp {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+}
+
+code {
+    padding: 0.2em 0.4em;
+    font-size: 0.875em;
+    color: var(--danger);
+    background-color: var(--gray-100);
+    border-radius: var(--radius-sm);
+}
+
+pre {
+    display: block;
+    margin-top: 0;
+    margin-bottom: var(--spacing-4);
+    overflow: auto;
+    font-size: 0.875em;
+}
+
+    pre code {
+        padding: 0;
+        font-size: inherit;
+        color: inherit;
+        background-color: transparent;
+        border-radius: 0;
+    }
+
+/* Kbd */
+kbd {
+    padding: 0.2em 0.4em;
+    font-size: 0.875em;
+    color: var(--bg-white);
+    background-color: var(--gray-900);
+    border-radius: var(--radius-sm);
+}
+
+/* ===== ELEMENTOS DE CONTENIDO ===== */
+
+/* Blockquote */
+blockquote {
+    margin: 0 0 var(--spacing-4);
+    padding: var(--spacing-4) var(--spacing-6);
+    font-size: var(--font-size-lg);
+    border-left: 4px solid var(--primary);
+    background-color: var(--gray-50);
+}
+
+    blockquote p:last-child {
+        margin-bottom: 0;
+    }
+
+/* Línea horizontal */
+hr {
+    margin: var(--spacing-8) 0;
+    color: var(--border-color);
+    background-color: currentColor;
+    border: 0;
+    opacity: 0.25;
+    height: 1px;
+}
+
+/* Abreviaciones */
+abbr[title] {
+    text-decoration: underline dotted;
+    cursor: help;
+    text-decoration-skip-ink: none;
+}
+
+/* Dirección */
+address {
+    margin-bottom: var(--spacing-4);
+    font-style: normal;
+    line-height: inherit;
+}
+
+/* ===== ELEMENTOS MULTIMEDIA ===== */
+
+/* Imágenes */
+img {
+    vertical-align: middle;
+}
+
+/* Figure */
+figure {
+    margin: 0 0 var(--spacing-4);
+}
+
+figcaption {
+    margin-top: var(--spacing-2);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+/* SVG */
+svg {
+    vertical-align: middle;
+}
+
+/* ===== SCROLLBAR PERSONALIZADO ===== */
+
+/* Webkit browsers */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--gray-100);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gray-400);
+    border-radius: var(--radius-full);
+}
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--gray-500);
+    }
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--gray-400) var(--gray-100);
+}
+
+/* ===== SELECCIÓN DE TEXTO ===== */
+
+::selection {
+    background-color: rgba(var(--primary-rgb), 0.2);
+    color: var(--text-primary);
+}
+
+::-moz-selection {
+    background-color: rgba(var(--primary-rgb), 0.2);
+    color: var(--text-primary);
+}
+
+/* ===== CLASES DE TEXTO ===== */
+
+/* Alineación */
+.text-left {
+    text-align: left !important;
+}
+
+.text-center {
+    text-align: center !important;
+}
+
+.text-right {
+    text-align: right !important;
+}
+
+.text-justify {
+    text-align: justify !important;
+}
+
+/* Transformación */
+.text-lowercase {
+    text-transform: lowercase !important;
+}
+
+.text-uppercase {
+    text-transform: uppercase !important;
+}
+
+.text-capitalize {
+    text-transform: capitalize !important;
+}
+
+/* Peso */
+.font-weight-light {
+    font-weight: var(--font-weight-light) !important;
+}
+
+.font-weight-normal {
+    font-weight: var(--font-weight-normal) !important;
+}
+
+.font-weight-medium {
+    font-weight: var(--font-weight-medium) !important;
+}
+
+.font-weight-semibold {
+    font-weight: var(--font-weight-semibold) !important;
+}
+
+.font-weight-bold {
+    font-weight: var(--font-weight-bold) !important;
+}
+
+/* Estilo */
+.font-italic {
+    font-style: italic !important;
+}
+
+.font-normal {
+    font-style: normal !important;
+}
+
+/* Decoración */
+.text-decoration-none {
+    text-decoration: none !important;
+}
+
+.text-decoration-underline {
+    text-decoration: underline !important;
+}
+
+.text-decoration-line-through {
+    text-decoration: line-through !important;
+}
+
+/* Colores de texto */
+.text-primary {
+    color: var(--primary) !important;
+}
+
+.text-secondary {
+    color: var(--secondary) !important;
+}
+
+.text-success {
+    color: var(--success) !important;
+}
+
+.text-info {
+    color: var(--info) !important;
+}
+
+.text-warning {
+    color: var(--warning) !important;
+}
+
+.text-danger {
+    color: var(--danger) !important;
+}
+
+.text-light {
+    color: var(--text-light) !important;
+}
+
+.text-dark {
+    color: var(--text-primary) !important;
+}
+
+.text-white {
+    color: var(--text-white) !important;
+}
+
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* ===== CLASES DE FONDO ===== */
+
+.bg-primary {
+    background-color: var(--primary) !important;
+}
+
+.bg-secondary {
+    background-color: var(--secondary) !important;
+}
+
+.bg-success {
+    background-color: var(--success) !important;
+}
+
+.bg-info {
+    background-color: var(--info) !important;
+}
+
+.bg-warning {
+    background-color: var(--warning) !important;
+}
+
+.bg-danger {
+    background-color: var(--danger) !important;
+}
+
+.bg-light {
+    background-color: var(--bg-light) !important;
+}
+
+.bg-dark {
+    background-color: var(--bg-dark) !important;
+}
+
+.bg-white {
+    background-color: var(--bg-white) !important;
+}
+
+.bg-transparent {
+    background-color: transparent !important;
+}
+
+/* Fondos suaves */
+.bg-soft-primary {
+    background-color: rgba(var(--primary-rgb), 0.1) !important;
+}
+
+.bg-soft-secondary {
+    background-color: rgba(var(--secondary-rgb), 0.1) !important;
+}
+
+.bg-soft-success {
+    background-color: rgba(var(--success-rgb), 0.1) !important;
+}
+
+.bg-soft-info {
+    background-color: rgba(var(--info-rgb), 0.1) !important;
+}
+
+.bg-soft-warning {
+    background-color: rgba(var(--warning-rgb), 0.1) !important;
+}
+
+.bg-soft-danger {
+    background-color: rgba(var(--danger-rgb), 0.1) !important;
+}

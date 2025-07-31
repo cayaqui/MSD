@@ -1,0 +1,103 @@
+﻿@implements IDisposable
+@inject IToastService ToastService
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    @foreach (var toast in toasts)
+    {
+        <div class="toast show @GetToastClass(toast.Type)" role="alert">
+            <div class="toast-header">
+                <i class="@GetToastIcon(toast.Type) me-2"></i>
+                <strong class="me-auto">@GetToastTitle(toast.Type)</strong>
+                <small>@GetTimeAgo(toast.Timestamp)</small>
+                <button type="button" class="btn-close" @onclick="() => RemoveToast(toast)"></button>
+            </div>
+            <div class="toast-body">
+                @toast.Message
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ToastMessage> toasts = new();
+    private Timer? timer;
+
+    protected override void OnInitialized()
+    {
+        ToastService.OnShow += ShowToast;
+        timer = new Timer(_ => RemoveExpiredToasts(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private void ShowToast(ToastMessage message)
+    {
+        toasts.Add(message);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void RemoveToast(ToastMessage toast)
+    {
+        toasts.Remove(toast);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void RemoveExpiredToasts()
+    {
+        var expiredToasts = toasts.Where(t => DateTime.Now - t.Timestamp > TimeSpan.FromSeconds(5)).ToList();
+        if (expiredToasts.Any())
+        {
+            foreach (var toast in expiredToasts)
+            {
+                toasts.Remove(toast);
+            }
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private string GetToastClass(ToastType type) => type switch
+    {
+        ToastType.Success => "border-success",
+        ToastType.Error => "border-danger",
+        ToastType.Warning => "border-warning",
+        ToastType.Info => "border-info",
+        _ => ""
+    };
+
+    private string GetToastIcon(ToastType type) => type switch
+    {
+        ToastType.Success => "fa-light fa-check-circle text-success",
+        ToastType.Error => "fa-light fa-exclamation-circle text-danger",
+        ToastType.Warning => "fa-light fa-exclamation-triangle text-warning",
+        ToastType.Info => "fa-light fa-info-circle text-info",
+        _ => ""
+    };
+
+    private string GetToastTitle(ToastType type) => type switch
+    {
+        ToastType.Success => "Éxito",
+        ToastType.Error => "Error",
+        ToastType.Warning => "Advertencia",
+        ToastType.Info => "Información",
+        _ => ""
+    };
+
+    private string GetTimeAgo(DateTime timestamp)
+    {
+        var diff = DateTime.Now - timestamp;
+        if (diff.TotalSeconds < 60) return "ahora";
+        if (diff.TotalMinutes < 60) return $"hace {(int)diff.TotalMinutes}m";
+        return timestamp.ToString("HH:mm");
+    }
+
+    public void Dispose()
+    {
+        ToastService.OnShow -= ShowToast;
+        timer?.Dispose();
+    }
+}
+
+<style>
+    .toast {
+        min-width: 300px;
+        margin-bottom: 0.5rem;
+    }
+</style>

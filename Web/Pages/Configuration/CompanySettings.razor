@@ -1,0 +1,82 @@
+﻿@page "/configuration/companies"
+@using Web.Components.Common
+@attribute [Authorize(Roles = "Admin,ConfigManager")]
+
+<PageTitle>Empresas - EzPro</PageTitle>
+
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <h1 class="page-title">
+                <i class="fa-light fa-building me-2"></i>Empresas
+            </h1>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="ShowNewCompanyModal">
+                <i class="fa-light fa-plus me-2"></i>Nueva Empresa
+            </button>
+        </div>
+    </div>
+</div>
+
+<EzCard>
+    <Body>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Empresa</th>
+                        <th>RUT</th>
+                        <th>Tipo</th>
+                        <th>Proyectos</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <EzAvatar Text="EA" Size="EzAvatar.AvatarSize.Small" Class="me-2" />
+                                <div>
+                                    <h6 class="mb-0">Empresa ABC</h6>
+                                    <small class="text-muted">contacto@empresaabc.cl</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>76.123.456-7</td>
+                        <td><EzBadge Text="Cliente" Variant="EzBadge.BadgeVariant.Info" /></td>
+                        <td>5</td>
+                        <td><EzBadge Text="Activa" Variant="EzBadge.BadgeVariant.Success" /></td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-light"><i class="fa-light fa-edit"></i></button>
+                                <button class="btn btn-light"><i class="fa-light fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </Body>
+</EzCard>
+
+<EzModal @ref="newCompanyModal" Title="Nueva Empresa" Icon="fa-light fa-building">
+    <Body>
+        <p>Formulario de nueva empresa...</p>
+    </Body>
+    <Footer>
+        <button class="btn btn-secondary" @onclick="() => newCompanyModal?.HideAsync()">Cancelar</button>
+        <button class="btn btn-primary">Guardar</button>
+    </Footer>
+</EzModal>
+
+@code {
+    private EzModal? newCompanyModal;
+    
+    private async Task ShowNewCompanyModal()
+    {
+        if (newCompanyModal != null)
+            await newCompanyModal.ShowAsync();
+    }
+}

@@ -1,0 +1,60 @@
+﻿@page "/costs/budget"
+@using Web.Components.Common
+@attribute [Authorize]
+
+<PageTitle>Presupuestos - EzPro</PageTitle>
+
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-light fa-calculator me-2"></i>Presupuestos
+    </h1>
+</div>
+
+<EzCard>
+    <Header>
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Gestión de Presupuestos</h5>
+            <button class="btn btn-primary btn-sm">
+                <i class="fa-light fa-plus me-2"></i>Nuevo Presupuesto
+            </button>
+        </div>
+    </Header>
+    <Body>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Proyecto</th>
+                        <th>Presupuesto Original</th>
+                        <th>Presupuesto Actual</th>
+                        <th>Consumido</th>
+                        <th>% Avance</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Proyecto Demo</td>
+                        <td>$500,000</td>
+                        <td>$525,000</td>
+                        <td>$315,000</td>
+                        <td>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar" style="width: 60%">60%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-light">
+                                <i class="fa-light fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </Body>
+</EzCard>
+
+@code {
+    // Lógica de presupuestos
+}

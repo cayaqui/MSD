@@ -1,0 +1,277 @@
+﻿@using Web.Interfaces.UI
+@using Web.Models.Navigation
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IMenuService MenuService
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@implements IDisposable
+
+<nav class="sidebar @(isCollapsed ? "collapsed" : "")" @onclick:stopPropagation="true">
+    <div class="sidebar-header">
+        <div class="logo-container">
+            @if (!isCollapsed)
+            {
+                <img src="/images/logo.png" alt="EzPro" class="logo-full" />
+            }
+            else
+            {
+                <img src="/images/logo-icon.png" alt="EzPro" class="logo-icon" />
+            }
+        </div>
+    </div>
+
+    <div class="sidebar-content">
+        @if (isLoading)
+        {
+            <div class="loading-menu">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading menu...</span>
+                </div>
+            </div>
+        }
+        else if (menuSections != null && menuSections.Any())
+        {
+            @foreach (var menuSection in menuSections)
+            {
+                var sectionId = menuSection.Id; 
+                <div class="menu-section" data-section-id="@sectionId">
+                    @if (menuSection.HasTitle)
+                    {
+                        <div class="section-header">
+                            @if (menuSection.Icon != null)
+                            {
+                                <i class="@menuSection.Icon"></i>
+                            }
+                            <span class="section-title">@menuSection.Title</span>
+                        </div>
+                    }
+
+                    @if (menuSection.HasItems)
+                    {
+                        <ul class="nav-menu">
+                            @foreach (var item in menuSection.Items)
+                            {
+                                <CascadingValue Value="isCollapsed">
+                                    <MenuItemComponent Item="@item"
+                                                       Level="0"
+                                                       OnItemClick="@HandleMenuItemClick" />
+                                </CascadingValue>
+                            }
+                        </ul>
+                    }
+
+                    @if (menuSection.ShowDivider)
+                    {
+                        <div class="section-divider"></div>
+                    }
+                </div>
+            }
+        }
+        else if (!isLoading)
+        {
+            <div class="text-center p-3">
+                <p class="text-muted small">No menu items available</p>
+            </div>
+        }
+    </div>
+
+    <div class="sidebar-footer">
+        <button class="btn btn-link toggle-btn" @onclick="ToggleSidebar"
+                title="@(isCollapsed ? "Expand" : "Collapse")">
+            <i class="fas @(isCollapsed ? "fa-chevron-right" : "fa-chevron-left")"></i>
+        </button>
+    </div>
+</nav>
+
+@code {
+    [Parameter] public bool IsCollapsed { get; set; }
+    [Parameter] public EventCallback<bool> IsCollapsedChanged { get; set; }
+
+    private bool isCollapsed;
+    private bool isLoading = true;
+    private List<MenuSection>? menuSections;
+    private NavigationState? navigationState;
+    private string? currentUrl;
+    private bool isAuthenticated = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isCollapsed = IsCollapsed;
+        currentUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
+
+        // Verificar autenticación primero
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
+
+        if (isAuthenticated)
+        {
+            // Load menu configuration
+            await LoadMenuAsync();
+        }
+        else
+        {
+            // Si no está autenticado, mostrar menú vacío
+            menuSections = new List<MenuSection>();
+            isLoading = false;
+        }
+
+        // Subscribe to location changes
+        Navigation.LocationChanged += OnLocationChanged;
+
+        // Get navigation state
+        navigationState = MenuService.GetNavigationState();
+
+        // Set initial active menu based on current URL
+        SetActiveMenuByUrl(currentUrl);
+    }
+
+    private async Task LoadMenuAsync()
+    {
+        try
+        {
+            isLoading = true;
+            menuSections = await MenuService.GetUserMenuSectionsAsync();
+        }
+        catch (Exception ex)
+        {
+            // Log error and show empty menu
+            Console.WriteLine($"Error loading menu: {ex.Message}");
+            menuSections = new List<MenuSection>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = Navigation.ToBaseRelativePath(e.Location);
+        SetActiveMenuByUrl(currentUrl);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void SetActiveMenuByUrl(string url)
+    {
+        if (menuSections == null) return;
+
+        // Normalize URL
+        url = "/" + url.TrimStart('/');
+
+        // Find matching menu item
+        foreach (var section in menuSections)
+        {
+            foreach (var item in section.Items)
+            {
+                if (SetActiveMenuItem(item, url))
+                {
+                    navigationState?.SetActiveMenu(item.Id);
+                    return;
+                }
+            }
+        }
+    }
+
+    private bool SetActiveMenuItem(MenuItem item, string url)
+    {
+        // Check if this item's route matches
+        if (!string.IsNullOrEmpty(item.Route) && item.Route.Equals(url, StringComparison.OrdinalIgnoreCase))
+        {
+            item.IsActive = true;
+            return true;
+        }
+
+        // Check children
+        foreach (var child in item.Children)
+        {
+            if (SetActiveMenuItem(child, url))
+            {
+                item.IsExpanded = true;
+                return true;
+            }
+        }
+
+        item.IsActive = false;
+        return false;
+    }
+
+    private async Task HandleMenuItemClick(MenuItem item)
+    {
+        if (item.HasRoute)
+        {
+            // Update navigation state
+            MenuService.UpdateNavigationState(item.Id);
+
+            // Navigate to route
+            Navigation.NavigateTo(item.Route!);
+
+            // Collapse sidebar on mobile after navigation
+            if (await IsMobileView())
+            {
+                await ToggleSidebar();
+            }
+        }
+        else if (item.HasChildren)
+        {
+            // Toggle expansion
+            item.IsExpanded = !item.IsExpanded;
+
+            // If not allowing multiple expanded, collapse others
+            var config = await MenuService.GetMenuConfigurationAsync();
+            if (!config.AllowMultipleExpanded)
+            {
+                CollapseOtherMenus(item);
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private void CollapseOtherMenus(MenuItem exceptItem)
+    {
+        if (menuSections == null) return;
+
+        foreach (var section in menuSections)
+        {
+            foreach (var item in section.Items)
+            {
+                if (item.Id != exceptItem.Id && item.HasChildren)
+                {
+                    item.IsExpanded = false;
+                }
+            }
+        }
+    }
+
+    private async Task ToggleSidebar()
+    {
+        isCollapsed = !isCollapsed;
+        await IsCollapsedChanged.InvokeAsync(isCollapsed);
+
+        // Usar el helper de localStorage
+        await JS.InvokeVoidAsync("blazorHelpers.setLocalStorage",
+            "sidebar-collapsed", isCollapsed.ToString());
+    }
+
+    // También corregir el método IsMobileView() en SideNav.razor
+    private async Task<bool> IsMobileView()
+    {
+        try
+        {
+            return await JS.InvokeAsync<bool>("blazorHelpers.isMobile");
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}
+
+@* Reusable Menu Item Component *@

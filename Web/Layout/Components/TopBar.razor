@@ -1,0 +1,268 @@
+﻿@inject NavigationManager Navigation
+@inject IToastService ToastService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<header class="topbar">
+    <div class="container-fluid">
+        <div class="d-flex align-items-center">
+            <!-- Toggle Sidebar -->
+            <button class="btn btn-link sidebar-toggle" @onclick="ToggleSidebar">
+                <i class="fa-light fa-bars"></i>
+            </button>
+
+            <!-- Search -->
+            <div class="search-box ms-3">
+                <div class="input-group">
+                    <span class="input-group-text border-0 bg-transparent">
+                        <i class="fa-light fa-search"></i>
+                    </span>
+                    <input type="text" class="form-control border-0" placeholder="Buscar proyectos, documentos..."
+                           @bind="searchQuery" @onkeyup="@(async (e) => { if (e.Key == "Enter") await Search(); })" />
+                </div>
+            </div>
+
+            <!-- Right Side Items -->
+            <div class="ms-auto d-flex align-items-center">
+                <!-- Quick Actions -->
+                <div class="dropdown me-3">
+                    <button class="btn btn-primary btn-sm dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa-light fa-plus me-1"></i> Nuevo
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="/projects/new">
+                                <i class="fa-light fa-project-diagram me-2"></i>Proyecto
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="/companies/new">
+                                <i class="fa-light fa-building me-2"></i>Empresa
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="/users/new">
+                                <i class="fa-light fa-user me-2"></i>Usuario
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="/documents/upload">
+                                <i class="fa-light fa-upload me-2"></i>Subir Documento
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Notifications -->
+                <div class="dropdown me-3">
+                    <button class="btn btn-link position-relative" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa-light fa-bell fs-5"></i>
+                        @if (unreadNotifications > 0)
+                        {
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                @unreadNotifications
+                                <span class="visually-hidden">notificaciones no leídas</span>
+                            </span>
+                        }
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end notification-dropdown">
+                        <div class="dropdown-header d-flex align-items-center justify-content-between">
+                            <span>Notificaciones</span>
+                            @if (unreadNotifications > 0)
+                            {
+                                <a href="#" class="text-primary small" @onclick="MarkAllAsRead" @onclick:preventDefault="true">
+                                    Marcar todas como leídas
+                                </a>
+                            }
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <div class="notification-list">
+                            @if (notifications.Any())
+                            {
+                                @foreach (var notification in notifications.Take(5))
+                                {
+                                    <a class="dropdown-item notification-item @(!notification.IsRead ? "unread" : "")"
+                                       href="@notification.Link">
+                                        <div class="d-flex">
+                                            <div class="notification-icon me-3">
+                                                <i class="@notification.Icon"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <div class="notification-title">@notification.Title</div>
+                                                <div class="notification-text">@notification.Message</div>
+                                                <div class="notification-time">@GetRelativeTime(notification.CreatedAt)</div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-center py-3 text-muted">
+                                    <i class="fa-light fa-bell-slash fs-3 mb-2 d-block"></i>
+                                    No hay notificaciones
+                                </div>
+                            }
+                        </div>
+                        @if (notifications.Count > 5)
+                        {
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item text-center" href="/notifications">
+                                Ver todas las notificaciones
+                            </a>
+                        }
+                    </div>
+                </div>
+
+                <!-- User Menu -->
+                <div class="dropdown">
+                    <button class="btn btn-link d-flex align-items-center" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        <img src="@userAvatar" alt="Avatar" class="user-avatar me-2" />
+                        <span class="d-none d-md-inline">@userName</span>
+                        <i class="fa-light fa-angle-down ms-1"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li class="dropdown-header">
+                            <div class="fw-bold">@userName</div>
+                            <div class="small text-muted">@userEmail</div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="/profile">
+                                <i class="fa-light fa-user me-2"></i>Mi Perfil
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="/settings">
+                                <i class="fa-light fa-cog me-2"></i>Configuración
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="/authentication/logout">
+                                <i class="fa-light fa-sign-out me-2"></i>Cerrar Sesión
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+@code {
+    [Parameter] public EventCallback OnToggleSidebar { get; set; }
+
+    private string searchQuery = "";
+    private string userName = "Usuario";
+    private string userEmail = "usuario@empresa.com";
+    private string userAvatar = "images/placeholder.png";
+    private List<NotificationItem> notifications = new();
+    private int unreadNotifications = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            userName = authState.User.Identity.Name ?? "Usuario";
+            userEmail = authState.User.Claims
+                .FirstOrDefault(c => c.Type == "email")?.Value ?? "usuario@empresa.com";
+        }
+
+        await LoadNotifications();
+    }
+
+    private async Task ToggleSidebar()
+    {
+        await OnToggleSidebar.InvokeAsync();
+    }
+
+    private async Task Search()
+    {
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            Navigation.NavigateTo($"/search?q={Uri.EscapeDataString(searchQuery)}");
+        }
+    }
+
+    private async Task LoadNotifications()
+    {
+        // Simular carga de notificaciones - En producción esto vendría del servicio
+        notifications = new List<NotificationItem>
+        {
+            new NotificationItem
+            {
+                Id = "1",
+                Title = "Proyecto Actualizado",
+                Message = "El proyecto 'Planta Norte' ha sido actualizado",
+                Icon = "fa-light fa-project-diagram text-primary",
+                Link = "/projects/1",
+                CreatedAt = DateTime.Now.AddMinutes(-30),
+                IsRead = false
+            },
+            new NotificationItem
+            {
+                Id = "2",
+                Title = "Nueva Asignación",
+                Message = "Has sido asignado al proyecto 'Terminal Portuario'",
+                Icon = "fa-light fa-user-plus text-success",
+                Link = "/projects/2",
+                CreatedAt = DateTime.Now.AddHours(-2),
+                IsRead = false
+            },
+            new NotificationItem
+            {
+                Id = "3",
+                Title = "Riesgo Identificado",
+                Message = "Nuevo riesgo alto en proyecto 'Refinería Central'",
+                Icon = "fa-light fa-exclamation-triangle text-warning",
+                Link = "/risks/3",
+                CreatedAt = DateTime.Now.AddDays(-1),
+                IsRead = true
+            }
+        };
+
+        unreadNotifications = notifications.Count(n => !n.IsRead);
+    }
+
+    private async Task MarkAllAsRead()
+    {
+        foreach (var notification in notifications)
+        {
+            notification.IsRead = true;
+        }
+        unreadNotifications = 0;
+        StateHasChanged();
+    }
+
+    private string GetRelativeTime(DateTime dateTime)
+    {
+        var timeSpan = DateTime.Now - dateTime;
+
+        if (timeSpan.TotalMinutes < 1)
+            return "Ahora mismo";
+        if (timeSpan.TotalMinutes < 60)
+            return $"Hace {(int)timeSpan.TotalMinutes} minutos";
+        if (timeSpan.TotalHours < 24)
+            return $"Hace {(int)timeSpan.TotalHours} horas";
+        if (timeSpan.TotalDays < 7)
+            return $"Hace {(int)timeSpan.TotalDays} días";
+
+        return dateTime.ToString("dd/MM/yyyy");
+    }
+
+    private class NotificationItem
+    {
+        public string Id { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Message { get; set; } = "";
+        public string Icon { get; set; } = "";
+        public string Link { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+        public bool IsRead { get; set; }
+    }
+}

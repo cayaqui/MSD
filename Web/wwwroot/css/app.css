@@ -1,0 +1,344 @@
+/* =================================
+   EzPro.SD - Application Styles
+   Sistema de Control de Proyectos
+   Archivo principal que importa todos los estilos
+   ================================= */
+
+/* ===== 1. CORE - Fundamentos del sistema ===== */
+@import 'theme/core/_variables.css'; /* Variables del sistema */
+@import 'theme/core/_reset.css'; /* Reset y normalizaciones */
+@import 'theme/core/_base.css'; /* Estilos base */
+@import 'theme/core/_utilities.css'; /* Clases utilitarias */
+
+/* ===== 2. COMPONENTS - Componentes reutilizables ===== */
+@import 'theme/components/_buttons.css'; /* Botones */
+@import 'theme/components/_forms.css'; /* Formularios */
+@import 'theme/components/_cards.css'; /* Tarjetas */
+/*@import 'theme/components/_tables.css';*/ /* Tablas (pendiente) */
+/*@import 'theme/components/_modals.css';*/ /* Modales (pendiente) */
+/*@import 'theme/components/_badges.css';*/ /* Badges (pendiente) */
+/*@import 'theme/components/_alerts.css';*/ /* Alertas (pendiente) */
+/*@import 'theme/components/_dropdowns.css';*/ /* Dropdowns (pendiente) */
+
+/* ===== 3. LAYOUT - Estructura de la aplicación ===== */
+@import 'theme/layout/_sidebar.css'; /* Barra lateral */
+/*@import 'theme/layout/_header.css';*/ /* Cabecera (pendiente) */
+/*@import 'theme/layout/_footer.css';*/ /* Pie de página (pendiente) */
+/*@import 'theme/layout/_navigation.css';*/ /* Navegación (pendiente) */
+/*@import 'theme/layout/_page-layouts.css';*/ /* Layouts de páginas (pendiente) */
+
+/* ===== 4. MODULES - Estilos específicos de módulos ===== */
+/*@import 'theme/modules/_dashboard.css';*/ /* Dashboard (existente) */
+/*@import 'theme/modules/_projects.css';*/ /* Proyectos (pendiente) */
+/*@import 'theme/modules/_cost.css';*/ /* Costos (pendiente) */
+/*@import 'theme/modules/_schedule.css';*/ /* Cronograma (pendiente) */
+/*@import 'theme/modules/_charts.css';*/ /* Gráficos (existente) */
+/*@import 'theme/modules/_pmi.css';*/ /* PMI específicos (pendiente) */
+
+/* ===== 5. THEMES - Variantes de tema ===== */
+/*@import 'theme/themes/_light.css';*/ /* Tema claro (pendiente) */
+/*@import 'theme/themes/_dark.css';*/ /* Tema oscuro (pendiente) */
+
+/* ===== 6. VENDOR OVERRIDES - Sobrescribir librerías externas ===== */
+/* Bootstrap overrides */
+/*@import 'theme/vendor/_bootstrap-overrides.css';*/ /* (pendiente) */
+
+/* ===== 7. HELPERS - Clases auxiliares adicionales ===== */
+
+/* Animaciones comunes */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Clases de animación */
+.animate-fadeIn {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.animate-slideInRight {
+    animation: slideInRight 0.3s ease-out;
+}
+
+.animate-slideInLeft {
+    animation: slideInLeft 0.3s ease-out;
+}
+
+.animate-slideInUp {
+    animation: slideInUp 0.3s ease-out;
+}
+
+.animate-pulse {
+    animation: pulse 2s infinite;
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* ===== 8. LAYOUT HELPERS ===== */
+
+/* Page wrapper */
+.page-wrapper {
+    min-height: 100vh;
+    margin-left: var(--sidebar-width);
+    background-color: var(--bg-body);
+    transition: margin-left var(--transition-base);
+}
+
+.sidebar.collapsed ~ .page-wrapper {
+    margin-left: var(--sidebar-collapsed-width);
+}
+
+@media (max-width: 991.98px) {
+    .page-wrapper {
+        margin-left: 0;
+    }
+}
+
+/* Page content */
+.page-content {
+    padding: var(--page-padding);
+    min-height: calc(100vh - var(--header-height) - var(--footer-height));
+}
+
+/* Container variations */
+.container-fluid {
+    width: 100%;
+    padding-right: var(--page-padding);
+    padding-left: var(--page-padding);
+    margin-right: auto;
+    margin-left: auto;
+}
+
+/* ===== 9. LOADING STATES ===== */
+
+/* Skeleton loader */
+.skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--gray-200);
+    border-radius: var(--radius);
+}
+
+    .skeleton::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient( 90deg, transparent, rgba(255, 255, 255, 0.5), transparent );
+        transform: translateX(-100%);
+        animation: skeleton-loading 1.5s infinite;
+    }
+
+@keyframes skeleton-loading {
+    to {
+        transform: translateX(100%);
+    }
+}
+
+.skeleton-text {
+    height: 1em;
+    margin-bottom: var(--spacing-2);
+}
+
+.skeleton-heading {
+    height: 2em;
+    margin-bottom: var(--spacing-3);
+    width: 50%;
+}
+
+.skeleton-button {
+    height: 2.5em;
+    width: 6em;
+}
+
+.skeleton-avatar {
+    width: 3em;
+    height: 3em;
+    border-radius: 50%;
+}
+
+/* ===== 10. PRINT STYLES ===== */
+
+@media print {
+    .sidebar,
+    .header,
+    .footer,
+    .no-print {
+        display: none !important;
+    }
+
+    .page-wrapper {
+        margin-left: 0 !important;
+    }
+
+    .page-content {
+        padding: 0 !important;
+    }
+
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+        page-break-inside: avoid;
+    }
+}
+
+/* ===== 11. ACCESSIBILITY ===== */
+
+/* Focus visible */
+*:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Skip to main content */
+.skip-to-main {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 999;
+    padding: var(--spacing-3) var(--spacing-4);
+    background-color: var(--primary);
+    color: var(--text-white);
+    text-decoration: none;
+    border-radius: var(--radius);
+}
+
+    .skip-to-main:focus {
+        left: var(--spacing-4);
+        top: var(--spacing-4);
+    }
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    :root {
+        --primary: #0066cc;
+        --text-primary: #000000;
+        --bg-body: #ffffff;
+        --border-color: #000000;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ===== 12. CUSTOM UTILITY CLASSES ===== */
+
+/* Text truncate with lines */
+.text-truncate-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.text-truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.text-truncate-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Aspect ratios */
+.aspect-ratio-16-9 {
+    position: relative;
+    padding-bottom: 56.25%;
+}
+
+.aspect-ratio-4-3 {
+    position: relative;
+    padding-bottom: 75%;
+}
+
+.aspect-ratio-1-1 {
+    position: relative;
+    padding-bottom: 100%;
+}
+
+.aspect-ratio-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+

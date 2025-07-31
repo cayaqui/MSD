@@ -1,0 +1,211 @@
+﻿/* =================================
+   TopBar.razor.css
+   Estilos específicos del componente TopBar
+   ================================= */
+
+/* Header fijo con ajustes específicos */
+.topbar-fixed {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: var(--sidebar-width);
+    z-index: var(--z-sticky);
+    transition: left var(--transition-base);
+}
+
+    .topbar-fixed.sidebar-collapsed {
+        left: var(--sidebar-collapsed-width);
+    }
+
+/* Sombra cuando hay scroll */
+.topbar-scrolled {
+    box-shadow: var(--shadow-sm);
+}
+
+/* Contenido del header */
+.topbar-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--header-height);
+    padding: 0 var(--spacing-4);
+}
+
+/* Sección izquierda */
+.topbar-start {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+}
+
+/* Sección derecha */
+.topbar-end {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+}
+
+/* Botón de menú móvil */
+.topbar-mobile-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: var(--font-size-xl);
+    color: var(--text-secondary);
+    padding: var(--spacing-2);
+    cursor: pointer;
+    transition: color var(--transition-base);
+}
+
+    .topbar-mobile-toggle:hover {
+        color: var(--primary);
+    }
+
+/* Búsqueda en el header */
+.topbar-search {
+    position: relative;
+    width: 300px;
+    transition: width var(--transition-base);
+}
+
+    .topbar-search.expanded {
+        width: 400px;
+    }
+
+.topbar-search-input {
+    padding-left: calc(var(--input-padding-x) + 1.5rem);
+}
+
+.topbar-search-icon {
+    position: absolute;
+    left: var(--input-padding-x);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+/* Notificaciones */
+.topbar-notifications {
+    position: relative;
+}
+
+.topbar-notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    font-size: 10px;
+    font-weight: var(--font-weight-bold);
+    line-height: 18px;
+    text-align: center;
+    background-color: var(--danger);
+    color: var(--text-white);
+    border-radius: var(--radius-full);
+    animation: pulse 2s infinite;
+}
+
+/* User menu específico */
+.topbar-user-menu {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2);
+    border-radius: var(--radius-full);
+    transition: background-color var(--transition-base);
+    cursor: pointer;
+}
+
+    .topbar-user-menu:hover {
+        background-color: var(--gray-100);
+    }
+
+.topbar-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+
+.topbar-user-info {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.topbar-user-name {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+}
+
+.topbar-user-role {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+/* Estados de carga */
+.topbar-loading {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--gray-200);
+    overflow: hidden;
+}
+
+    .topbar-loading::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 30%;
+        background-color: var(--primary);
+        animation: topbar-loading-progress 1.5s ease-in-out infinite;
+    }
+
+@keyframes topbar-loading-progress {
+    0% {
+        left: -30%;
+    }
+
+    100% {
+        left: 100%;
+    }
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
+    .topbar-fixed {
+        left: 0;
+    }
+
+        .topbar-fixed.sidebar-collapsed {
+            left: 0;
+        }
+
+    .topbar-mobile-toggle {
+        display: block;
+    }
+
+    .topbar-search {
+        display: none;
+    }
+
+    .topbar-user-info {
+        display: none;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .topbar-content {
+        padding: 0 var(--spacing-3);
+    }
+
+    .topbar-end {
+        gap: var(--spacing-1);
+    }
+}

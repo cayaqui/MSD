@@ -1,0 +1,70 @@
+﻿@page "/costs/evm"
+@using Web.Components.Common
+@attribute [Authorize(Roles = "Admin,ProjectManager")]
+
+<PageTitle>Earned Value Management - EzPro</PageTitle>
+
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-light fa-chart-area me-2"></i>Earned Value Management
+    </h1>
+</div>
+
+<div class="row">
+    <div class="col-lg-3 col-md-6">
+        <EzCard>
+            <Body>
+                <EzTooltip Text="Cost Performance Index">
+                    <small class="text-muted d-block">CPI</small>
+                    <h3 class="mb-0 text-success">1.05</h3>
+                </EzTooltip>
+            </Body>
+        </EzCard>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <EzCard>
+            <Body>
+                <EzTooltip Text="Schedule Performance Index">
+                    <small class="text-muted d-block">SPI</small>
+                    <h3 class="mb-0 text-warning">0.95</h3>
+                </EzTooltip>
+            </Body>
+        </EzCard>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <EzCard>
+            <Body>
+                <EzTooltip Text="Estimate at Completion">
+                    <small class="text-muted d-block">EAC</small>
+                    <h3 class="mb-0">$2.3M</h3>
+                </EzTooltip>
+            </Body>
+        </EzCard>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <EzCard>
+            <Body>
+                <EzTooltip Text="Variance at Completion">
+                    <small class="text-muted d-block">VAC</small>
+                    <h3 class="mb-0 text-success">$200K</h3>
+                </EzTooltip>
+            </Body>
+        </EzCard>
+    </div>
+</div>
+
+<EzCard Class="mt-4">
+    <Header>
+        <h5 class="card-title mb-0">Curva S - EVM</h5>
+    </Header>
+    <Body>
+        <div class="text-center py-5">
+            <i class="fa-light fa-chart-line fa-3x text-muted mb-3"></i>
+            <p class="text-muted">Gráfico de Curva S con PV, EV y AC</p>
+        </div>
+    </Body>
+</EzCard>
+
+@code {
+    // Lógica de EVM
+}

@@ -1,0 +1,156 @@
+﻿@page "/"
+@using Web.Components.Common
+@attribute [Authorize]
+
+<PageTitle>Dashboard - EzPro</PageTitle>
+
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-light fa-home me-2"></i>Dashboard Principal
+    </h1>
+    <p class="page-subtitle">Bienvenido al Sistema de Control de Proyectos EzPro</p>
+</div>
+
+<div class="row">
+    <div class="col-xl-3 col-lg-6 col-md-6">
+        <EzCard>
+            <Body>
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <EzAvatar Variant="EzAvatar.AvatarVariant.Primary" Size="EzAvatar.AvatarSize.Large">
+                            <i class="fa-light fa-project-diagram"></i>
+                        </EzAvatar>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1">Proyectos Activos</h6>
+                        <h3 class="mb-0">12</h3>
+                    </div>
+                </div>
+            </Body>
+        </EzCard>
+    </div>
+    
+    <div class="col-xl-3 col-lg-6 col-md-6">
+        <EzCard>
+            <Body>
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <EzAvatar Variant="EzAvatar.AvatarVariant.Success" Size="EzAvatar.AvatarSize.Large">
+                            <i class="fa-light fa-dollar-sign"></i>
+                        </EzAvatar>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1">Presupuesto Total</h6>
+                        <h3 class="mb-0">$2.5M</h3>
+                    </div>
+                </div>
+            </Body>
+        </EzCard>
+    </div>
+    
+    <div class="col-xl-3 col-lg-6 col-md-6">
+        <EzCard>
+            <Body>
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <EzAvatar Variant="EzAvatar.AvatarVariant.Warning" Size="EzAvatar.AvatarSize.Large">
+                            <i class="fa-light fa-file-contract"></i>
+                        </EzAvatar>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1">Contratos</h6>
+                        <h3 class="mb-0">24</h3>
+                    </div>
+                </div>
+            </Body>
+        </EzCard>
+    </div>
+    
+    <div class="col-xl-3 col-lg-6 col-md-6">
+        <EzCard>
+            <Body>
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <EzAvatar Variant="EzAvatar.AvatarVariant.Info" Size="EzAvatar.AvatarSize.Large">
+                            <i class="fa-light fa-users"></i>
+                        </EzAvatar>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1">Usuarios Activos</h6>
+                        <h3 class="mb-0">156</h3>
+                    </div>
+                </div>
+            </Body>
+        </EzCard>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-lg-8">
+        <EzCard>
+            <Header>
+                <h5 class="card-title mb-0">Proyectos Recientes</h5>
+            </Header>
+            <Body>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Proyecto</th>
+                                <th>Estado</th>
+                                <th>Progreso</th>
+                                <th>Responsable</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <EzTooltip Text="Planta de Procesamiento de Minerales - Fase 2">
+                                        <div class="text-truncate" style="max-width: 200px;">
+                                            Planta de Procesamiento de Minerales - Fase 2
+                                        </div>
+                                    </EzTooltip>
+                                </td>
+                                <td>
+                                    <EzBadge Text="En Progreso" Variant="EzBadge.BadgeVariant.Success" />
+                                </td>
+                                <td>
+                                    <div class="progress" style="height: 5px;">
+                                        <div class="progress-bar" role="progressbar" style="width: 65%"></div>
+                                    </div>
+                                    <small class="text-muted">65%</small>
+                                </td>
+                                <td>
+                                    <EzAvatar Text="Juan Pérez" Size="EzAvatar.AvatarSize.Small" />
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </Body>
+        </EzCard>
+    </div>
+    
+    <div class="col-lg-4">
+        <EzCard>
+            <Header>
+                <h5 class="card-title mb-0">Actividad Reciente</h5>
+            </Header>
+            <Body>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <EzBadge IsDot="true" Variant="EzBadge.BadgeVariant.Primary" />
+                        <div class="timeline-content">
+                            <small class="text-muted">Hace 2 horas</small>
+                            <p class="mb-0">Nuevo contrato agregado</p>
+                        </div>
+                    </div>
+                </div>
+            </Body>
+        </EzCard>
+    </div>
+</div>
+
+@code {
+    // Aquí irá la lógica para cargar datos del dashboard
+}

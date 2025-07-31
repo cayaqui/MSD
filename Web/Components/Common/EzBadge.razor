@@ -1,0 +1,402 @@
+﻿@if (IsDot)
+{
+    <span class="@GetDotClass()" @attributes="AdditionalAttributes"></span>
+}
+else
+{
+    <span class="@GetBadgeClass()" @attributes="AdditionalAttributes">
+        @if (!string.IsNullOrEmpty(Icon) && IconPosition == Position.Start)
+        {
+            <i class="@Icon @IconClass me-1"></i>
+        }
+        @if (ChildContent != null)
+        {
+            @ChildContent
+        }
+        else if (!string.IsNullOrEmpty(Text))
+        {
+            @Text
+        }
+        else if (Count.HasValue)
+        {
+            @GetCountDisplay()
+        }
+        @if (!string.IsNullOrEmpty(Icon) && IconPosition == Position.End)
+        {
+            <i class="@Icon @IconClass ms-1"></i>
+        }
+        @if (Dismissible)
+        {
+            <button type="button"
+                    class="btn-close btn-close-white ms-1"
+                    aria-label="Remove"
+                    @onclick="HandleDismiss"
+                    style="font-size: 0.65rem; margin: -0.25rem -0.25rem -0.25rem 0.25rem;">
+            </button>
+        }
+    </span>
+}
+
+@code {
+    // Contenido
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public int? Count { get; set; }
+    [Parameter] public int MaxCount { get; set; } = 99;
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public Position IconPosition { get; set; } = Position.Start;
+
+    // Apariencia
+    [Parameter] public BadgeVariant Variant { get; set; } = BadgeVariant.Primary;
+    [Parameter] public BadgeSize Size { get; set; } = BadgeSize.Default;
+    [Parameter] public bool Pill { get; set; } = false;
+    [Parameter] public bool Gradient { get; set; } = false;
+    [Parameter] public bool Outline { get; set; } = false;
+    [Parameter] public bool Soft { get; set; } = false;
+    [Parameter] public bool IsDot { get; set; } = false;
+    [Parameter] public bool Dismissible { get; set; } = false;
+
+    // Posicionamiento (para badges de notificación)
+    [Parameter] public BadgePosition? NotificationPosition { get; set; }
+    [Parameter] public bool Pulse { get; set; } = false;
+
+    // CSS personalizado
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? IconClass { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    // Eventos
+    [Parameter] public EventCallback OnDismiss { get; set; }
+
+    // Enums
+    public enum BadgeVariant
+    {
+        Primary,
+        Secondary,
+        Success,
+        Danger,
+        Warning,
+        Info,
+        Light,
+        Dark
+    }
+
+    public enum BadgeSize
+    {
+        Small,
+        Default,
+        Large
+    }
+
+    public enum BadgePosition
+    {
+        TopStart,
+        TopEnd,
+        BottomStart,
+        BottomEnd
+    }
+
+    public enum Position
+    {
+        Start,
+        End
+    }
+
+    private string GetBadgeClass()
+    {
+        var classes = new List<string> { "badge" };
+
+        // Variante
+        if (Outline)
+        {
+            classes.Add($"badge-outline-{Variant.ToString().ToLower()}");
+        }
+        else if (Soft)
+        {
+            classes.Add($"badge-soft-{Variant.ToString().ToLower()}");
+        }
+        else if (Gradient)
+        {
+            classes.Add($"bg-gradient-{Variant.ToString().ToLower()}");
+        }
+        else
+        {
+            classes.Add($"text-bg-{Variant.ToString().ToLower()}");
+        }
+
+        // Forma
+        if (Pill)
+        {
+            classes.Add("rounded-pill");
+        }
+
+        // Tamaño
+        if (Size != BadgeSize.Default)
+        {
+            classes.Add($"badge-{Size.ToString().ToLower()}");
+        }
+
+        // Posición de notificación
+        if (NotificationPosition.HasValue)
+        {
+            classes.Add("position-absolute translate-middle");
+            classes.Add(GetPositionClass());
+        }
+
+        // Animación pulse
+        if (Pulse)
+        {
+            classes.Add("badge-pulse");
+        }
+
+        // Dismissible
+        if (Dismissible)
+        {
+            classes.Add("d-inline-flex align-items-center");
+        }
+
+        // Clase personalizada
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetDotClass()
+    {
+        var classes = new List<string> { "badge-dot" };
+
+        // Color del dot
+        classes.Add($"bg-{Variant.ToString().ToLower()}");
+
+        // Posición
+        if (NotificationPosition.HasValue)
+        {
+            classes.Add("position-absolute");
+            classes.Add(GetPositionClass());
+        }
+
+        // Animación pulse
+        if (Pulse)
+        {
+            classes.Add("badge-dot-pulse");
+        }
+
+        // Clase personalizada
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetPositionClass()
+    {
+        return NotificationPosition switch
+        {
+            BadgePosition.TopStart => "top-0 start-0",
+            BadgePosition.TopEnd => "top-0 start-100",
+            BadgePosition.BottomStart => "top-100 start-0",
+            BadgePosition.BottomEnd => "top-100 start-100",
+            _ => "top-0 start-100"
+        };
+    }
+
+    private string GetCountDisplay()
+    {
+        if (!Count.HasValue) return "";
+
+        if (Count.Value > MaxCount)
+        {
+            return $"{MaxCount}+";
+        }
+
+        return Count.Value.ToString();
+    }
+
+    private async Task HandleDismiss()
+    {
+        await OnDismiss.InvokeAsync();
+    }
+}
+
+<style>
+    /* Badge base */
+    .badge {
+        display: inline-block;
+        padding: 0.35em 0.65em;
+        font-size: 0.75em;
+        font-weight: 600;
+        line-height: 1;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: baseline;
+        border-radius: 0.25rem;
+    }
+
+    /* Tamaños */
+    .badge-small {
+        padding: 0.25em 0.5em;
+        font-size: 0.625em;
+    }
+
+    .badge-large {
+        padding: 0.5em 0.85em;
+        font-size: 0.875em;
+    }
+
+    /* Variantes Outline */
+    .badge-outline-primary {
+        color: var(--bs-primary);
+        background-color: transparent;
+        border: 1px solid var(--bs-primary);
+    }
+
+    .badge-outline-secondary {
+        color: var(--bs-secondary);
+        background-color: transparent;
+        border: 1px solid var(--bs-secondary);
+    }
+
+    .badge-outline-success {
+        color: var(--bs-success);
+        background-color: transparent;
+        border: 1px solid var(--bs-success);
+    }
+
+    .badge-outline-danger {
+        color: var(--bs-danger);
+        background-color: transparent;
+        border: 1px solid var(--bs-danger);
+    }
+
+    .badge-outline-warning {
+        color: var(--bs-warning);
+        background-color: transparent;
+        border: 1px solid var(--bs-warning);
+    }
+
+    .badge-outline-info {
+        color: var(--bs-info);
+        background-color: transparent;
+        border: 1px solid var(--bs-info);
+    }
+
+    .badge-outline-light {
+        color: var(--bs-gray-700);
+        background-color: transparent;
+        border: 1px solid var(--bs-gray-300);
+    }
+
+    .badge-outline-dark {
+        color: var(--bs-dark);
+        background-color: transparent;
+        border: 1px solid var(--bs-dark);
+    }
+
+    /* Variantes Soft */
+    .badge-soft-primary {
+        color: var(--bs-primary);
+        background-color: rgba(var(--bs-primary-rgb), 0.1);
+    }
+
+    .badge-soft-secondary {
+        color: var(--bs-secondary);
+        background-color: rgba(var(--bs-secondary-rgb), 0.1);
+    }
+
+    .badge-soft-success {
+        color: var(--bs-success);
+        background-color: rgba(var(--bs-success-rgb), 0.1);
+    }
+
+    .badge-soft-danger {
+        color: var(--bs-danger);
+        background-color: rgba(var(--bs-danger-rgb), 0.1);
+    }
+
+    .badge-soft-warning {
+        color: var(--bs-warning);
+        background-color: rgba(var(--bs-warning-rgb), 0.1);
+    }
+
+    .badge-soft-info {
+        color: var(--bs-info);
+        background-color: rgba(var(--bs-info-rgb), 0.1);
+    }
+
+    .badge-soft-light {
+        color: var(--bs-gray-700);
+        background-color: rgba(var(--bs-light-rgb), 0.5);
+    }
+
+    .badge-soft-dark {
+        color: var(--bs-dark);
+        background-color: rgba(var(--bs-dark-rgb), 0.1);
+    }
+
+    /* Badge Dot */
+    .badge-dot {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    /* Animación Pulse */
+    .badge-pulse {
+        animation: badge-pulse 2s infinite;
+    }
+
+    .badge-dot-pulse {
+        position: relative;
+    }
+
+        .badge-dot-pulse::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: inherit;
+            animation: badge-pulse 2s infinite;
+        }
+
+    @@k yframes badge-pulse {
+        0% {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        50% {
+            transform: scale(1.5);
+            opacity: 0.5;
+        }
+
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    /* Badge en posición absoluta */
+    .position-relative {
+        position: relative !important;
+    }
+
+    .badge.position-absolute {
+        z-index: 1;
+    }
+
+    /* Botón de cerrar en badge */
+    .badge .btn-close {
+        margin-left: 0.25rem;
+        font-size: inherit;
+    }
+</style>

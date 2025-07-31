@@ -1,0 +1,74 @@
+﻿/* =================================
+   MainLayout.razor.css
+   Estilos específicos del componente MainLayout
+   Usa las variables del sistema de diseño
+   ================================= */
+
+/* Layout principal */
+.main-layout {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--bg-body);
+}
+
+/* Contenedor principal */
+.main-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-left: var(--sidebar-width);
+    transition: margin-left var(--transition-base);
+}
+
+    /* Estado colapsado del sidebar */
+    .main-container.sidebar-collapsed {
+        margin-left: var(--sidebar-collapsed-width);
+    }
+
+/* Contenido principal */
+.main-content {
+    flex: 1;
+    padding: var(--page-padding);
+    padding-top: calc(var(--header-height) + var(--page-padding));
+    min-height: calc(100vh - var(--header-height) - var(--footer-height));
+}
+
+/* Loading overlay específico del layout */
+.layout-loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.9);
+    z-index: var(--z-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
+    .main-container {
+        margin-left: 0;
+    }
+
+        .main-container.sidebar-collapsed {
+            margin-left: 0;
+        }
+
+    .main-content {
+        padding: var(--spacing-4);
+    }
+}
+
+/* Print styles */
+@media print {
+    .main-container {
+        margin-left: 0 !important;
+    }
+
+    .main-content {
+        padding: 0 !important;
+    }
+}

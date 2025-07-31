@@ -1,0 +1,53 @@
+﻿@page "/configuration/users"
+@using Web.Components.Common
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Usuarios - EzPro</PageTitle>
+
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fa-light fa-users me-2"></i>Usuarios
+    </h1>
+</div>
+
+<EzCard>
+    <Body>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Email</th>
+                        <th>Rol</th>
+                        <th>Último Acceso</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <EzAvatar Text="JP" Size="EzAvatar.AvatarSize.Small" Class="me-2" ShowStatus="true" Status="EzAvatar.StatusType.Online" />
+                                <span>Juan Pérez</span>
+                            </div>
+                        </td>
+                        <td>juan.perez@empresa.cl</td>
+                        <td><EzBadge Text="Administrador" Variant="EzBadge.BadgeVariant.Primary" /></td>
+                        <td>Hace 5 minutos</td>
+                        <td><EzBadge Text="Activo" Variant="EzBadge.BadgeVariant.Success" /></td>
+                        <td>
+                            <button class="btn btn-sm btn-light">Editar</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </Body>
+</EzCard>
+
+@code {
+    // Lógica de usuarios
+}
+<!--                     </Content>
+ -->

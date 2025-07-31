@@ -1,0 +1,449 @@
+﻿@typeparam TValue
+@inherits InputBase<TValue>
+@implements IDisposable
+
+<div class="form-group @ContainerClass">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label for="@_selectId" class="form-label @LabelClass">
+            @Label
+            @if (IsRequired)
+            {
+                <span class="text-danger">*</span>
+            }
+        </label>
+    }
+    
+    <div class="input-group @InputGroupClass">
+        @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Start)
+        {
+            <span class="input-group-text">
+                <i class="@Icon"></i>
+            </span>
+        }
+        
+        @if (IsSearchable && !IsDisabled && !IsReadOnly)
+        {
+            <div class="select-search-container">
+                <input type="text"
+                       class="form-control select-search"
+                       placeholder="@SearchPlaceholder"
+                       value="@_searchTerm"
+                       @oninput="OnSearchInput"
+                       @onfocus="OnSearchFocus"
+                       disabled="@(IsDisabled || IsReadOnly)" />
+            </div>
+        }
+        
+        <select @ref="_selectElement"
+                id="@_selectId"
+                class="@CssClass"
+                value="@CurrentValueAsString"
+                @onchange="OnChangeHandler"
+                @onfocus="OnFocusHandler"
+                @onblur="OnBlurHandler"
+                disabled="@IsDisabled"
+                multiple="@IsMultiple"
+                size="@(ShowAsListBox ? Size : 1)"
+                @attributes="AdditionalAttributes">
+            
+            @if (!string.IsNullOrEmpty(Placeholder) && !IsMultiple)
+            {
+                <option value="" disabled selected="@(CurrentValue == null || CurrentValue.Equals(default(TValue)))">
+                    @Placeholder
+                </option>
+            }
+            
+            @if (Options != null)
+            {
+                @foreach (var option in GetFilteredOptions())
+                {
+                    if (option.IsGroup)
+                    {
+                        <optgroup label="@option.GroupLabel">
+                            @foreach (var subOption in option.SubOptions!)
+                            {
+                                <option value="@subOption.Value" 
+                                        disabled="@subOption.IsDisabled"
+                                        selected="@IsOptionSelected(subOption.Value)">
+                                    @subOption.Text
+                                </option>
+                            }
+                        </optgroup>
+                    }
+                    else
+                    {
+                        <option value="@option.Value" 
+                                disabled="@option.IsDisabled"
+                                selected="@IsOptionSelected(option.Value)">
+                            @option.Text
+                        </option>
+                    }
+                }
+            }
+            else if (ChildContent != null)
+            {
+                @ChildContent
+            }
+        </select>
+        
+        @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.End)
+        {
+            <span class="input-group-text">
+                <i class="@Icon"></i>
+            </span>
+        }
+        
+        @if (ShowClearButton && HasValue() && !IsDisabled && !IsReadOnly)
+        {
+            <button type="button" class="btn btn-outline-secondary" @onclick="ClearValue">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        }
+    </div>
+    
+    @if (!string.IsNullOrEmpty(HelpText))
+    {
+        <small class="form-text text-muted">@HelpText</small>
+    }
+    
+    @if (ShowSelectedCount && IsMultiple && _selectedValues.Count > 0)
+    {
+        <small class="form-text text-muted">
+            @($"{_selectedValues.Count} {((_selectedValues.Count == 1) ? "elemento seleccionado" : "elementos seleccionados")}")
+        </small>
+    }
+    
+    <div class="invalid-feedback @(_showValidation ? "d-block" : "")">
+        <ValidationMessage For="@ValueExpression" />
+    </div>
+</div>
+
+@code {
+    private string _selectId = $"select-{Guid.NewGuid():N}";
+    private ElementReference _selectElement;
+    private bool _showValidation = false;
+    private string _searchTerm = "";
+    private List<string> _selectedValues = new();
+    private string _cssClass = "";
+    
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Placeholder { get; set; } = "";
+    [Parameter] public string SearchPlaceholder { get; set; } = "Buscar...";
+    [Parameter] public string HelpText { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Start;
+    [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public bool ShowClearButton { get; set; }
+    [Parameter] public bool IsMultiple { get; set; }
+    [Parameter] public bool IsSearchable { get; set; }
+    [Parameter] public bool ShowAsListBox { get; set; }
+    [Parameter] public bool ShowSelectedCount { get; set; }
+    [Parameter] public int Size { get; set; } = 5;
+    
+    // Data source
+    [Parameter] public List<SelectOption>? Options { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    
+    // CSS Classes customization
+    [Parameter] public string ContainerClass { get; set; } = "";
+    [Parameter] public string LabelClass { get; set; } = "";
+    [Parameter] public string InputGroupClass { get; set; } = "";
+    
+    // Events
+    [Parameter] public EventCallback<TValue> OnChange { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+    
+    protected string CssClass => _cssClass;
+    
+    protected override void OnInitialized()
+    {
+        BuildCssClass();
+        
+        if (EditContext != null)
+        {
+            EditContext.OnValidationStateChanged += OnValidationStateChanged;
+        }
+        
+        if (IsMultiple && CurrentValue != null)
+        {
+            // Initialize selected values for multiple select
+            UpdateSelectedValues();
+        }
+    }
+    
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        BuildCssClass();
+    }
+    
+    private void BuildCssClass()
+    {
+        var baseClass = "form-select";
+        
+        // Add size class if specified
+        if (AdditionalAttributes?.TryGetValue("size", out var size) == true)
+        {
+            baseClass += $" form-select-{size}";
+        }
+        
+        // Add validation state classes
+        if (EditContext != null && FieldIdentifier.FieldName != null)
+        {
+            var fieldState = EditContext.GetValidationMessages(FieldIdentifier).Any();
+            if (fieldState && _showValidation)
+            {
+                baseClass += " is-invalid";
+            }
+        }
+        
+        // Add custom classes from AdditionalAttributes
+        if (AdditionalAttributes?.TryGetValue("class", out var customClass) == true)
+        {
+            baseClass += $" {customClass}";
+        }
+        
+        _cssClass = baseClass;
+    }
+    
+    protected override string? FormatValueAsString(TValue? value)
+    {
+        if (value == null) return "";
+        
+        // Handle enums
+        if (typeof(TValue).IsEnum)
+        {
+            return value.ToString();
+        }
+        
+        // Handle nullable types
+        var type = Nullable.GetUnderlyingType(typeof(TValue)) ?? typeof(TValue);
+        
+        if (type == typeof(bool))
+        {
+            return value.ToString()?.ToLowerInvariant() ?? "";
+        }
+        
+        return value.ToString() ?? "";
+    }
+    
+    protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            result = default!;
+            validationErrorMessage = "";
+            return true;
+        }
+        
+        try
+        {
+            var type = Nullable.GetUnderlyingType(typeof(TValue)) ?? typeof(TValue);
+            
+            if (type.IsEnum)
+            {
+                result = (TValue)Enum.Parse(type, value);
+                validationErrorMessage = "";
+                return true;
+            }
+            
+            if (type == typeof(int))
+            {
+                if (int.TryParse(value, out var intValue))
+                {
+                    result = (TValue)(object)intValue;
+                    validationErrorMessage = "";
+                    return true;
+                }
+            }
+            else if (type == typeof(long))
+            {
+                if (long.TryParse(value, out var longValue))
+                {
+                    result = (TValue)(object)longValue;
+                    validationErrorMessage = "";
+                    return true;
+                }
+            }
+            else if (type == typeof(Guid))
+            {
+                if (Guid.TryParse(value, out var guidValue))
+                {
+                    result = (TValue)(object)guidValue;
+                    validationErrorMessage = "";
+                    return true;
+                }
+            }
+            else if (type == typeof(bool))
+            {
+                if (bool.TryParse(value, out var boolValue))
+                {
+                    result = (TValue)(object)boolValue;
+                    validationErrorMessage = "";
+                    return true;
+                }
+            }
+            else
+            {
+                result = (TValue)(object)value;
+                validationErrorMessage = "";
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            result = default!;
+            validationErrorMessage = $"No se pudo convertir '{value}' al tipo {typeof(TValue).Name}";
+            return false;
+        }
+        
+        result = default!;
+        validationErrorMessage = $"El valor '{value}' no es válido";
+        return false;
+    }
+    
+    private async Task OnChangeHandler(ChangeEventArgs e)
+    {
+        if (IsMultiple)
+        {
+            // Handle multiple selection
+            _selectedValues.Clear();
+            
+            if (e.Value is string[] values)
+            {
+                _selectedValues.AddRange(values);
+            }
+            
+            // For multiple select, we'd need to handle this differently
+            // This is a simplified version
+            await OnChange.InvokeAsync(CurrentValue);
+        }
+        else
+        {
+            var value = e.Value?.ToString();
+            if (TryParseValueFromString(value, out var parsedValue, out _))
+            {
+                CurrentValue = parsedValue;
+                await OnChange.InvokeAsync(CurrentValue);
+            }
+        }
+    }
+    
+    private async Task OnFocusHandler(FocusEventArgs e)
+    {
+        await OnFocus.InvokeAsync(e);
+    }
+    
+    private async Task OnBlurHandler(FocusEventArgs e)
+    {
+        _showValidation = true;
+        await OnBlur.InvokeAsync(e);
+    }
+    
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _searchTerm = e.Value?.ToString() ?? "";
+    }
+    
+    private void OnSearchFocus()
+    {
+        // Optionally expand dropdown or show search results
+    }
+    
+    private IEnumerable<SelectOption> GetFilteredOptions()
+    {
+        if (Options == null) return Enumerable.Empty<SelectOption>();
+        
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            return Options;
+        }
+        
+        var filtered = new List<SelectOption>();
+        
+        foreach (var option in Options)
+        {
+            if (option.IsGroup && option.SubOptions != null)
+            {
+                var filteredSubOptions = option.SubOptions
+                    .Where(o => o.Text.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                
+                if (filteredSubOptions.Any())
+                {
+                    filtered.Add(new SelectOption
+                    {
+                        IsGroup = true,
+                        GroupLabel = option.GroupLabel,
+                        SubOptions = filteredSubOptions
+                    });
+                }
+            }
+            else if (option.Text.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
+            {
+                filtered.Add(option);
+            }
+        }
+        
+        return filtered;
+    }
+    
+    private bool IsOptionSelected(string? value)
+    {
+        if (value == null) return false;
+        
+        if (IsMultiple)
+        {
+            return _selectedValues.Contains(value);
+        }
+        
+        return CurrentValueAsString == value;
+    }
+    
+    private void UpdateSelectedValues()
+    {
+        // Implementation depends on how multiple values are stored
+        // This is a placeholder
+    }
+    
+    private bool HasValue()
+    {
+        if (IsMultiple)
+        {
+            return _selectedValues.Count > 0;
+        }
+        
+        return CurrentValue != null && !CurrentValue.Equals(default(TValue));
+    }
+    
+    private async Task ClearValue()
+    {
+        CurrentValue = default!;
+        _selectedValues.Clear();
+        _showValidation = false;
+        _searchTerm = "";
+        await OnClear.InvokeAsync();
+        await _selectElement.FocusAsync();
+    }
+    
+    private void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e)
+    {
+        BuildCssClass();
+        InvokeAsync(StateHasChanged);
+    }
+    
+    public async ValueTask FocusAsync() => await _selectElement.FocusAsync();
+    
+    public void Dispose()
+    {
+        if (EditContext != null)
+        {
+            EditContext.OnValidationStateChanged -= OnValidationStateChanged;
+        }
+    }
+}

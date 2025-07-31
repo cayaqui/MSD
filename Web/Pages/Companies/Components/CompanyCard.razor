@@ -1,0 +1,98 @@
+﻿
+
+<div class="card h-100 @(IsActive ? "border-primary shadow" : "")" @onclick="() => OnSelect.InvokeAsync(Company)">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="d-flex align-items-center">
+                @if (Company.HasLogo)
+                {
+                    <img src="@($"/api/companies/{Company.Id}/logo")"
+                         alt="@Company.Name"
+                         class="rounded-circle me-3"
+                         style="width: 48px; height: 48px; object-fit: cover;">
+                }
+                else
+                {
+                    <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center me-3"
+                         style="width: 48px; height: 48px;">
+                        <i class="fa-light fa-building text-primary fa-lg"></i>
+                    </div>
+                }
+                <div>
+                    <h5 class="card-title mb-0">@Company.Name</h5>
+                    <small class="text-muted">@Company.Code</small>
+                </div>
+            </div>
+            @if (IsActive)
+            {
+                <span class="badge bg-primary">Activa</span>
+            }
+        </div>
+
+        <div class="mb-3">
+            @if (!string.IsNullOrEmpty(Company.Description))
+            {
+                <p class="card-text text-muted small mb-2">@Company.Description</p>
+            }
+
+            <div class="d-flex flex-wrap gap-2 small text-muted">
+                @if (!string.IsNullOrEmpty(Company.TaxId))
+                {
+                    <span><i class="fa-light fa-id-card me-1"></i>@Company.TaxId</span>
+                }
+                @if (!string.IsNullOrEmpty(Company.City))
+                {
+                    <span><i class="fa-light fa-location-dot me-1"></i>@Company.City</span>
+                }
+                @if (!string.IsNullOrEmpty(Company.DefaultCurrency))
+                {
+                    <span><i class="fa-light fa-dollar-sign me-1"></i>@Company.DefaultCurrency</span>
+                }
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <small class="text-muted">
+                Creada @Company.CreatedAt.ToString("dd/MM/yyyy")
+            </small>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-primary"
+                        @onclick:stopPropagation="true"
+                        @onclick="() => OnEdit.InvokeAsync(Company)"
+                        title="Editar">
+                    <i class="fa-light fa-edit"></i>
+                </button>
+                <button class="btn btn-outline-danger"
+                        @onclick:stopPropagation="true"
+                        @onclick="() => OnDelete.InvokeAsync(Company)"
+                        title="Eliminar">
+                    <i class="fa-light fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public CompanyDto Company { get; set; } = null!;
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public EventCallback<CompanyDto> OnSelect { get; set; }
+    [Parameter] public EventCallback<CompanyDto> OnEdit { get; set; }
+    [Parameter] public EventCallback<CompanyDto> OnDelete { get; set; }
+}
+
+<style>
+    .card {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .card.border-primary {
+            border-width: 2px;
+        }
+</style>

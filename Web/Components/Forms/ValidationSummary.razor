@@ -1,0 +1,158 @@
+﻿@using Microsoft.AspNetCore.Components.Forms
+
+<div class="validation-summary @(IsVisible ? "show" : "")">
+    @if (IsVisible)
+    {
+        <div class="alert @AlertClass alert-dismissible fade show" role="alert">
+            <div class="d-flex align-items-start">
+                <div class="alert-icon me-3">
+                    <i class="@IconClass fa-lg"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="alert-heading mb-1">@Title</h6>
+
+                    @if (ShowDetails && validationMessages.Any())
+                    {
+                        <ul class="mb-0 @(Compact ? "ps-3" : "")">
+                            @foreach (var message in validationMessages)
+                            {
+                                <li class="@(Compact ? "small" : "")">@message</li>
+                            }
+                        </ul>
+                    }
+                    else if (!string.IsNullOrEmpty(Summary))
+                    {
+                        <p class="mb-0 @(Compact ? "small" : "")">@Summary</p>
+                    }
+                </div>
+
+                @if (Dismissible)
+                {
+                    <button type="button" class="btn-close" @onclick="Dismiss" aria-label="Cerrar"></button>
+                }
+            </div>
+
+            @if (ShowFieldCount && validationMessages.Any())
+            {
+                <div class="mt-2 pt-2 border-top">
+                    <small class="text-muted">
+                        <i class="fa-light fa-info-circle me-1"></i>
+                        @validationMessages.Count @(validationMessages.Count == 1 ? "campo requiere" : "campos requieren") atención
+                    </small>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+
+    [Parameter] public string Title { get; set; } = "Por favor, corrija los siguientes errores:";
+    [Parameter] public string Summary { get; set; } = "";
+    [Parameter] public string AlertClass { get; set; } = "alert-danger";
+    [Parameter] public string IconClass { get; set; } = "fa-light fa-exclamation-triangle";
+    [Parameter] public bool ShowDetails { get; set; } = true;
+    [Parameter] public bool ShowFieldCount { get; set; } = true;
+    [Parameter] public bool Dismissible { get; set; } = true;
+    [Parameter] public bool Compact { get; set; } = false;
+    [Parameter] public bool AutoHide { get; set; } = false;
+    [Parameter] public int AutoHideDelay { get; set; } = 5000; // milisegundos
+
+    private bool IsVisible => validationMessages.Any() || !string.IsNullOrEmpty(Summary);
+    private List<string> validationMessages = new();
+    private ValidationMessageStore? messageStore;
+    private System.Timers.Timer? autoHideTimer;
+
+    protected override void OnInitialized()
+    {
+        if (EditContext != null)
+        {
+            messageStore = new ValidationMessageStore(EditContext);
+            EditContext.OnValidationStateChanged += HandleValidationStateChanged;
+        }
+    }
+
+    private void HandleValidationStateChanged(object? sender, ValidationStateChangedEventArgs e)
+    {
+        validationMessages.Clear();
+
+        if (EditContext != null)
+        {
+            foreach (var message in EditContext.GetValidationMessages())
+            {
+                validationMessages.Add(message);
+            }
+        }
+
+        if (AutoHide && validationMessages.Any())
+        {
+            StartAutoHideTimer();
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void StartAutoHideTimer()
+    {
+        autoHideTimer?.Stop();
+        autoHideTimer = new System.Timers.Timer(AutoHideDelay);
+        autoHideTimer.Elapsed += (sender, e) =>
+        {
+            autoHideTimer?.Stop();
+            InvokeAsync(() =>
+            {
+                Dismiss();
+            });
+        };
+        autoHideTimer.Start();
+    }
+
+    private void Dismiss()
+    {
+        validationMessages.Clear();
+        Summary = "";
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        if (EditContext != null)
+        {
+            EditContext.OnValidationStateChanged -= HandleValidationStateChanged;
+        }
+        autoHideTimer?.Dispose();
+    }
+}
+
+<style>
+    .validation-summary {
+        transition: all 0.3s ease;
+    }
+
+        .validation-summary:not(.show) {
+            display: none;
+        }
+
+    .alert-icon {
+        flex-shrink: 0;
+    }
+
+    .validation-summary ul {
+        list-style-type: none;
+        padding-left: 0;
+    }
+
+        .validation-summary ul li::before {
+            content: "•";
+            color: currentColor;
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+
+    .validation-summary.compact ul {
+        margin-bottom: 0;
+    }
+</style>

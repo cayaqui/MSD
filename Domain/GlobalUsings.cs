@@ -1,0 +1,14 @@
+﻿global using Core.Enums.UI;
+global using Core.Enums.Cost;
+global using Core.Enums.Security;
+global using Core.Enums.Setup;
+global using Core.Enums.Projects;
+global using Core.ValueObjects.Setup;
+global using Core.ValueObjects.Common;
+global using Domain.Common;
+global using Domain.Entities.UI;
+global using Domain.Entities.Cost;
+global using Domain.Entities.Progress;
+global using Domain.Entities.Setup;
+global using Domain.Entities.Security;
+global using System.Linq.Expressions;

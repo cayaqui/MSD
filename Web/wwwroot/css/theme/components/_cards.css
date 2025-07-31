@@ -1,0 +1,614 @@
+﻿/* =================================
+   EzPro.SD - Cards CSS
+   Estilos de tarjetas estilo Ynex
+   ================================= */
+
+/* ===== CARD BASE ===== */
+
+.card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    word-wrap: break-word;
+    background-color: var(--card-bg);
+    background-clip: border-box;
+    border: var(--border-width) solid var(--card-border-color);
+    border-radius: var(--card-border-radius);
+    box-shadow: var(--card-shadow);
+    transition: all var(--transition-base);
+}
+
+    .card > hr {
+        margin-right: 0;
+        margin-left: 0;
+    }
+
+/* ===== CARD HEADER ===== */
+
+.card-header {
+    padding: var(--card-padding-y) var(--card-padding-x);
+    margin-bottom: 0;
+    background-color: transparent;
+    border-bottom: var(--border-width) solid var(--card-border-color);
+}
+
+    .card-header:first-child {
+        border-radius: calc(var(--card-border-radius) - var(--border-width)) calc(var(--card-border-radius) - var(--border-width)) 0 0;
+    }
+
+.card-header-title {
+    margin-bottom: 0;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-tight);
+    color: var(--text-primary);
+}
+
+.card-header-subtitle {
+    margin-top: var(--spacing-1);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+/* Card header con acciones */
+.card-header.d-flex {
+    align-items: center;
+    justify-content: space-between;
+}
+
+.card-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    margin-left: auto;
+}
+
+    .card-header-actions .btn {
+        padding: var(--spacing-1) var(--spacing-2);
+        font-size: var(--font-size-sm);
+    }
+
+/* ===== CARD BODY ===== */
+
+.card-body {
+    flex: 1 1 auto;
+    padding: var(--card-padding-y) var(--card-padding-x);
+}
+
+.card-body-scrollable {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* ===== CARD FOOTER ===== */
+
+.card-footer {
+    padding: var(--card-padding-y) var(--card-padding-x);
+    background-color: transparent;
+    border-top: var(--border-width) solid var(--card-border-color);
+}
+
+    .card-footer:last-child {
+        border-radius: 0 0 calc(var(--card-border-radius) - var(--border-width)) calc(var(--card-border-radius) - var(--border-width));
+    }
+
+/* ===== CARD TITLE Y SUBTITLE ===== */
+
+.card-title {
+    margin-bottom: var(--spacing-3);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-tight);
+}
+
+.card-subtitle {
+    margin-top: calc(var(--spacing-3) * -0.5);
+    margin-bottom: var(--spacing-3);
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+}
+
+.card-text:last-child {
+    margin-bottom: 0;
+}
+
+/* ===== CARD LINK ===== */
+
+.card-link {
+    color: var(--primary);
+    text-decoration: none;
+    transition: color var(--transition-base);
+}
+
+    .card-link:hover {
+        color: var(--primary-dark);
+        text-decoration: underline;
+    }
+
+    .card-link + .card-link {
+        margin-left: var(--spacing-3);
+    }
+
+/* ===== CARD IMAGE ===== */
+
+.card-img,
+.card-img-top,
+.card-img-bottom {
+    width: 100%;
+}
+
+.card-img-top {
+    border-top-left-radius: calc(var(--card-border-radius) - var(--border-width));
+    border-top-right-radius: calc(var(--card-border-radius) - var(--border-width));
+}
+
+.card-img-bottom {
+    border-bottom-right-radius: calc(var(--card-border-radius) - var(--border-width));
+    border-bottom-left-radius: calc(var(--card-border-radius) - var(--border-width));
+}
+
+/* Card image overlay */
+.card-img-overlay {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: var(--card-padding-y) var(--card-padding-x);
+    border-radius: calc(var(--card-border-radius) - var(--border-width));
+}
+
+/* ===== VARIANTES DE COLOR ===== */
+
+.card-primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: var(--text-white);
+}
+
+    .card-primary .card-header,
+    .card-primary .card-footer {
+        background-color: rgba(0, 0, 0, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .card-primary .card-title,
+    .card-primary .card-subtitle,
+    .card-primary .card-header-title {
+        color: var(--text-white);
+    }
+
+.card-secondary {
+    background-color: var(--secondary);
+    border-color: var(--secondary);
+    color: var(--text-white);
+}
+
+.card-success {
+    background-color: var(--success);
+    border-color: var(--success);
+    color: var(--text-white);
+}
+
+.card-danger {
+    background-color: var(--danger);
+    border-color: var(--danger);
+    color: var(--text-white);
+}
+
+.card-warning {
+    background-color: var(--warning);
+    border-color: var(--warning);
+    color: var(--text-primary);
+}
+
+.card-info {
+    background-color: var(--info);
+    border-color: var(--info);
+    color: var(--text-white);
+}
+
+.card-light {
+    background-color: var(--bg-light);
+    border-color: var(--gray-300);
+}
+
+.card-dark {
+    background-color: var(--bg-dark);
+    border-color: var(--bg-dark);
+    color: var(--text-white);
+}
+
+/* ===== VARIANTES GRADIENT (YNEX) ===== */
+
+.card-gradient-primary {
+    background: var(--primary-gradient);
+    border: none;
+    color: var(--text-white);
+}
+
+    .card-gradient-primary .card-header,
+    .card-gradient-primary .card-footer {
+        background-color: rgba(0, 0, 0, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+
+.card-gradient-secondary {
+    background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+    border: none;
+    color: var(--text-white);
+}
+
+.card-gradient-success {
+    background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
+    border: none;
+    color: var(--text-white);
+}
+
+/* ===== VARIANTES SOFT (YNEX) ===== */
+
+.card-soft-primary {
+    background-color: rgba(var(--primary-rgb), 0.1);
+    border-color: rgba(var(--primary-rgb), 0.2);
+}
+
+    .card-soft-primary .card-header,
+    .card-soft-primary .card-footer {
+        background-color: rgba(var(--primary-rgb), 0.05);
+        border-color: rgba(var(--primary-rgb), 0.2);
+    }
+
+.card-soft-secondary {
+    background-color: rgba(var(--secondary-rgb), 0.1);
+    border-color: rgba(var(--secondary-rgb), 0.2);
+}
+
+.card-soft-success {
+    background-color: rgba(var(--success-rgb), 0.1);
+    border-color: rgba(var(--success-rgb), 0.2);
+}
+
+.card-soft-danger {
+    background-color: rgba(var(--danger-rgb), 0.1);
+    border-color: rgba(var(--danger-rgb), 0.2);
+}
+
+.card-soft-warning {
+    background-color: rgba(var(--warning-rgb), 0.1);
+    border-color: rgba(var(--warning-rgb), 0.2);
+}
+
+.card-soft-info {
+    background-color: rgba(var(--info-rgb), 0.1);
+    border-color: rgba(var(--info-rgb), 0.2);
+}
+
+/* ===== ESTILOS ESPECIALES ===== */
+
+/* Card sin bordes */
+.card-borderless {
+    border: 0;
+}
+
+/* Card sin sombra */
+.card-flat {
+    box-shadow: none;
+}
+
+/* Card hoverable */
+.card-hoverable {
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+    .card-hoverable:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+    }
+
+/* Card con hover lift */
+.card-hover-lift:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-xl);
+}
+
+/* Card con hover shadow */
+.card-hover-shadow:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+/* Card con hover border */
+.card-hover-border:hover {
+    border-color: var(--primary);
+}
+
+/* Card collapsible */
+.card-collapsible .card-header {
+    cursor: pointer;
+    user-select: none;
+}
+
+    .card-collapsible .card-header::after {
+        content: "\f078";
+        font-family: "Font Awesome 6 Free";
+        font-weight: 900;
+        float: right;
+        transition: transform var(--transition-base);
+    }
+
+    .card-collapsible .card-header.collapsed::after {
+        transform: rotate(180deg);
+    }
+
+/* ===== CARD CON RIBBON ===== */
+
+.card-ribbon {
+    position: absolute;
+    right: -5px;
+    top: -5px;
+    z-index: 1;
+    overflow: hidden;
+    width: 75px;
+    height: 75px;
+    text-align: right;
+}
+
+    .card-ribbon span {
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-bold);
+        color: var(--text-white);
+        text-transform: uppercase;
+        text-align: center;
+        line-height: 20px;
+        transform: rotate(45deg);
+        width: 100px;
+        display: block;
+        background: var(--primary-gradient);
+        box-shadow: 0 3px 10px -5px rgba(0, 0, 0, 0.3);
+        position: absolute;
+        top: 19px;
+        right: -21px;
+    }
+
+        .card-ribbon span::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 100%;
+            z-index: -1;
+            border-left: 3px solid var(--primary-dark);
+            border-right: 3px solid transparent;
+            border-bottom: 3px solid transparent;
+            border-top: 3px solid var(--primary-dark);
+        }
+
+        .card-ribbon span::after {
+            content: "";
+            position: absolute;
+            right: 0;
+            top: 100%;
+            z-index: -1;
+            border-left: 3px solid transparent;
+            border-right: 3px solid var(--primary-dark);
+            border-bottom: 3px solid transparent;
+            border-top: 3px solid var(--primary-dark);
+        }
+
+/* ===== CARD STATS (YNEX) ===== */
+
+.card-stats {
+    position: relative;
+    overflow: hidden;
+}
+
+    .card-stats .card-body {
+        position: relative;
+        z-index: 1;
+    }
+
+.card-stats-icon {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    font-size: 5rem;
+    opacity: 0.1;
+    transform: rotate(-15deg);
+}
+
+.card-stats-value {
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    line-height: 1;
+    margin-bottom: var(--spacing-2);
+}
+
+.card-stats-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: var(--letter-spacing-wide);
+}
+
+.card-stats-change {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    margin-top: var(--spacing-2);
+}
+
+    .card-stats-change.positive {
+        color: var(--success);
+    }
+
+    .card-stats-change.negative {
+        color: var(--danger);
+    }
+
+    .card-stats-change i {
+        margin-right: var(--spacing-1);
+    }
+
+/* ===== CARD GRUPOS ===== */
+
+.card-group {
+    display: flex;
+    flex-flow: row wrap;
+}
+
+    .card-group > .card {
+        flex: 1 0 0%;
+        margin-bottom: 0;
+    }
+
+        .card-group > .card + .card {
+            margin-left: 0;
+            border-left: 0;
+        }
+
+        .card-group > .card:not(:last-child) {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+            .card-group > .card:not(:last-child) .card-img-top,
+            .card-group > .card:not(:last-child) .card-header {
+                border-top-right-radius: 0;
+            }
+
+            .card-group > .card:not(:last-child) .card-img-bottom,
+            .card-group > .card:not(:last-child) .card-footer {
+                border-bottom-right-radius: 0;
+            }
+
+        .card-group > .card:not(:first-child) .card-img-top,
+        .card-group > .card:not(:first-child) .card-header {
+            border-top-left-radius: 0;
+        }
+
+        .card-group > .card:not(:first-child) .card-img-bottom,
+        .card-group > .card:not(:first-child) .card-footer {
+            border-bottom-left-radius: 0;
+        }
+
+/* ===== CARD COLUMNS ===== */
+
+.card-columns {
+    column-count: 3;
+    column-gap: var(--spacing-4);
+    orphans: 1;
+    widows: 1;
+}
+
+    .card-columns .card {
+        display: inline-block;
+        width: 100%;
+        margin-bottom: var(--spacing-4);
+    }
+
+@media (max-width: 991.98px) {
+    .card-columns {
+        column-count: 2;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .card-columns {
+        column-count: 1;
+    }
+}
+
+/* ===== CARD DECK ===== */
+
+.card-deck {
+    display: flex;
+    flex-flow: row wrap;
+    margin-right: calc(var(--spacing-3) * -1);
+    margin-left: calc(var(--spacing-3) * -1);
+}
+
+    .card-deck .card {
+        flex: 1 0 0%;
+        margin-right: var(--spacing-3);
+        margin-bottom: var(--spacing-4);
+        margin-left: var(--spacing-3);
+    }
+
+/* ===== LOADING CARD ===== */
+
+.card-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+    .card-loading::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.7);
+        z-index: 10;
+    }
+
+    .card-loading::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        margin-top: -1rem;
+        margin-left: -1rem;
+        width: 2rem;
+        height: 2rem;
+        border: 0.25rem solid var(--primary);
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: card-loading-spinner 0.75s linear infinite;
+        z-index: 11;
+    }
+
+@keyframes card-loading-spinner {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ===== CARD PLACEHOLDER ===== */
+
+.card-placeholder {
+    background-color: var(--gray-100);
+    border: 2px dashed var(--gray-400);
+    color: var(--text-muted);
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+}
+
+    .card-placeholder:hover {
+        background-color: var(--gray-50);
+        border-color: var(--primary);
+        color: var(--primary);
+        cursor: pointer;
+    }
+
+    .card-placeholder i {
+        font-size: 3rem;
+        margin-bottom: var(--spacing-2);
+    }
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 575.98px) {
+    .card-body {
+        padding: var(--spacing-4);
+    }
+
+    .card-header,
+    .card-footer {
+        padding: var(--spacing-3) var(--spacing-4);
+    }
+}

@@ -1,0 +1,431 @@
+﻿@page "/projects/{Id:guid}"
+@using Web.Pages.Projects.Components
+@inject IProjectService ProjectService
+@inject NavigationManager Navigation
+@inject IToastService ToastService
+@attribute [Authorize]
+
+<PageTitle>@project?.Name - EzPro</PageTitle>
+
+@if (isLoading)
+{
+    <EzLoadingIndicator IsLoading="true" Message="Cargando proyecto..." />
+}
+else if (project != null)
+{
+    <div class="page-header">
+        <div class="row align-items-center">
+            <div class="col">
+                <div class="d-flex align-items-center mb-2">
+                    <h1 class="page-title mb-0">
+                        @project.Name
+                    </h1>
+                    <ProjectStatusBadge Status="@project.Status" Class="ms-3" />
+                </div>
+                <div class="page-subtitle">
+                    <span class="badge bg-light text-primary me-2">@project.Code</span>
+                    <span class="text-muted">@project.OperationName</span>
+                </div>
+            </div>
+            <div class="col-auto">
+                <div class="btn-group">
+                    <a href="/projects/@Id/edit" class="btn btn-light">
+                        <i class="fa-light fa-edit me-2"></i>Editar
+                    </a>
+                    <button class="btn btn-light" @onclick="ShowActions">
+                        <i class="fa-light fa-bolt me-2"></i>Acciones
+                    </button>
+                    <a href="/projects/@Id/dashboard" class="btn btn-primary">
+                        <i class="fa-light fa-chart-line me-2"></i>Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Información General -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Información General</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">Descripción</label>
+                            <p>@(project.Description ?? "Sin descripción")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Código WBS</label>
+                            <p>@(project.WBSCode ?? "-")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Cliente</label>
+                            <p>@(project.Client ?? "-")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Ubicación</label>
+                            <p>@(project.Location ?? "-")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Número de Contrato</label>
+                            <p>@(project.ContractNumber ?? "-")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Estado</label>
+                            <p>
+                                @if (project.IsActive)
+                                {
+                                    <span class="badge bg-success">
+                                        <i class="fa-light fa-check-circle me-1"></i>Activo
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">
+                                        <i class="fa-light fa-times-circle me-1"></i>Inactivo
+                                    </span>
+                                }
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cronograma y Presupuesto -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Cronograma y Presupuesto</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">Fecha Inicio Planificada</label>
+                            <p>@project.PlannedStartDate.ToString("dd/MM/yyyy")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Fecha Fin Planificada</label>
+                            <p>@project.PlannedEndDate.ToString("dd/MM/yyyy")</p>
+                        </div>
+                        @if (project.ActualStartDate.HasValue)
+                        {
+                            <div class="col-md-6">
+                                <label class="text-muted small">Fecha Inicio Real</label>
+                                <p>@project.ActualStartDate.Value.ToString("dd/MM/yyyy")</p>
+                            </div>
+                        }
+                        @if (project.ActualEndDate.HasValue)
+                        {
+                            <div class="col-md-6">
+                                <label class="text-muted small">Fecha Fin Real</label>
+                                <p>@project.ActualEndDate.Value.ToString("dd/MM/yyyy")</p>
+                            </div>
+                        }
+                        <div class="col-md-6">
+                            <label class="text-muted small">Presupuesto Total</label>
+                            <p class="h5 text-primary">@project.Currency @project.TotalBudget.ToString("N0")</p>
+                        </div>
+                        @if (project.ActualCost.HasValue)
+                        {
+                            <div class="col-md-6">
+                                <label class="text-muted small">Costo Real</label>
+                                <p class="h5 @(project.ActualCost > project.TotalBudget ? "text-danger" : "text-success")">
+                                    @project.Currency @project.ActualCost.Value.ToString("N0")
+                                </p>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="text-muted small">Progreso del Proyecto</label>
+                        <div class="d-flex align-items-center">
+                            <div class="progress flex-grow-1" style="height: 25px;">
+                                <div class="progress-bar @GetProgressBarClass(project.ProgressPercentage)" 
+                                     role="progressbar" 
+                                     style="width: @project.ProgressPercentage%">
+                                    @project.ProgressPercentage%
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-light ms-3" @onclick="UpdateProgress">
+                                <i class="fa-light fa-edit"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Equipo del Proyecto -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Equipo del Proyecto</h5>
+                    <a href="/projects/@Id/team" class="btn btn-sm btn-primary">
+                        <i class="fa-light fa-users me-1"></i>Gestionar Equipo
+                    </a>
+                </div>
+                <div class="card-body">
+                    @if (teamMembers.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var member in teamMembers.Take(5))
+                            {
+                                <div class="list-group-item px-0">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-0">@member.ProjectName</h6>
+                                            <small class="text-muted">@member.Role</small>
+                                        </div>
+                                        <div class="text-end">
+                                            @if (member.AllocationPercentage.HasValue)
+                                            {
+                                                <span class="badge bg-light text-primary">
+                                                    @member.AllocationPercentage%
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        @if (teamMembers.Count > 5)
+                        {
+                            <div class="text-center mt-3">
+                                <a href="/projects/@Id/team" class="btn btn-sm btn-light">
+                                    Ver todos (@teamMembers.Count)
+                                </a>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center mb-0">
+                            <i class="fa-light fa-users fa-2x mb-2 d-block"></i>
+                            No hay miembros asignados al equipo
+                        </p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Lateral -->
+        <div class="col-lg-4">
+            <!-- Resumen del Proyecto -->
+            @if (summary != null)
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Indicadores Clave</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 text-center">
+                            <div class="col-6">
+                                <div class="metric-card">
+                                    <div class="metric-value text-primary">@summary.DaysRemaining</div>
+                                    <div class="metric-label">Días Restantes</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="metric-card">
+                                    <div class="metric-value @(summary.IsOverdue ? "text-danger" : "text-success")">
+                                        @(summary.IsOverdue ? summary.DaysOverdue : 0)
+                                    </div>
+                                    <div class="metric-label">Días de Retraso</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="metric-card">
+                                    <div class="metric-value @GetCPIColor(summary.CostPerformanceIndex)">
+                                        @summary.CostPerformanceIndex.ToString("F2")
+                                    </div>
+                                    <div class="metric-label">CPI</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="metric-card">
+                                    <div class="metric-value @GetSPIColor(summary.SchedulePerformanceIndex)">
+                                        @summary.SchedulePerformanceIndex.ToString("F2")
+                                    </div>
+                                    <div class="metric-label">SPI</div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="metric-card">
+                                    <div class="metric-value">
+                                        @summary.BudgetUtilization.ToString("F1")%
+                                    </div>
+                                    <div class="metric-label">Utilización del Presupuesto</div>
+                                    <div class="progress mt-2" style="height: 10px;">
+                                        <div class="progress-bar @(summary.IsOverBudget ? "bg-danger" : "bg-success")" 
+                                             style="width: @Math.Min(summary.BudgetUtilization, 100)%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Accesos Rápidos -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Accesos Rápidos</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="/projects/@Id/wbs" class="list-group-item list-group-item-action">
+                        <i class="fa-light fa-sitemap me-2"></i>Estructura WBS
+                    </a>
+                    <a href="/projects/@Id/schedule" class="list-group-item list-group-item-action">
+                        <i class="fa-light fa-calendar-alt me-2"></i>Cronograma
+                    </a>
+                    <a href="/projects/@Id/costs" class="list-group-item list-group-item-action">
+                        <i class="fa-light fa-dollar-sign me-2"></i>Control de Costos
+                    </a>
+                    <a href="/projects/@Id/risks" class="list-group-item list-group-item-action">
+                        <i class="fa-light fa-exclamation-triangle me-2"></i>Gestión de Riesgos
+                    </a>
+                    <a href="/projects/@Id/documents" class="list-group-item list-group-item-action">
+                        <i class="fa-light fa-folder-open me-2"></i>Documentos
+                    </a>
+                </div>
+            </div>
+
+            <!-- Estadísticas -->
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-3">Estadísticas del Proyecto</h6>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="stat-value">@project.TeamMemberCount</div>
+                            <div class="stat-label">Miembros</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-value">@project.PhaseCount</div>
+                            <div class="stat-label">Fases</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    
+    private ProjectDto? project;
+    private ProjectSummaryDto? summary;
+    private List<ProjectTeamMemberDto> teamMembers = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProject();
+    }
+
+    private async Task LoadProject()
+    {
+        isLoading = true;
+        
+        try
+        {
+            // Cargar proyecto
+            var projectResponse = await ProjectService.GetProjectByIdAsync(Id);
+            if (projectResponse.Success && projectResponse.Data != null)
+            {
+                project = projectResponse.Data;
+                
+                // Cargar resumen
+                var summaryResponse = await ProjectService.GetProjectSummaryAsync(Id);
+                if (summaryResponse.Success)
+                {
+                    summary = summaryResponse.Data;
+                }
+                
+                // Cargar equipo
+                var teamResponse = await ProjectService.GetProjectTeamMembersAsync(Id);
+                if (teamResponse.Success && teamResponse.Data != null)
+                {
+                    teamMembers = teamResponse.Data;
+                }
+            }
+            else
+            {
+                ToastService.ShowError("No se pudo cargar el proyecto");
+                Navigation.NavigateTo("/projects");
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ShowActions()
+    {
+        // TODO: Implementar menú de acciones contextual
+        ToastService.ShowInfo("Las acciones rápidas estarán disponibles pronto");
+    }
+
+    private async Task UpdateProgress()
+    {
+        // TODO: Implementar modal para actualizar progreso
+        ToastService.ShowInfo("La actualización de progreso estará disponible pronto");
+    }
+
+    private string GetProgressBarClass(decimal progress)
+    {
+        if (progress < 25) return "bg-danger";
+        if (progress < 50) return "bg-warning";
+        if (progress < 75) return "bg-info";
+        return "bg-success";
+    }
+
+    private string GetCPIColor(decimal cpi)
+    {
+        if (cpi < 0.9m) return "text-danger";
+        if (cpi < 1.0m) return "text-warning";
+        return "text-success";
+    }
+
+    private string GetSPIColor(decimal spi)
+    {
+        if (spi < 0.9m) return "text-danger";
+        if (spi < 1.0m) return "text-warning";
+        return "text-success";
+    }
+}
+
+<style>
+    .metric-card {
+        padding: 1rem;
+        background-color: var(--bs-gray-100);
+        border-radius: var(--bs-border-radius);
+    }
+
+    .metric-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    .metric-label {
+        font-size: 0.75rem;
+        color: var(--bs-gray-600);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--bs-primary);
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--bs-gray-600);
+    }
+
+    .list-group-item-action:hover {
+        background-color: var(--bs-gray-100);
+    }
+</style>

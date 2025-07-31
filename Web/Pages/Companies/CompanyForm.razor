@@ -1,0 +1,375 @@
+﻿@page "/companies/new"
+@page "/companies/{Id:guid}/edit"
+
+@inject ICompanyService CompanyService
+@inject NavigationManager Navigation
+@inject IToastService Toast
+
+@attribute [Authorize]
+
+<PageTitle>@(IsEdit ? "Editar" : "Nueva") Empresa - EzPro</PageTitle>
+
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="/companies">Empresas</a></li>
+                    <li class="breadcrumb-item active">@(IsEdit ? "Editar" : "Nueva")</li>
+                </ol>
+            </nav>
+            <h1 class="page-title mt-2">
+                <i class="fa-light fa-building me-2"></i>@(IsEdit ? "Editar" : "Nueva") Empresa
+            </h1>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <EditForm Model="model" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+
+                    <div class="row g-3">
+                        <!-- Información básica -->
+                        <div class="col-12">
+                            <h5 class="mb-3">Información básica</h5>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Código <span class="text-danger">*</span></label>
+                            <EzInputText @bind-Value="model.Code" class="form-control" Placeholder="EMP001" />
+                            <ValidationMessage For="() => model.Code" />
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                            <EzInputText @bind-Value="model.Name" Placeholder="Nombre de la empresa" />
+                            <ValidationMessage For="() => model.Name" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="fo    rm-label">Descripción</label>
+                            <EzInputTextArea @bind-Value="model.Description" Rows="3" Placeholder="Descripción breve de la empresa" />
+                        </div>
+
+                        <!-- Información fiscal -->
+                        <div class="col-12 mt-4">
+                            <h5 class="mb-3">Información fiscal</h5>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">RUT/Tax ID</label>
+                            <EzInputText @bind-Value="model.TaxId" Placeholder="12.345.678-9" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Moneda por defecto</label>
+                            <EzInputSelect @bind-Value="model.DefaultCurrency" Label="Estado" Options="@currenciesOptions" />
+
+                        </div>
+
+                        <!-- Información de contacto -->
+                        <div class="col-12 mt-4">
+                            <h5 class="mb-3">Información de contacto</h5>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Dirección</label>
+                            <EzInputText @bind-Value="model.Address" Placeholder="Calle Principal 123" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Ciudad</label>
+                            <EzInputText @bind-Value="model.City" Placeholder="Santiago" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Región/Estado</label>
+                            <EzInputText @bind-Value="model.State" Placeholder="RM" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Código Postal</label>
+                            <EzInputText @bind-Value="model.PostalCode" Placeholder="7500000" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Teléfono</label>
+                            <EzInputText @bind-Value="model.Phone" Placeholder="+56 2 2345 6789" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <EzInputText @bind-Value="model.Email" Placeholder="contacto@empresa.cl" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Sitio web</label>
+                            <EzInputText @bind-Value="model.Website" Placeholder="https://www.empresa.cl" />
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-light" @onclick="Cancel">
+                            <i class="fa-light fa-times me-2"></i>Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            else
+                            {
+                                <i class="fa-light fa-save me-2"></i>
+                            }
+                            Guardar
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Logo de la empresa</h5>
+
+                <div class="text-center mb-3">
+                    @if (hasLogo && IsEdit)
+                    {
+                        <img src="@($"/api/companies/{Id}/logo")"
+                             alt="Logo"
+                             class="img-fluid rounded"
+                             style="max-width: 200px;">
+                    }
+                    else
+                    {
+                        <div class="bg-light rounded p-5">
+                            <i class="fa-light fa-image fa-3x text-muted"></i>
+                            <p class="text-muted mt-2 mb-0">Sin logo</p>
+                        </div>
+                    }
+                </div>
+
+                <EzInputFile OnChange="HandleLogoUpload" accept="image/*" class="form-control" />
+                <small class="text-muted">PNG, JPG o GIF. Máximo 2MB.</small>
+
+                @if (logoFile != null)
+                {
+                    <div class="alert alert-info mt-3 mb-0">
+                        <i class="fa-light fa-info-circle me-2"></i>
+                        Logo seleccionado. Se cargará al guardar.
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (IsEdit)
+        {
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title text-danger mb-3">Zona de peligro</h5>
+                    <p class="text-muted">Esta acción no se puede deshacer.</p>
+                    <button class="btn btn-danger" @onclick="DeleteCompany">
+                        <i class="fa-light fa-trash me-2"></i>Eliminar empresa
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private CompanyFormModel model = new();
+    private bool isSubmitting = false;
+    private bool hasLogo = false;
+    private IBrowserFile? logoFile;
+
+    private bool IsEdit => Id.HasValue;
+    private List<SelectOption> currenciesOptions = new List<SelectOption>
+    {
+        new SelectOption { Value = "USD", Text = "USD - Dólar estadounidense" },
+        new SelectOption { Value = "CLP", Text = "CLP - Peso chileno" },
+        new SelectOption { Value = "EUR", Text = "EUR - Euro" },
+        new SelectOption { Value = "UF", Text = "UF - Unidad de Fomento" }
+    };
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEdit)
+        {
+            await LoadCompany();
+        }
+    }
+
+    private async Task LoadCompany()
+    {
+        var response = await CompanyService.GetCompanyByIdAsync(Id!.Value);
+        if (response.Success && response.Data != null)
+        {
+            var company = response.Data;
+            model = new CompanyFormModel
+            {
+                Code = company.Code ?? "",
+                Name = company.Name ?? "",
+                Description = company.Description,
+                TaxId = company.TaxId,
+                Address = company.Address,
+                City = company.City,
+                State = company.State,
+                Country = company.Country ?? "Chile",
+                PostalCode = company.PostalCode,
+                Phone = company.Phone,
+                Email = company.Email,
+                Website = company.Website,
+                DefaultCurrency = company.DefaultCurrency ?? "USD"
+            };
+            hasLogo = company.HasLogo;
+        }
+        else
+        {
+            await Toast.ShowErrorAsync("Error al cargar la empresa");
+            Navigation.NavigateTo("/companies");
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        try
+        {
+            ApiResponse<CompanyDto> response;
+
+            if (IsEdit)
+            {
+                var updateDto = new UpdateCompanyDto
+                {
+                    Name = model.Name,
+                    Description = model.Description,
+                    TaxId = model.TaxId,
+                    Address = model.Address,
+                    City = model.City,
+                    State = model.State,
+                    Country = model.Country,
+                    PostalCode = model.PostalCode,
+                    Phone = model.Phone,
+                    Email = model.Email,
+                    Website = model.Website,
+                    DefaultCurrency = model.DefaultCurrency
+                };
+                response = await CompanyService.UpdateCompanyAsync(Id!.Value, updateDto);
+            }
+            else
+            {
+                var createDto = new CreateCompanyDto
+                {
+                    Code = model.Code,
+                    Name = model.Name,
+                    Description = model.Description,
+                    TaxId = model.TaxId,
+                    DefaultCurrency = model.DefaultCurrency
+                };
+                response = await CompanyService.CreateCompanyAsync(createDto);
+            }
+
+            if (response.Success && response.Data != null)
+            {
+                // Subir logo si se seleccionó uno
+                if (logoFile != null)
+                {
+                    await UploadLogo(response.Data.Id);
+                }
+
+                await Toast.ShowSuccessAsync($"Empresa {(IsEdit ? "actualizada" : "creada")} exitosamente");
+                Navigation.NavigateTo($"/companies/{response.Data.Id}");
+            }
+            else
+            {
+                await Toast.ShowErrorAsync(response.Message ?? "Error al guardar la empresa");
+            }
+        }
+        catch (Exception ex)
+        {
+            await Toast.ShowErrorAsync("Error inesperado al guardar");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void HandleLogoUpload(InputFileChangeEventArgs e)
+    {
+        logoFile = e.File;
+    }
+
+    private async Task UploadLogo(Guid companyId)
+    {
+        if (logoFile == null) return;
+
+        try
+        {
+            // TODO: Implementar upload de logo
+            // await CompanyService.UploadLogoAsync(companyId, logoFile);
+        }
+        catch (Exception ex)
+        {
+            await Toast.ShowWarningAsync("Logo guardado pero hubo un error al subirlo");
+        }
+    }
+
+    private async Task DeleteCompany()
+    {
+        // TODO: Implementar confirmación
+        var response = await CompanyService.DeleteCompanyAsync(Id!.Value);
+        if (response.Success)
+        {
+            await Toast.ShowSuccessAsync("Empresa eliminada");
+            Navigation.NavigateTo("/companies");
+        }
+        else
+        {
+            await Toast.ShowErrorAsync("Error al eliminar la empresa");
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/companies");
+    }
+
+    private class CompanyFormModel
+    {
+        [Required(ErrorMessage = "El código es requerido")]
+        [StringLength(20, ErrorMessage = "El código no puede exceder 20 caracteres")]
+        public string Code { get; set; } = "";
+
+        [Required(ErrorMessage = "El nombre es requerido")]
+        [StringLength(200, ErrorMessage = "El nombre no puede exceder 200 caracteres")]
+        public string Name { get; set; } = "";
+
+        public string? Description { get; set; }
+        public string? TaxId { get; set; }
+        public string? Address { get; set; }
+        public string? City { get; set; }
+        public string? State { get; set; }
+        public string Country { get; set; } = "Chile";
+        public string? PostalCode { get; set; }
+
+        [Phone(ErrorMessage = "Formato de teléfono inválido")]
+        public string? Phone { get; set; }
+
+        [EmailAddress(ErrorMessage = "Formato de email inválido")]
+        public string? Email { get; set; }
+
+        [Url(ErrorMessage = "Formato de URL inválido")]
+        public string? Website { get; set; }
+
+        public string DefaultCurrency { get; set; } = "USD";
+    }
+}

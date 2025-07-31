@@ -1,0 +1,193 @@
+﻿
+@if (IsDivider)
+{
+    <hr class="dropdown-divider @Class" />
+}
+else if (IsHeader)
+{
+    <h6 class="dropdown-header @Class">@ChildContent</h6>
+}
+else if (IsText)
+{
+    <span class="dropdown-item-text @Class">@ChildContent</span>
+}
+else
+{
+    <a class="@GetItemClass()"
+       href="@(Href ?? "#")"
+       @onclick="HandleClick"
+       @onclick:preventDefault="@(string.IsNullOrEmpty(Href))"
+       disabled="@Disabled"
+       tabindex="@(Disabled ? "-1" : "0")">
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <i class="@Icon @IconClass me-2"></i>
+        }
+        @ChildContent
+        @if (BadgeContent != null)
+        {
+            <span class="ms-auto">
+                @BadgeContent
+            </span>
+        }
+    </a>
+}
+
+@code {
+    [CascadingParameter] private IEzDropdown? ParentDropdown { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? BadgeContent { get; set; }
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public bool Disabled { get; set; } = false;
+    [Parameter] public bool Active { get; set; } = false;
+    [Parameter] public bool IsDivider { get; set; } = false;
+    [Parameter] public bool IsHeader { get; set; } = false;
+    [Parameter] public bool IsText { get; set; } = false;
+    [Parameter] public bool CloseOnClick { get; set; } = true;
+
+    // CSS Classes
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? IconClass { get; set; }
+
+    // Eventos
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    private async Task HandleClick(MouseEventArgs args)
+    {
+        if (!Disabled && !IsDivider && !IsHeader && !IsText)
+        {
+            await OnClick.InvokeAsync(args);
+
+            if (ParentDropdown != null && CloseOnClick)
+            {
+                await ParentDropdown.OnItemClickAsync(true);
+            }
+        }
+    }
+
+    private string GetItemClass()
+    {
+        var classes = new List<string> { "dropdown-item" };
+
+        if (Active)
+        {
+            classes.Add("active");
+        }
+
+        if (Disabled)
+        {
+            classes.Add("disabled");
+        }
+
+        if (!string.IsNullOrEmpty(Class))
+        {
+            classes.Add(Class);
+        }
+
+        return string.Join(" ", classes);
+    }
+}
+
+<style>
+    .dropdown-item {
+        display: block;
+        width: 100%;
+        padding: var(--bs-dropdown-item-padding-y) var(--bs-dropdown-item-padding-x);
+        clear: both;
+        font-weight: 400;
+        color: var(--bs-dropdown-link-color);
+        text-align: inherit;
+        text-decoration: none;
+        white-space: nowrap;
+        background-color: transparent;
+        border: 0;
+        cursor: pointer;
+        transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out;
+    }
+
+        .dropdown-item:hover,
+        .dropdown-item:focus {
+            color: var(--bs-dropdown-link-hover-color);
+            background-color: var(--bs-dropdown-link-hover-bg);
+        }
+
+        .dropdown-item.active,
+        .dropdown-item:active {
+            color: var(--bs-dropdown-link-active-color);
+            text-decoration: none;
+            background-color: var(--bs-dropdown-link-active-bg);
+        }
+
+        .dropdown-item.disabled,
+        .dropdown-item:disabled {
+            color: var(--bs-dropdown-link-disabled-color);
+            pointer-events: none;
+            background-color: transparent;
+            opacity: 0.5;
+        }
+
+    .dropdown-divider {
+        height: 0;
+        margin: var(--bs-dropdown-divider-margin-y) 0;
+        overflow: hidden;
+        border-top: 1px solid var(--bs-dropdown-divider-bg);
+        opacity: 1;
+    }
+
+    .dropdown-item-text {
+        display: block;
+        padding: var(--bs-dropdown-item-padding-y) var(--bs-dropdown-item-padding-x);
+        color: var(--bs-dropdown-link-color);
+    }
+
+    .dropdown-header {
+        display: block;
+        padding: var(--bs-dropdown-header-padding);
+        margin-bottom: 0;
+        font-size: 0.875rem;
+        color: var(--bs-dropdown-header-color);
+        white-space: nowrap;
+    }
+
+    /* Iconos en dropdown */
+    .dropdown-item i {
+        width: 1.25rem;
+        text-align: center;
+    }
+
+    /* Dark mode */
+    .dropdown-menu-dark .dropdown-item {
+        color: var(--bs-dropdown-dark-link-color);
+    }
+
+        .dropdown-menu-dark .dropdown-item:hover,
+        .dropdown-menu-dark .dropdown-item:focus {
+            color: var(--bs-dropdown-dark-link-hover-color);
+            background-color: var(--bs-dropdown-dark-link-hover-bg);
+        }
+
+        .dropdown-menu-dark .dropdown-item.active,
+        .dropdown-menu-dark .dropdown-item:active {
+            color: var(--bs-dropdown-dark-link-active-color);
+            background-color: var(--bs-dropdown-dark-link-active-bg);
+        }
+
+        .dropdown-menu-dark .dropdown-item.disabled,
+        .dropdown-menu-dark .dropdown-item:disabled {
+            color: var(--bs-dropdown-dark-link-disabled-color);
+        }
+
+    .dropdown-menu-dark .dropdown-divider {
+        border-color: var(--bs-dropdown-dark-divider-bg);
+    }
+
+    .dropdown-menu-dark .dropdown-item-text {
+        color: var(--bs-dropdown-dark-link-color);
+    }
+
+    .dropdown-menu-dark .dropdown-header {
+        color: var(--bs-dropdown-dark-header-color);
+    }
+</style>

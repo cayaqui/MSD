@@ -1,0 +1,425 @@
+﻿@page "/users"
+@using Web.Services.Implementation
+@inject IUserService UserService
+@inject ICompanyService CompanyService
+@inject NavigationManager Navigation
+@inject IToastService Toast
+@inject IAppStateService AppState
+@attribute [Authorize]
+
+<PageTitle>Usuarios - EzPro</PageTitle>
+@{
+    string newUserUrl = "/users/new";
+}
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <h1 class="page-title">
+                <i class="fa-light fa-users me-2"></i>Usuarios
+            </h1>
+            <p class="page-subtitle">Gestión de usuarios del sistema</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-primary me-2" @onclick="SyncWithAzureAD">
+                <i class="fa-light fa-sync me-2"></i>Sincronizar con Azure AD
+            </button>
+            <button class="btn btn-primary" @onclick="() => Navigation.NavigateTo(newUserUrl)">
+                <i class="fa-light fa-plus me-2"></i>Nuevo Usuario
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" placeholder="Buscar por nombre o email..."
+                       @bind="searchTerm" @bind:event="oninput" @onkeyup="@(async (e) => { if (e.Key == "Enter") await LoadUsers(); })">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="filterStatus">
+                    <option value="">Todos los estados</option>
+                    <option value="true">Activos</option>
+                    <option value="false">Inactivos</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="filterCompany">
+                    <option value="">Todas las empresas</option>
+                    @if (companies != null)
+                    {
+                        @foreach (var company in companies)
+                        {
+                            <option value="@company.Id">@company.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100" onclick="LoadUsers">
+                    <i class="fa-light fa-search me-2"></i>Buscar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+    </div>
+}
+else if (users.Any())
+{
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th width="40">
+                                <input type="checkbox" class="form-check-input"
+                                       @bind="selectAll" @onclick="ToggleSelectAll">
+                            </th>
+                            <th>Usuario</th>
+                            <th>Email</th>
+                            <th>Empresa</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Último acceso</th>
+                            <th width="120">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in users)
+                        {
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="form-check-input"
+                                           checked="@selectedUsers.Contains(user.Id)"
+                                           @onchange="() => ToggleUserSelection(user.Id)">
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-sm me-2">
+                                            @if (!string.IsNullOrEmpty(user.PhotoUrl))
+                                            {
+                                                <img src="@user.PhotoUrl" alt="@user.Name" class="rounded-circle">
+                                            }
+                                            else
+                                            {
+                                                <div class="avatar-initial rounded-circle bg-primary bg-opacity-10">
+                                                    @GetInitials(user.Name)
+                                                </div>
+                                            }
+                                        </div>
+                                        <div>
+                                            <div class="fw-medium">@user.Name</div>
+                                            <small class="text-muted">@user.JobTitle</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>@user.Email</td>
+                                
+                                <td>
+                                    @if (user.IsActive)
+                                    {
+                                        <span class="badge bg-success">Activo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Inactivo</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (user.LastLoginAt.HasValue)
+                                    {
+                                        <small>@user.LastLoginAt.Value.ToString("dd/MM/yyyy HH:mm")</small>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">Nunca</small>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary"
+                                                @onclick="() => ViewUser(user)"
+                                                title="Ver detalles">
+                                            <i class="fa-light fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-primary"
+                                                @onclick="() => EditUser(user)"
+                                                title="Editar">
+                                            <i class="fa-light fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger"
+                                                @onclick="() => DeleteUser(user)"
+                                                title="Eliminar">
+                                            <i class="fa-light fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if (totalPages > 1)
+        {
+            <div class="card-footer">
+                <nav aria-label="Paginación de usuarios">
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => LoadUsers(currentPage - 1)">
+                                <i class="fa-light fa-chevron-left"></i>
+                            </button>
+                        </li>
+                        @for (int i = 1; i <= totalPages; i++)
+                        {
+                            var pageNum = i;
+                            <li class="page-item @(currentPage == pageNum ? "active" : "")">
+                                <button class="page-link" @onclick="() => LoadUsers(pageNum)">
+                                    @pageNum
+                                </button>
+                            </li>
+                        }
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => LoadUsers(currentPage + 1)">
+                                <i class="fa-light fa-chevron-right"></i>
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+
+    @if (selectedUsers.Any())
+    {
+        <div class="position-fixed bottom-0 start-50 translate-middle-x mb-4">
+            <div class="card shadow">
+                <div class="card-body py-2">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="text-muted">@selectedUsers.Count usuario(s) seleccionado(s)</span>
+                        <button class="btn btn-sm btn-success" @onclick="ActivateSelected">
+                            <i class="fa-light fa-check me-1"></i>Activar
+                        </button>
+                        <button class="btn btn-sm btn-warning" @onclick="DeactivateSelected">
+                            <i class="fa-light fa-ban me-1"></i>Desactivar
+                        </button>
+                        <button class="btn btn-sm btn-light" @onclick="ClearSelection">
+                            <i class="fa-light fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div class="text-center py-5">
+        <i class="fa-light fa-users fa-3x text-muted mb-3"></i>
+        <h4 class="text-muted">No se encontraron usuarios</h4>
+        <p class="text-muted">Intente ajustar los filtros de búsqueda</p>
+    </div>
+}
+
+@code {
+    private List<UserDto> users = new();
+    private List<CompanyDto> companies = new();
+    private HashSet<Guid> selectedUsers = new();
+    private bool isLoading = true;
+    private bool selectAll = false;
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private int pageSize = 10;
+
+    // Filtros
+    private string searchTerm = "";
+    private string filterStatus = "";
+    private string filterCompany = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCompanies();
+        await LoadUsers();
+    }
+
+    private async Task LoadCompanies()
+    {
+        var response = await CompanyService.GetCompaniesAsync();
+        if (response.IsSuccess && response.Data != null)
+        {
+            companies = response.Data;
+        }
+    }
+
+    private async Task LoadUsers(int page = 1)
+    {
+        isLoading = true;
+        selectedUsers.Clear();
+        selectAll = false;
+
+        try
+        {
+            var filter = new UserFilterDto
+            {
+                SearchTerm = searchTerm,
+                IsActive = string.IsNullOrEmpty(filterStatus) ? null : bool.Parse(filterStatus),
+                CompanyId = string.IsNullOrEmpty(filterCompany) ? null : filterCompany
+            };
+
+            var response = await UserService.SearchUsersAsync(filter);
+            if (response.IsSuccess && response.Data != null)
+            {
+                users = response.Data.Items.ToList();
+                currentPage = response.Data.PageNumber;
+                totalPages = response.Data.TotalPages;
+            }
+        }
+        catch (Exception ex)
+        {
+            await Toast.ShowErrorAsync("Error al cargar usuarios");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ViewUser(UserDto user)
+    {
+        Navigation.NavigateTo($"/users/{user.Id}");
+    }
+
+    private void EditUser(UserDto user)
+    {
+        Navigation.NavigateTo($"/users/{user.Id}/edit");
+    }
+
+    private async Task DeleteUser(UserDto user)
+    {
+        // TODO: Agregar confirmación
+        var response = await UserService.DeleteUserAsync(user.Id);
+        if (response.IsSuccess)
+        {
+            await Toast.ShowSuccessAsync("Usuario eliminado");
+            await LoadUsers(currentPage);
+        }
+        else
+        {
+            await Toast.ShowErrorAsync("Error al eliminar usuario");
+        }
+    }
+
+    private async Task SyncWithAzureAD()
+    {
+        isLoading = true;
+        try
+        {
+            // TODO: Implementar sincronización
+            await Toast.ShowInfoAsync("Sincronización con Azure AD en desarrollo");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ToggleSelectAll()
+    {
+        if (selectAll)
+        {
+            selectedUsers.Clear();
+        }
+        else
+        {
+            selectedUsers = users.Select(u => u.Id).ToHashSet();
+        }
+    }
+
+    private void ToggleUserSelection(Guid userId)
+    {
+        if (selectedUsers.Contains(userId))
+        {
+            selectedUsers.Remove(userId);
+        }
+        else
+        {
+            selectedUsers.Add(userId);
+        }
+
+        selectAll = selectedUsers.Count == users.Count;
+    }
+
+    private async Task ActivateSelected()
+    {
+        var dto = new BulkUserOperationDto { UserIds = selectedUsers.ToList() };
+        var response = await UserService.BulkActivateUsersAsync(dto);
+
+        if (response.IsSuccess)
+        {
+            await Toast.ShowSuccessAsync($"{response.Data} usuario(s) activado(s)");
+            await LoadUsers(currentPage);
+        }
+    }
+
+    private async Task DeactivateSelected()
+    {
+        var dto = new BulkUserOperationDto { UserIds = selectedUsers.ToList() };
+        var response = await UserService.BulkDeactivateUsersAsync(dto);
+
+        if (response.Success)
+        {
+            await Toast.ShowSuccessAsync($"{response.Data} usuario(s) desactivado(s)");
+            await LoadUsers(currentPage);
+        }
+    }
+
+    private void ClearSelection()
+    {
+        selectedUsers.Clear();
+        selectAll = false;
+    }
+
+    private string GetInitials(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        return name[0].ToString().ToUpper();
+    }
+}
+
+<style>
+    .avatar {
+        width: 36px;
+        height: 36px;
+    }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+    .avatar-initial {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        color: var(--bs-primary);
+    }
+</style>

@@ -1,0 +1,205 @@
+﻿
+<div class="card project-card h-100" @onclick="OnClick">
+    <div class="card-header border-0 pb-0">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <span class="badge bg-light text-primary">@Project.Code</span>
+                <ProjectStatusBadge Status="@Project.Status" Class="ms-2" />
+            </div>
+            <div class="dropdown" @onclick:stopPropagation="true">
+                <button class="btn btn-link btn-sm text-muted" type="button" data-bs-toggle="dropdown">
+                    <i class="fa-light fa-ellipsis-v"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item" href="/projects/@Project.Id/edit">
+                            <i class="fa-light fa-edit me-2"></i>Editar
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="/projects/@Project.Id/dashboard">
+                            <i class="fa-light fa-chart-line me-2"></i>Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="/projects/@Project.Id/wbs">
+                            <i class="fa-light fa-sitemap me-2"></i>WBS
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    @if (Project.Status == "Planning")
+                    {
+                        <li>
+                            <button class="dropdown-item" @onclick="() => OnStatusChange.InvokeAsync(Project)">
+                                <i class="fa-light fa-play text-success me-2"></i>Iniciar Proyecto
+                            </button>
+                        </li>
+                    }
+                    @if (Project.Status == "Active")
+                    {
+                        <li>
+                            <button class="dropdown-item" @onclick="() => OnStatusChange.InvokeAsync(Project)">
+                                <i class="fa-light fa-pause text-warning me-2"></i>Poner en Espera
+                            </button>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <h5 class="card-title mb-1">@Project.Name</h5>
+        @if (!string.IsNullOrEmpty(Project.UserRole))
+        {
+            <p class="text-muted small mb-3">
+                <i class="fa-light fa-user me-1"></i>@Project.UserRole
+            </p>
+        }
+
+        <div class="project-info">
+            <div class="info-item">
+                <i class="fa-light fa-building text-muted"></i>
+                <span>@Project.OperationName</span>
+            </div>
+            <div class="info-item">
+                <i class="fa-light fa-calendar text-muted"></i>
+                <span>@Project.PlannedStartDate.ToString("dd/MM/yy") - @Project.PlannedEndDate.ToString("dd/MM/yy")</span>
+            </div>
+            <div class="info-item">
+                <i class="fa-light fa-dollar-sign text-muted"></i>
+                <span>@Project.Currency @FormatCurrency(Project.TotalBudget)</span>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <small class="text-muted">Progreso</small>
+                <small class="fw-medium">@Project.ProgressPercentage%</small>
+            </div>
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar @GetProgressBarClass(Project.ProgressPercentage)"
+                     role="progressbar"
+                     style="width: @Project.ProgressPercentage%"
+                     aria-valuenow="@Project.ProgressPercentage"
+                     aria-valuemin="0"
+                     aria-valuemax="100">
+                </div>
+            </div>
+        </div>
+
+        @if (ShowMetrics)
+        {
+            <div class="project-metrics mt-3 pt-3 border-top">
+                <div class="row g-2 text-center">
+                    <div class="col-4">
+                        <div class="metric-value">@GetDaysRemaining()</div>
+                        <div class="metric-label">Días Rest.</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="metric-value">@GetCPI()</div>
+                        <div class="metric-label">CPI</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="metric-value">@GetSPI()</div>
+                        <div class="metric-label">SPI</div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+    @if (Project.IsActive)
+    {
+        <div class="card-footer bg-success-subtle text-success text-center py-2">
+            <small><i class="fa-light fa-circle-check me-1"></i>Proyecto Activo</small>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ProjectListDto Project { get; set; } = null!;
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public EventCallback<ProjectListDto> OnStatusChange { get; set; }
+    [Parameter] public bool ShowMetrics { get; set; } = true;
+
+    private string FormatCurrency(decimal amount)
+    {
+        if (amount >= 1000000)
+            return $"{amount / 1000000:N1}M";
+        if (amount >= 1000)
+            return $"{amount / 1000:N0}K";
+        return amount.ToString("N0");
+    }
+
+    private string GetProgressBarClass(decimal progress)
+    {
+        if (progress < 25) return "bg-danger";
+        if (progress < 50) return "bg-warning";
+        if (progress < 75) return "bg-info";
+        return "bg-success";
+    }
+
+    private int GetDaysRemaining()
+    {
+        var remaining = (Project.PlannedEndDate - DateTime.Now).Days;
+        return Math.Max(0, remaining);
+    }
+
+    private string GetCPI()
+    {
+        // Simulado - en producción vendría del servicio
+        return "0.95";
+    }
+
+    private string GetSPI()
+    {
+        // Simulado - en producción vendría del servicio
+        return "0.88";
+    }
+}
+
+<style>
+    .project-card {
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: 1px solid var(--bs-gray-200);
+    }
+
+        .project-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: var(--bs-primary);
+        }
+
+    .project-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+        .info-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+    .project-metrics {
+        font-size: 0.875rem;
+    }
+
+    .metric-value {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--bs-primary);
+    }
+
+    .metric-label {
+        color: var(--bs-gray-600);
+        font-size: 0.75rem;
+    }
+</style>

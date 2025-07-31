@@ -1,0 +1,551 @@
+﻿@inherits InputBase<string> 
+@using System.Linq.Expressions
+
+<div class="@GetContainerClass()">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label for="@inputId" class="@GetLabelClass()">
+            @Label
+            @if (Required)
+            {
+                <span class="text-danger">*</span>
+            }
+            @if (!string.IsNullOrEmpty(HelpText) && HelpTextPosition == Position.Label)
+            {
+                <EzTooltip Text="@HelpText" Icon="fa-light fa-circle-question" Class="ms-1" />
+            }
+        </label>
+    }
+
+    <div class="@GetInputGroupClass()">
+        @if (!string.IsNullOrEmpty(PrependText) || PrependContent != null)
+        {
+            <span class="input-group-text @PrependClass">
+                @if (PrependContent != null)
+                {
+                    @PrependContent
+                }
+                else
+                {
+                    @PrependText
+                }
+            </span>
+        }
+
+        @if (!string.IsNullOrEmpty(PrependIcon))
+        {
+            <span class="input-group-text @PrependClass">
+                <i class="@PrependIcon"></i>
+            </span>
+        }
+
+        <input @ref="inputElement"
+               id="@inputId"
+               type="@GetInputType()"
+               class="@GetInputClass()"
+               value="@CurrentValue"
+               @oninput="HandleInput"
+               @onchange="HandleChange"
+               @onfocus="HandleFocus"
+               @onblur="HandleBlur"
+               @onkeydown="HandleKeyDown"
+               @onkeyup="HandleKeyUp"
+               @onkeypress="HandleKeyPress"
+               placeholder="@Placeholder"
+               disabled="@Disabled"
+               readonly="@Readonly"
+               required="@Required"
+               maxlength="@(MaxLength > 0 ? MaxLength : null)"
+               pattern="@Pattern"
+               autocomplete="@Autocomplete"
+               @attributes="AdditionalAttributes" />
+
+        @if (!string.IsNullOrEmpty(AppendIcon))
+        {
+            <span class="input-group-text @AppendClass">
+                <i class="@AppendIcon"></i>
+            </span>
+        }
+
+        @if (!string.IsNullOrEmpty(AppendText) || AppendContent != null)
+        {
+            <span class="input-group-text @AppendClass">
+                @if (AppendContent != null)
+                {
+                    @AppendContent
+                }
+                else
+                {
+                    @AppendText
+                }
+            </span>
+        }
+
+        @if (ShowClearButton && !string.IsNullOrEmpty(CurrentValue) && !Disabled && !Readonly)
+        {
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    @onclick="ClearValue"
+                    tabindex="-1">
+                <i class="fa-light fa-times"></i>
+            </button>
+        }
+
+        @if (ShowPasswordToggle && InputType == TextInputType.Password)
+        {
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    @onclick="TogglePasswordVisibility"
+                    tabindex="-1">
+                <i class="fa-light @(showPassword ? "fa-eye-slash" : "fa-eye")"></i>
+            </button>
+        }
+
+        @if (ShowCharacterCount && MaxLength > 0)
+        {
+            <span class="input-group-text @(currentLength > MaxLength * 0.9 ? "text-danger" : "text-muted")">
+                @currentLength/@MaxLength
+            </span>
+        }
+
+        @if (IsValidated)
+        {
+            <div class="valid-feedback">
+                @(SuccessMessage ?? "¡Se ve bien!")
+            </div>
+            <div class="invalid-feedback">
+                @GetErrorMessage()
+            </div>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(HelpText) && HelpTextPosition == Position.Bottom)
+    {
+        <small class="form-text text-muted">@HelpText</small>
+    }
+
+    @if (ShowValidationMessage && !IsValidated)
+    {
+        <ValidationMessage For="ValueExpression" class="text-danger" />
+    }
+</div>
+
+@code {
+    // Parámetros de presentación
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? HelpText { get; set; }
+    [Parameter] public Position HelpTextPosition { get; set; } = Position.Bottom;
+    [Parameter] public string? SuccessMessage { get; set; }
+
+    // Tipo de input
+    [Parameter] public TextInputType InputType { get; set; } = TextInputType.Text;
+    [Parameter] public bool ShowPasswordToggle { get; set; } = true;
+
+    // Validación
+    [Parameter] public bool Required { get; set; } = false;
+    [Parameter] public int MaxLength { get; set; } = 0;
+    [Parameter] public int MinLength { get; set; } = 0;
+    [Parameter] public string? Pattern { get; set; }
+    [Parameter] public string? CustomErrorMessage { get; set; }
+    [Parameter] public bool ShowValidationMessage { get; set; } = true;
+    [Parameter] public bool IsValidated { get; set; } = false;
+
+    // Comportamiento
+    [Parameter] public bool Disabled { get; set; } = false;
+    [Parameter] public bool Readonly { get; set; } = false;
+    [Parameter] public bool ShowClearButton { get; set; } = false;
+    [Parameter] public bool ShowCharacterCount { get; set; } = false;
+    [Parameter] public bool UpdateOnInput { get; set; } = false;
+    [Parameter] public int DebounceDelay { get; set; } = 0;
+    [Parameter] public string? Autocomplete { get; set; }
+
+    // Apariencia
+    [Parameter] public InputSize Size { get; set; } = InputSize.Default;
+    [Parameter] public bool IsFloatingLabel { get; set; } = false;
+    [Parameter] public string? PrependText { get; set; }
+    [Parameter] public string? AppendText { get; set; }
+    [Parameter] public string? PrependIcon { get; set; }
+    [Parameter] public string? AppendIcon { get; set; }
+    [Parameter] public RenderFragment? PrependContent { get; set; }
+    [Parameter] public RenderFragment? AppendContent { get; set; }
+
+    // CSS Classes
+    [Parameter] public string? ContainerClass { get; set; }
+    [Parameter] public string? LabelClass { get; set; }
+    [Parameter] public string? InputClass { get; set; }
+    [Parameter] public string? PrependClass { get; set; }
+    [Parameter] public string? AppendClass { get; set; }
+
+    // Eventos
+    [Parameter] public EventCallback<string?> OnInput { get; set; }
+    [Parameter] public EventCallback<string?> OnChange { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnFocus { get; set; }
+    [Parameter] public EventCallback<FocusEventArgs> OnBlur { get; set; }
+    [Parameter] public EventCallback<KeyboardEventArgs> OnKeyDown { get; set; }
+    [Parameter] public EventCallback<KeyboardEventArgs> OnKeyUp { get; set; }
+    [Parameter] public EventCallback<KeyboardEventArgs> OnKeyPress { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+
+    // Enums
+    public enum TextInputType
+    {
+        Text,
+        Password,
+        Email,
+        Tel,
+        Url,
+        Search
+    }
+
+    public enum InputSize
+    {
+        Small,
+        Default,
+        Large
+    }
+
+    public enum Position
+    {
+        Label,
+        Bottom
+    }
+
+    // Estado interno
+    private ElementReference inputElement;
+    private string inputId = $"input-{Guid.NewGuid():N}";
+    private bool showPassword = false;
+    private int currentLength = 0;
+    private CancellationTokenSource? debounceCts;
+    private bool isFocused = false;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        currentLength = CurrentValue?.Length ?? 0;
+    }
+
+    protected override bool TryParseValueFromString(string? value, out string result, out string validationErrorMessage)
+    {
+        result = value ?? string.Empty;
+        validationErrorMessage = string.Empty;
+
+        // Validaciones personalizadas
+        if (Required && string.IsNullOrWhiteSpace(result))
+        {
+            validationErrorMessage = CustomErrorMessage ?? "Este campo es requerido.";
+            return false;
+        }
+
+        if (MinLength > 0 && result.Length < MinLength)
+        {
+            validationErrorMessage = CustomErrorMessage ?? $"Debe tener al menos {MinLength} caracteres.";
+            return false;
+        }
+
+        if (MaxLength > 0 && result.Length > MaxLength)
+        {
+            validationErrorMessage = CustomErrorMessage ?? $"No puede exceder {MaxLength} caracteres.";
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(Pattern))
+        {
+            var regex = new System.Text.RegularExpressions.Regex(Pattern);
+            if (!regex.IsMatch(result))
+            {
+                validationErrorMessage = CustomErrorMessage ?? "El formato no es válido.";
+                return false;
+            }
+        }
+
+        // Validaciones específicas por tipo
+        switch (InputType)
+        {
+            case TextInputType.Email:
+                if (!string.IsNullOrEmpty(result) && !IsValidEmail(result))
+                {
+                    validationErrorMessage = CustomErrorMessage ?? "Ingrese un email válido.";
+                    return false;
+                }
+                break;
+
+            case TextInputType.Url:
+                if (!string.IsNullOrEmpty(result) && !IsValidUrl(result))
+                {
+                    validationErrorMessage = CustomErrorMessage ?? "Ingrese una URL válida.";
+                    return false;
+                }
+                break;
+        }
+
+        return true;
+    }
+
+    private async Task HandleInput(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        currentLength = value?.Length ?? 0;
+
+        if (UpdateOnInput)
+        {
+            if (DebounceDelay > 0)
+            {
+                debounceCts?.Cancel();
+                debounceCts = new CancellationTokenSource();
+
+                try
+                {
+                    await Task.Delay(DebounceDelay, debounceCts.Token);
+                    CurrentValue = value;
+                }
+                catch (TaskCanceledException)
+                {
+                    // Debounce cancelado
+                }
+            }
+            else
+            {
+                CurrentValue = value;
+            }
+        }
+
+        await OnInput.InvokeAsync(value);
+    }
+
+    private async Task HandleChange(ChangeEventArgs e)
+    {
+        if (!UpdateOnInput)
+        {
+            var value = e.Value?.ToString();
+            CurrentValue = value;
+            currentLength = value?.Length ?? 0;
+        }
+
+        await OnChange.InvokeAsync(CurrentValue);
+    }
+
+    private async Task HandleFocus(FocusEventArgs e)
+    {
+        isFocused = true;
+        await OnFocus.InvokeAsync(e);
+    }
+
+    private async Task HandleBlur(FocusEventArgs e)
+    {
+        isFocused = false;
+        await OnBlur.InvokeAsync(e);
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        await OnKeyDown.InvokeAsync(e);
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        await OnKeyUp.InvokeAsync(e);
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        await OnKeyPress.InvokeAsync(e);
+    }
+
+    private async Task ClearValue()
+    {
+        CurrentValue = string.Empty;
+        currentLength = 0;
+        await OnClear.InvokeAsync();
+        await inputElement.FocusAsync();
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+    }
+
+    private string GetInputType()
+    {
+        if (InputType == TextInputType.Password && !showPassword)
+            return "password";
+
+        return InputType switch
+        {
+            TextInputType.Email => "email",
+            TextInputType.Tel => "tel",
+            TextInputType.Url => "url",
+            TextInputType.Search => "search",
+            _ => "text"
+        };
+    }
+
+    private string GetContainerClass()
+    {
+        var classes = new List<string>();
+
+        if (IsFloatingLabel)
+        {
+            classes.Add("form-floating");
+        }
+        else if (!string.IsNullOrEmpty(Label))
+        {
+            classes.Add("mb-3");
+        }
+
+        if (!string.IsNullOrEmpty(ContainerClass))
+        {
+            classes.Add(ContainerClass);
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetLabelClass()
+    {
+        var classes = new List<string> { "form-label" };
+
+        if (!string.IsNullOrEmpty(LabelClass))
+        {
+            classes.Add(LabelClass);
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetInputGroupClass()
+    {
+        var hasGroup = !string.IsNullOrEmpty(PrependText) || !string.IsNullOrEmpty(AppendText) ||
+                      !string.IsNullOrEmpty(PrependIcon) || !string.IsNullOrEmpty(AppendIcon) ||
+                      PrependContent != null || AppendContent != null ||
+                      ShowClearButton || (ShowPasswordToggle && InputType == TextInputType.Password) ||
+                      (ShowCharacterCount && MaxLength > 0);
+
+        return hasGroup ? "input-group" : "";
+    }
+
+    private string GetInputClass()
+    {
+        var classes = new List<string> { "form-control" };
+
+        // Size
+        if (Size != InputSize.Default)
+        {
+            classes.Add($"form-control-{Size.ToString().ToLower()}");
+        }
+
+        // Validation state
+        if (IsValidated || (EditContext?.GetValidationMessages(FieldIdentifier).Any() ?? false))
+        {
+            if (EditContext?.GetValidationMessages(FieldIdentifier).Any() ?? false)
+            {
+                classes.Add("is-invalid");
+            }
+            else if (!string.IsNullOrEmpty(CurrentValue))
+            {
+                classes.Add("is-valid");
+            }
+        }
+
+        // Custom class
+        if (!string.IsNullOrEmpty(InputClass))
+        {
+            classes.Add(InputClass);
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetErrorMessage()
+    {
+        if (!string.IsNullOrEmpty(CustomErrorMessage))
+            return CustomErrorMessage;
+
+        var messages = EditContext?.GetValidationMessages(FieldIdentifier);
+        return messages?.FirstOrDefault() ?? "Por favor, ingrese un valor válido.";
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private bool IsValidUrl(string url)
+    {
+        return Uri.TryCreate(url, UriKind.Absolute, out var result) &&
+               (result.Scheme == Uri.UriSchemeHttp || result.Scheme == Uri.UriSchemeHttps);
+    }
+
+    public async Task FocusAsync()
+    {
+        await inputElement.FocusAsync();
+    }
+
+    public async Task SelectAsync()
+    {
+        await inputElement.FocusAsync();
+    }
+}
+
+<style>
+    /* Estilos personalizados para el input */
+    .form-control:focus {
+        border-color: var(--bs-primary);
+        box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
+    }
+
+    /* Floating labels */
+    .form-floating > .form-control {
+        height: calc(3.5rem + 2px);
+        line-height: 1.25;
+        padding: 1rem 0.75rem;
+    }
+
+    .form-floating > label {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        padding: 1rem 0.75rem;
+        pointer-events: none;
+        border: 1px solid transparent;
+        transform-origin: 0 0;
+        transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+    }
+
+    .form-floating > .form-control:focus ~ label,
+    .form-floating > .form-control:not(:placeholder-shown) ~ label {
+        opacity: 0.65;
+        transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
+    }
+
+    /* Character count */
+    .input-group-text.text-danger {
+        background-color: var(--bs-danger-bg-subtle);
+        border-color: var(--bs-danger);
+    }
+
+    /* Clear button */
+    .btn-outline-secondary:hover .fa-times {
+        color: var(--bs-danger);
+    }
+
+    /* Input group adjustments */
+    .input-group > .form-control:not(:last-child) {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .input-group > .form-control:not(:first-child) {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+</style>

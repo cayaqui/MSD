@@ -1,0 +1,113 @@
+﻿@inject NavigationManager Navigation
+
+@if (breadcrumbs.Any())
+{
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="/"><i class="fa-light fa-home"></i></a>
+            </li>
+            @foreach (var item in breadcrumbs)
+            {
+                @if (item == breadcrumbs.Last())
+                {
+                    <li class="breadcrumb-item active" aria-current="page">@item.Name</li>
+                }
+                else
+                {
+                    <li class="breadcrumb-item">
+                        <a href="@item.Url">@item.Name</a>
+                    </li>
+                }
+            }
+        </ol>
+    </nav>
+}
+
+@code {
+    private List<BreadcrumbItem> breadcrumbs = new();
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        GenerateBreadcrumbs();
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        GenerateBreadcrumbs();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void GenerateBreadcrumbs()
+    {
+        breadcrumbs.Clear();
+        var uri = Navigation.ToBaseRelativePath(Navigation.Uri);
+
+        if (string.IsNullOrEmpty(uri))
+            return;
+
+        var segments = uri.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var currentPath = "";
+
+        foreach (var segment in segments)
+        {
+            currentPath += $"/{segment}";
+            var name = GetFriendlyName(segment, currentPath);
+
+            if (!string.IsNullOrEmpty(name))
+            {
+                breadcrumbs.Add(new BreadcrumbItem
+                {
+                    Name = name,
+                    Url = currentPath
+                });
+            }
+        }
+    }
+
+    private string GetFriendlyName(string segment, string fullPath)
+    {
+        // Mapeo de rutas a nombres amigables
+        var mappings = new Dictionary<string, string>
+        {
+            { "projects", "Proyectos" },
+            { "companies", "Empresas" },
+            { "users", "Usuarios" },
+            { "team-members", "Miembros del Equipo" },
+            { "scope", "Alcance" },
+            { "wbs", "WBS/EDT" },
+            { "schedule", "Cronograma" },
+            { "gantt", "Diagrama Gantt" },
+            { "cost", "Costos" },
+            { "evm", "Valor Ganado" },
+            { "contracts", "Contratos" },
+            { "risks", "Riesgos" },
+            { "quality", "Calidad" },
+            { "documents", "Documentos" },
+            { "reports", "Reportes" },
+            { "configuration", "Configuración" },
+            { "system", "Sistema" },
+            { "new", "Nuevo" },
+            { "edit", "Editar" },
+            { "detail", "Detalle" }
+        };
+
+        // Si es un GUID, probablemente es un ID, lo omitimos
+        if (Guid.TryParse(segment, out _))
+            return "";
+
+        return mappings.TryGetValue(segment.ToLower(), out var name) ? name : segment;
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+
+    private class BreadcrumbItem
+    {
+        public string Name { get; set; } = "";
+        public string Url { get; set; } = "";
+    }
+}
