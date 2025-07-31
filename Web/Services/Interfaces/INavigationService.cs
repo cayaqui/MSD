@@ -1,5 +1,5 @@
 ﻿using System.Security.Claims;
-using Web.Models;
+using Web.Models.Navigation;
 using Web.Services.Implementation;
 
 namespace Web.Services.Interfaces

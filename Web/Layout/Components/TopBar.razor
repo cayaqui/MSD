@@ -1,179 +1,339 @@
-﻿@inject NavigationManager Navigation
-@inject IToastService ToastService
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Web.Models.Navigation
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject IProjectService ProjectService
+@inject IUserService UserService
+@inject IToastService NotificationService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
-<header class="topbar">
-    <div class="container-fluid">
-        <div class="d-flex align-items-center">
-            <!-- Toggle Sidebar -->
-            <button class="btn btn-link sidebar-toggle" @onclick="ToggleSidebar">
-                <i class="fa-light fa-bars"></i>
-            </button>
-
-            <!-- Search -->
-            <div class="search-box ms-3">
-                <div class="input-group">
-                    <span class="input-group-text border-0 bg-transparent">
-                        <i class="fa-light fa-search"></i>
+<header class="app-header">
+    <div class="main-header-container container-fluid">
+        <!-- Header Left -->
+        <div class="header-content-left">
+            <!-- Toggle Button -->
+            <div class="header-element">
+                <a href="javascript:void(0);" class="sidemenu-toggle header-link" 
+                   data-bs-toggle="sidebar" @onclick="ToggleSidebar">
+                    <span class="open-toggle">
+                        <i class="fe fe-menu header-link-icon"></i>
                     </span>
-                    <input type="text" class="form-control border-0" placeholder="Buscar proyectos, documentos..."
-                           @bind="searchQuery" @onkeyup="@(async (e) => { if (e.Key == "Enter") await Search(); })" />
-                </div>
+                    <span class="close-toggle">
+                        <i class="fe fe-x header-link-icon"></i>
+                    </span>
+                </a>
             </div>
-
-            <!-- Right Side Items -->
-            <div class="ms-auto d-flex align-items-center">
-                <!-- Quick Actions -->
-                <div class="dropdown me-3">
-                    <button class="btn btn-primary btn-sm dropdown-toggle" type="button"
-                            data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fa-light fa-plus me-1"></i> Nuevo
+            
+            <!-- Project Selector -->
+            <div class="header-element ms-3">
+                <div class="dropdown">
+                    <button class="btn btn-outline-light btn-sm dropdown-toggle" 
+                            @onclick="ToggleProjectDropdown">
+                        <i class="fe fe-briefcase me-2"></i>
+                        <span>@currentProjectName</span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li>
-                            <a class="dropdown-item" href="/projects/new">
-                                <i class="fa-light fa-project-diagram me-2"></i>Proyecto
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="/companies/new">
-                                <i class="fa-light fa-building me-2"></i>Empresa
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="/users/new">
-                                <i class="fa-light fa-user me-2"></i>Usuario
-                            </a>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item" href="/documents/upload">
-                                <i class="fa-light fa-upload me-2"></i>Subir Documento
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-
-                <!-- Notifications -->
-                <div class="dropdown me-3">
-                    <button class="btn btn-link position-relative" type="button"
-                            data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fa-light fa-bell fs-5"></i>
-                        @if (unreadNotifications > 0)
-                        {
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                @unreadNotifications
-                                <span class="visually-hidden">notificaciones no leídas</span>
-                            </span>
-                        }
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-end notification-dropdown">
-                        <div class="dropdown-header d-flex align-items-center justify-content-between">
-                            <span>Notificaciones</span>
-                            @if (unreadNotifications > 0)
+                    
+                    @if (showProjectDropdown)
+                    {
+                        <div class="dropdown-menu show main-header-dropdown">
+                            <div class="p-3 border-bottom">
+                                <h6 class="mb-0">Proyectos Activos</h6>
+                            </div>
+                            <div class="p-2">
+                                <input type="text" class="form-control form-control-sm" 
+                                       placeholder="Buscar proyecto..." 
+                                       @bind="projectSearchQuery"
+                                       @bind:event="oninput" />
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            @foreach (var project in filteredProjects)
                             {
-                                <a href="#" class="text-primary small" @onclick="MarkAllAsRead" @onclick:preventDefault="true">
-                                    Marcar todas como leídas
+                                <a class="dropdown-item @(project.Id == currentProjectId ? "active" : "")" 
+                                   @onclick="@(() => SelectProject(project))">
+                                    <i class="fe fe-folder me-2"></i>@project.Name
+                                    <span class="badge bg-@project.StatusColor ms-auto">@project.Status</span>
                                 </a>
                             }
-                        </div>
-                        <div class="dropdown-divider"></div>
-                        <div class="notification-list">
-                            @if (notifications.Any())
-                            {
-                                @foreach (var notification in notifications.Take(5))
-                                {
-                                    <a class="dropdown-item notification-item @(!notification.IsRead ? "unread" : "")"
-                                       href="@notification.Link">
-                                        <div class="d-flex">
-                                            <div class="notification-icon me-3">
-                                                <i class="@notification.Icon"></i>
-                                            </div>
-                                            <div class="flex-grow-1">
-                                                <div class="notification-title">@notification.Title</div>
-                                                <div class="notification-text">@notification.Message</div>
-                                                <div class="notification-time">@GetRelativeTime(notification.CreatedAt)</div>
-                                            </div>
-                                        </div>
-                                    </a>
-                                }
-                            }
-                            else
-                            {
-                                <div class="text-center py-3 text-muted">
-                                    <i class="fa-light fa-bell-slash fs-3 mb-2 d-block"></i>
-                                    No hay notificaciones
-                                </div>
-                            }
-                        </div>
-                        @if (notifications.Count > 5)
-                        {
                             <div class="dropdown-divider"></div>
-                            <a class="dropdown-item text-center" href="/notifications">
-                                Ver todas las notificaciones
+                            <a class="dropdown-item" href="/projects">
+                                <i class="fe fe-grid me-2"></i>Ver Todos
                             </a>
-                        }
-                    </div>
-                </div>
-
-                <!-- User Menu -->
-                <div class="dropdown">
-                    <button class="btn btn-link d-flex align-items-center" type="button"
-                            data-bs-toggle="dropdown" aria-expanded="false">
-                        <img src="@userAvatar" alt="Avatar" class="user-avatar me-2" />
-                        <span class="d-none d-md-inline">@userName</span>
-                        <i class="fa-light fa-angle-down ms-1"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li class="dropdown-header">
-                            <div class="fw-bold">@userName</div>
-                            <div class="small text-muted">@userEmail</div>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item" href="/profile">
-                                <i class="fa-light fa-user me-2"></i>Mi Perfil
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="/settings">
-                                <i class="fa-light fa-cog me-2"></i>Configuración
-                            </a>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item" href="/authentication/logout">
-                                <i class="fa-light fa-sign-out me-2"></i>Cerrar Sesión
-                            </a>
-                        </li>
-                    </ul>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
+        
+        <!-- Header Right -->
+        <div class="header-content-right">
+            <!-- Search -->
+            <div class="header-element d-none d-md-block">
+                <a href="javascript:void(0);" class="header-link" 
+                   data-bs-toggle="modal" data-bs-target="#searchModal"
+                   @onclick="OpenSearchModal">
+                    <i class="fe fe-search header-link-icon"></i>
+                </a>
+            </div>
+            
+            <!-- Quick Create -->
+            <div class="header-element">
+                <a href="javascript:void(0);" class="header-link"
+                   @onclick="ToggleQuickCreate"
+                   data-bs-toggle="tooltip" title="Crear Nuevo">
+                    <i class="fe fe-plus header-link-icon"></i>
+                </a>
+            </div>
+            
+            <!-- Notifications -->
+            <div class="header-element notifications-dropdown">
+                <a href="javascript:void(0);" class="header-link"
+                   data-bs-toggle="dropdown" 
+                   @onclick="ToggleNotifications">
+                    <i class="fe fe-bell header-link-icon"></i>
+                    @if (unreadCount > 0)
+                    {
+                        <span class="badge bg-danger header-icon-badge">@(unreadCount > 9 ? "9+" : unreadCount)</span>
+                    }
+                </a>
+                
+                @if (showNotifications)
+                {
+                    <div class="dropdown-menu dropdown-menu-end show main-header-dropdown">
+                        <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+                            <h6 class="mb-0">Notificaciones</h6>
+                            @if (notifications.Any(n => !n.IsRead))
+                            {
+                                <a href="javascript:void(0);" class="text-primary" @onclick="MarkAllAsRead">
+                                    Marcar todas
+                                </a>
+                            }
+                        </div>
+                        <div class="dropdown-menu-list" style="max-height: 300px; overflow-y: auto;">
+                            @foreach (var notification in notifications.Take(5))
+                            {
+                                <a class="dropdown-item @(!notification.IsRead ? "unread" : "")" 
+                                   @onclick="@(() => HandleNotificationClick(notification))">
+                                    <div class="d-flex align-items-start">
+                                        <div class="pe-2">
+                                            <span class="avatar avatar-sm bg-@notification.IconColor-transparent">
+                                                <i class="@notification.Icon"></i>
+                                            </span>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <h6 class="mb-0 fw-semibold">@notification.Title</h6>
+                                                <span class="text-muted fs-11">@GetRelativeTime(notification.CreatedAt)</span>
+                                            </div>
+                                            <div class="text-muted fs-12">@notification.Message</div>
+                                        </div>
+                                    </div>
+                                </a>
+                            }
+                        </div>
+                        <div class="p-2 border-top text-center">
+                            <a href="/notifications" class="text-primary">Ver todas</a>
+                        </div>
+                    </div>
+                }
+            </div>
+            
+            <!-- User Profile -->
+            <div class="header-element">
+                <a href="javascript:void(0);" class="header-link"
+                   data-bs-toggle="dropdown" @onclick="ToggleUserMenu">
+                    <img src="@userAvatar" alt="@userName" class="header-profile-user rounded-circle" />
+                </a>
+                
+                @if (showUserMenu)
+                {
+                    <div class="dropdown-menu dropdown-menu-end show main-header-dropdown pt-0">
+                        <div class="header-navheading border-bottom">
+                            <h6 class="main-notification-title">@userName</h6>
+                            <p class="main-notification-text mb-0">@userRole</p>
+                        </div>
+                        <a class="dropdown-item" href="/profile">
+                            <i class="fe fe-user fs-16 align-middle me-2"></i>Mi Perfil
+                        </a>
+                        <a class="dropdown-item" href="/settings">
+                            <i class="fe fe-settings fs-16 align-middle me-2"></i>Configuración
+                        </a>
+                        <a class="dropdown-item" href="/help">
+                            <i class="fe fe-help-circle fs-16 align-middle me-2"></i>Ayuda
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" @onclick="Logout">
+                            <i class="fe fe-log-out fs-16 align-middle me-2"></i>Cerrar Sesión
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
     </div>
+  
+    <!-- Quick Create Dropdown -->
+    @if (showQuickCreate)
+    {
+        <div class="quick-create-dropdown">
+            <div class="dropdown-header">
+                <h6>Crear Nuevo</h6>
+                <button class="btn-close" @onclick="@(() => showQuickCreate = false)"></button>
+            </div>
+            <div class="dropdown-body">
+                <a class="quick-create-item" href="/projects/new">
+                    <i class="fa-light fa-project-diagram"></i>
+                    <span>Proyecto</span>
+                </a>
+                <a class="quick-create-item" href="/activities/new">
+                    <i class="fa-light fa-tasks"></i>
+                    <span>Actividad</span>
+                </a>
+                <a class="quick-create-item" href="/documents/new">
+                    <i class="fa-light fa-file-alt"></i>
+                    <span>Documento</span>
+                </a>
+                <a class="quick-create-item" href="/risks/new">
+                    <i class="fa-light fa-exclamation-triangle"></i>
+                    <span>Riesgo</span>
+                </a>
+            </div>
+        </div>
+    }
 </header>
+
+<!-- Search Modal -->
+<SearchModal @ref="searchModal" />
 
 @code {
     [Parameter] public EventCallback OnToggleSidebar { get; set; }
+    [Parameter] public EventCallback<string> OnProjectChanged { get; set; }
 
-    private string searchQuery = "";
+    private SearchModal? searchModal;
+
+    // Dropdowns state
+    private bool showProjectDropdown = false;
+    private bool showNotifications = false;
+    private bool showUserMenu = false;
+    private bool showQuickCreate = false;
+
+    // User info
     private string userName = "Usuario";
     private string userEmail = "usuario@empresa.com";
-    private string userAvatar = "images/placeholder.png";
-    private List<NotificationItem> notifications = new();
-    private int unreadNotifications = 0;
+    private string userRole = "Rol";
+    private string userAvatar = "/images/avatars/default.jpg";
+
+    // Projects
+    private string currentProjectId = "";
+    private string currentProjectName = "Seleccionar Proyecto";
+    private string projectSearchQuery = "";
+    private List<ProjectInfo> projects = new();
+    private IEnumerable<ProjectInfo> filteredProjects => 
+        string.IsNullOrWhiteSpace(projectSearchQuery) 
+            ? projects 
+            : projects.Where(p => 
+                p.Name.Contains(projectSearchQuery, StringComparison.OrdinalIgnoreCase) ||
+                p.Code.Contains(projectSearchQuery, StringComparison.OrdinalIgnoreCase));
+
+    // Notifications
+    private List<NotificationInfo> notifications = new();
+    private int unreadCount => notifications.Count(n => !n.IsRead);
 
     protected override async Task OnInitializedAsync()
+    {
+        await LoadUserInfo();
+        await LoadProjects();
+        await LoadNotifications();
+
+        // Cargar proyecto actual de localStorage
+        currentProjectId = await JS.InvokeAsync<string?>("localStorage.getItem", "current-project") ?? "";
+        if (!string.IsNullOrEmpty(currentProjectId))
+        {
+            var project = projects.FirstOrDefault(p => p.Id == currentProjectId);
+            if (project != null)
+            {
+                currentProjectName = project.Name;
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Registrar atajos de teclado usando función existente
+            await JS.InvokeVoidAsync("EzProInterop.registerKeyboardShortcuts", 
+                DotNetObjectReference.Create(this));
+
+            // Inicializar tooltips
+            await JS.InvokeVoidAsync("window.initializeBootstrap");
+        }
+    }
+
+    private async Task LoadUserInfo()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         if (authState.User.Identity?.IsAuthenticated == true)
         {
             userName = authState.User.Identity.Name ?? "Usuario";
-            userEmail = authState.User.Claims
-                .FirstOrDefault(c => c.Type == "email")?.Value ?? "usuario@empresa.com";
-        }
+            userEmail = authState.User.Claims.FirstOrDefault(c => c.Type == "email")?.Value ?? "";
+            userRole = authState.User.Claims.FirstOrDefault(c => c.Type == "role")?.Value ?? "Usuario";
 
-        await LoadNotifications();
+            // TODO: Cargar avatar real
+            userAvatar = "/images/avatars/user-1.jpg";
+        }
+    }
+
+    private async Task LoadProjects()
+    {
+        try
+        {
+            //projects = await UserService.GetUserProjectsAsync(GuidprojectId); TODO
+            projects = new List<ProjectInfo>
+            {
+                new() { Id = "1", Name = "Proyecto Santo Domingo", Code = "TMN-2024", Status = "En Progreso", StatusColor = "success" },
+                new() { Id = "2", Name = "Planta de Tratamiento Sur", Code = "PTS-2024", Status = "Planificación", StatusColor = "info" },
+                new() { Id = "3", Name = "Refinería Central", Code = "RC-2024", Status = "En Riesgo", StatusColor = "warning" }
+            };
+        }
+        catch
+        {
+            // Datos de ejemplo
+            
+        }
+    }
+
+    private async Task LoadNotifications()
+    {
+        try
+        {
+            //notifications = await NotificationService.GetRecentNotificationsAsync(); TODO
+        }
+        catch
+        {
+            // Datos de ejemplo
+            notifications = new List<NotificationInfo>
+            {
+                new() 
+                { 
+                    Id = "1", 
+                    Title = "Nueva actividad asignada", 
+                    Message = "Se te ha asignado la actividad 'Revisión de planos'", 
+                    Icon = "fa-light fa-tasks", 
+                    IconColor = "primary",
+                    CreatedAt = DateTime.Now.AddMinutes(-15), 
+                    IsRead = false 
+                },
+                new() 
+                { 
+                    Id = "2", 
+                    Title = "Riesgo identificado", 
+                    Message = "Nuevo riesgo alto en el proyecto Terminal Marítimo", 
+                    Icon = "fa-light fa-exclamation-triangle", 
+                    IconColor = "warning",
+                    CreatedAt = DateTime.Now.AddHours(-2), 
+                    IsRead = false 
+                }
+            };
+        }
     }
 
     private async Task ToggleSidebar()
@@ -181,52 +341,57 @@
         await OnToggleSidebar.InvokeAsync();
     }
 
-    private async Task Search()
+    private void ToggleProjectDropdown()
     {
-        if (!string.IsNullOrWhiteSpace(searchQuery))
-        {
-            Navigation.NavigateTo($"/search?q={Uri.EscapeDataString(searchQuery)}");
-        }
+        showProjectDropdown = !showProjectDropdown;
+        showNotifications = false;
+        showUserMenu = false;
+        showQuickCreate = false;
     }
 
-    private async Task LoadNotifications()
+    private void ToggleNotifications()
     {
-        // Simular carga de notificaciones - En producción esto vendría del servicio
-        notifications = new List<NotificationItem>
-        {
-            new NotificationItem
-            {
-                Id = "1",
-                Title = "Proyecto Actualizado",
-                Message = "El proyecto 'Planta Norte' ha sido actualizado",
-                Icon = "fa-light fa-project-diagram text-primary",
-                Link = "/projects/1",
-                CreatedAt = DateTime.Now.AddMinutes(-30),
-                IsRead = false
-            },
-            new NotificationItem
-            {
-                Id = "2",
-                Title = "Nueva Asignación",
-                Message = "Has sido asignado al proyecto 'Terminal Portuario'",
-                Icon = "fa-light fa-user-plus text-success",
-                Link = "/projects/2",
-                CreatedAt = DateTime.Now.AddHours(-2),
-                IsRead = false
-            },
-            new NotificationItem
-            {
-                Id = "3",
-                Title = "Riesgo Identificado",
-                Message = "Nuevo riesgo alto en proyecto 'Refinería Central'",
-                Icon = "fa-light fa-exclamation-triangle text-warning",
-                Link = "/risks/3",
-                CreatedAt = DateTime.Now.AddDays(-1),
-                IsRead = true
-            }
-        };
+        showNotifications = !showNotifications;
+        showProjectDropdown = false;
+        showUserMenu = false;
+        showQuickCreate = false;
+    }
 
-        unreadNotifications = notifications.Count(n => !n.IsRead);
+    private void ToggleUserMenu()
+    {
+        showUserMenu = !showUserMenu;
+        showProjectDropdown = false;
+        showNotifications = false;
+        showQuickCreate = false;
+    }
+
+    private void ToggleQuickCreate()
+    {
+        showQuickCreate = !showQuickCreate;
+        showProjectDropdown = false;
+        showNotifications = false;
+        showUserMenu = false;
+    }
+
+    private async Task SelectProject(ProjectInfo project)
+    {
+        currentProjectId = project.Id;
+        currentProjectName = project.Name;
+        showProjectDropdown = false;
+        
+        await OnProjectChanged.InvokeAsync(project.Id);
+    }
+
+    private async Task HandleNotificationClick(NotificationInfo notification)
+    {
+        notification.IsRead = true;
+        
+        if (!string.IsNullOrEmpty(notification.Link))
+        {
+            Navigation.NavigateTo(notification.Link);
+        }
+        
+        showNotifications = false;
     }
 
     private async Task MarkAllAsRead()
@@ -235,32 +400,58 @@
         {
             notification.IsRead = true;
         }
-        unreadNotifications = 0;
         StateHasChanged();
     }
 
     private string GetRelativeTime(DateTime dateTime)
     {
         var timeSpan = DateTime.Now - dateTime;
-
-        if (timeSpan.TotalMinutes < 1)
-            return "Ahora mismo";
-        if (timeSpan.TotalMinutes < 60)
-            return $"Hace {(int)timeSpan.TotalMinutes} minutos";
-        if (timeSpan.TotalHours < 24)
-            return $"Hace {(int)timeSpan.TotalHours} horas";
-        if (timeSpan.TotalDays < 7)
-            return $"Hace {(int)timeSpan.TotalDays} días";
-
+        
+        if (timeSpan.TotalMinutes < 1) return "Ahora";
+        if (timeSpan.TotalMinutes < 60) return $"Hace {(int)timeSpan.TotalMinutes} min";
+        if (timeSpan.TotalHours < 24) return $"Hace {(int)timeSpan.TotalHours} h";
+        if (timeSpan.TotalDays < 7) return $"Hace {(int)timeSpan.TotalDays} d";
+        
         return dateTime.ToString("dd/MM/yyyy");
     }
 
-    private class NotificationItem
+    private async Task OpenSearchModal()
+    {
+        if (searchModal != null)
+        {
+            await searchModal.Open();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OpenSearchShortcut()
+    {
+        await OpenSearchModal();
+    }
+
+    private async Task Logout()
+    {
+        // TODO: Implementar logout real
+        Navigation.NavigateTo("/logout");
+    }
+
+    // Models
+    private class ProjectInfo
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Code { get; set; } = "";
+        public string Status { get; set; } = "";
+        public string StatusColor { get; set; } = "";
+    }
+
+    private class NotificationInfo
     {
         public string Id { get; set; } = "";
         public string Title { get; set; } = "";
         public string Message { get; set; } = "";
         public string Icon { get; set; } = "";
+        public string IconColor { get; set; } = "";
         public string Link { get; set; } = "";
         public DateTime CreatedAt { get; set; }
         public bool IsRead { get; set; }

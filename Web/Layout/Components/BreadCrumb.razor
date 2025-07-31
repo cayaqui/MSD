@@ -11,12 +11,12 @@
             {
                 @if (item == breadcrumbs.Last())
                 {
-                    <li class="breadcrumb-item active" aria-current="page">@item.Name</li>
+                    <li class="breadcrumb-item active" aria-current="page">@item.Title</li>
                 }
                 else
                 {
                     <li class="breadcrumb-item">
-                        <a href="@item.Url">@item.Name</a>
+                        <a href="@item.Url">@item.Title</a>
                     </li>
                 }
             }
@@ -59,7 +59,7 @@
             {
                 breadcrumbs.Add(new BreadcrumbItem
                 {
-                    Name = name,
+                    Title = name,
                     Url = currentPath
                 });
             }
@@ -105,9 +105,4 @@
         Navigation.LocationChanged -= OnLocationChanged;
     }
 
-    private class BreadcrumbItem
-    {
-        public string Name { get; set; } = "";
-        public string Url { get; set; } = "";
-    }
 }

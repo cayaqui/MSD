@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Options;
 using Web.Services.Interfaces;
 
-namespace Web.Authorization
+namespace Web.Services.Http
 {
     /// <summary>
     /// Proveedor de políticas de autorización dinámicas para permisos basados en strings

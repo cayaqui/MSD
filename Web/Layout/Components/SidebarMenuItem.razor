@@ -1,0 +1,248 @@
+@using Web.Models
+@using Web.Models.Navigation
+
+<li class="slide @(Item.Children != null && Item.Children.Any() ? "has-sub" : "") @(isExpanded ? "open" : "") @(isActive ? "active" : "")">
+    @if (Item.Type == NavigationItemType.Divider)
+    {
+        <!-- Divider -->
+        <hr class="side-menu-divider" />
+    }
+    else if (Item.Type == NavigationItemType.Header)
+    {
+        <!-- Header -->
+        <div class="slide-header">@Item.Title</div>
+    }
+    else if (Item.Children != null && Item.Children.Any())
+    {
+        <!-- Parent item with children -->
+        <a class="side-menu__item @(isActive ? "active" : "")"
+           href="javascript:void(0);"
+           @onclick="ToggleExpand"
+           @onclick:stopPropagation="true">
+            @if (!string.IsNullOrEmpty(Item.Icon))
+            {
+                <i class="side-menu__icon @Item.Icon"></i>
+            }
+            <span class="side-menu__label">@Item.Title</span>
+            @if (Item.Badge != null)
+            {
+                <span class="badge bg-@(Item.Badge.Variant ?? "primary") side-menu__badge">@Item.Badge.Text</span>
+            }
+            <i class="fe fe-chevron-right side-menu__angle"></i>
+        </a>
+
+        <!-- Submenu -->
+        <ul class="slide-menu child1 @(isExpanded ? "open" : "")"
+            style="@(isExpanded ? "display: block;" : "display: none;")">
+            @foreach (var child in Item.Children.OrderBy(c => c.Order))
+            {
+                <SidebarMenuItem Item="@child"
+                                 IsCollapsed="@IsCollapsed"
+                                 CurrentUrl="@CurrentUrl"
+                                 OnItemClick="@OnItemClick"
+                                 ParentExpanded="@isExpanded" />
+            }
+        </ul>
+    }
+    else
+    {
+        <!-- Regular item without children -->
+        <a class="side-menu__item @(isActive ? "active" : "") @(Item.IsDisabled ? "disabled" : "")"
+           href="@(Item.IsDisabled ? "javascript:void(0);" : (Item.IsExternal ? Item.Href : Item.Href))"
+           target="@(Item.IsExternal ? "_blank" : "_self")"
+           @onclick="@(() => HandleClick())"
+           @onclick:preventDefault="@(!string.IsNullOrEmpty(Item.Href) && !Item.IsExternal && !Item.IsDisabled)">
+            @if (!string.IsNullOrEmpty(Item.Icon))
+            {
+                <i class="side-menu__icon @Item.Icon"></i>
+            }
+            <span class="side-menu__label">@Item.Title</span>
+            @if (Item.Badge != null)
+            {
+                <span class="badge bg-@(Item.Badge.Variant ?? "primary") side-menu__badge">@Item.Badge.Text</span>
+            }
+            @if (Item.IsExternal)
+            {
+                <i class="fe fe-external-link side-menu__external ms-2"></i>
+            }
+        </a>
+    }
+</li>
+
+@* Tooltip for collapsed state *@
+@if (IsCollapsed && showTooltip && Item.Type != NavigationItemType.Divider && Item.Type != NavigationItemType.Header)
+{
+    <div class="nav-tooltip" style="position: fixed; top: @tooltipTop; left: @tooltipLeft; z-index: 1070;">
+        <div class="tooltip-inner">
+            <div class="tooltip-title">@Item.Title</div>
+            @if (Item.Children != null && Item.Children.Any())
+            {
+                <div class="tooltip-submenu">
+                    @foreach (var child in Item.Children.OrderBy(c => c.Order))
+                    {
+                        <a class="tooltip-submenu-item @(IsHrefActive(child.Href) ? "active" : "") @(child.IsDisabled ? "disabled" : "")"
+                           href="@(child.IsDisabled ? "javascript:void(0);" : child.Href)"
+                           target="@(child.IsExternal ? "_blank" : "_self")"
+                           @onclick="@(() => HandleChildClick(child))"
+                           @onclick:preventDefault="@(!child.IsExternal && !child.IsDisabled)">
+                            @if (!string.IsNullOrEmpty(child.Icon))
+                            {
+                                <i class="@child.Icon me-1"></i>
+                            }
+                            @child.Title
+                            @if (child.Badge != null)
+                            {
+                                <span class="badge bg-@(child.Badge.Variant ?? "primary") ms-1">@child.Badge.Text</span>
+                            }
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public NavigationItem Item { get; set; } = new();
+    [Parameter] public bool IsCollapsed { get; set; }
+    [Parameter] public string CurrentUrl { get; set; } = "";
+    [Parameter] public EventCallback<NavigationItem> OnItemClick { get; set; }
+    [Parameter] public bool ParentExpanded { get; set; }
+
+    // State management
+    private bool isExpanded = false;
+    private bool isActive = false;
+    private bool showTooltip = false;
+    private string tooltipTop = "0";
+    private string tooltipLeft = "70px";
+
+    // Keep track of the element reference for positioning
+    private ElementReference menuItemElement;
+
+    protected override void OnInitialized()
+    {
+        // Initialize expanded state for items with children
+        if (Item.Children != null && Item.Children.Any())
+        {
+            // Check if any child is active to auto-expand
+            isExpanded = Item.Children.Any(child => IsHrefActive(child.Href) ||
+                                                   (child.Children?.Any(gc => IsHrefActive(gc.Href)) ?? false));
+        }
+
+        // Check if this item is active
+        isActive = IsHrefActive(Item.Href);
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Update active state when URL changes
+        isActive = IsHrefActive(Item.Href);
+
+        // Update expanded state for parent items
+        if (Item.Children != null && Item.Children.Any())
+        {
+            var shouldExpand = Item.Children.Any(child => IsHrefActive(child.Href) ||
+                                                         (child.Children?.Any(gc => IsHrefActive(gc.Href)) ?? false));
+            if (shouldExpand)
+            {
+                isExpanded = true;
+            }
+        }
+    }
+
+    private void ToggleExpand()
+    {
+        if (Item.Children != null && Item.Children.Any())
+        {
+            isExpanded = !isExpanded;
+        }
+    }
+
+    private async Task HandleClick()
+    {
+        if (!Item.IsDisabled && !string.IsNullOrEmpty(Item.Href) && !Item.IsExternal)
+        {
+            await OnItemClick.InvokeAsync(Item);
+        }
+    }
+
+    private async Task HandleChildClick(NavigationItem child)
+    {
+        if (!child.IsDisabled && !string.IsNullOrEmpty(child.Href) && !child.IsExternal)
+        {
+            showTooltip = false; // Hide tooltip when clicking
+            await OnItemClick.InvokeAsync(child);
+        }
+    }
+
+    private bool IsHrefActive(string? href)
+    {
+        if (string.IsNullOrEmpty(href) || string.IsNullOrEmpty(CurrentUrl))
+            return false;
+
+        var normalizedHref = href.Trim('/');
+        var normalizedCurrent = CurrentUrl.Trim('/');
+
+        // Exact match
+        if (normalizedHref == normalizedCurrent)
+            return true;
+
+        // Check if current URL is a child of this href
+        if (!string.IsNullOrEmpty(normalizedCurrent) &&
+            normalizedCurrent.StartsWith(normalizedHref + "/", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
+    }
+
+    // Mouse events for tooltip in collapsed mode
+    private async Task OnMouseEnter()
+    {
+        if (IsCollapsed && Item.Type != NavigationItemType.Divider && Item.Type != NavigationItemType.Header)
+        {
+            showTooltip = true;
+
+            // Calculate tooltip position (this is simplified, you might need JS interop for precise positioning)
+            // In a real implementation, you'd use getBoundingClientRect() via JS
+            await Task.Delay(100); // Small delay for better UX
+        }
+    }
+
+    private void OnMouseLeave()
+    {
+        showTooltip = false;
+    }
+
+    // Add mouse event handlers to the component
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // In a real implementation, you might want to add JS event listeners here
+            // for better tooltip positioning
+        }
+    }
+}
+
+<style>
+    .side-menu__item.disabled {
+        opacity: 0.5;
+        cursor: not-allowed !important;
+    }
+
+        .side-menu__item.disabled:hover {
+            background-color: transparent !important;
+            color: inherit !important;
+        }
+
+    .tooltip-submenu-item.disabled {
+        opacity: 0.5;
+        cursor: not-allowed !important;
+        pointer-events: none;
+    }
+
+    .side-menu__external {
+        font-size: 0.75em;
+        opacity: 0.7;
+    }
+</style>

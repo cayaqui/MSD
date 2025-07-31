@@ -1,4 +1,4 @@
-﻿namespace Web.Models.UIUX;
+﻿namespace Web.Models;
 
 /// <summary>
 /// Represents a breadcrumb navigation item

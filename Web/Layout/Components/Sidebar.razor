@@ -1,561 +1,510 @@
-﻿@using Web.Components.Common
-@using Web.Services.Interfaces
+﻿@using Web.Models
+@using Microsoft.AspNetCore.Components.Authorization
+@using Web.Models.Navigation
+
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject INavigationService NavigationService
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@implements IDisposable
 
-<aside class="app-sidebar @(IsCollapsed ? "collapsed" : "") @(IsMobile && !IsCollapsed ? "show" : "")"
-       @onclick="HandleSidebarClick">
-    <!-- Header -->
-    <div class="sidebar-header">
-        <a href="/" class="sidebar-brand">
-            @if (IsCollapsed)
-            {
-                <span class="brand-icon">
-                    <img src="/images/logo-icon.png" alt="EzPro" class="logo" />
-                </span>
-            }
-            else
-            {
-                <img src="/images/logo.png" alt="EzPro" class="logo" />
-                <span class="brand-text">MSD</span>
-            }
+<aside class="app-sidebar @(IsCollapsed ? "collapsed" : "")"
+       data-toggle="sidebar"
+       @onclick:stopPropagation="true">
+
+    <!-- Sidebar Header -->
+    <div class="main-sidebar-header">
+        <a href="/" class="header-logo">
+            <img src="/images/brand/desktop-logo.png" alt="EzPro.SD" class="desktop-logo" />
+            <img src="/images/brand/toggle-logo.png" alt="EzPro" class="toggle-logo" />
+            <img src="/images/brand/desktop-dark.png" alt="EzPro.SD" class="desktop-dark" />
+            <img src="/images/brand/toggle-dark.png" alt="EzPro" class="toggle-dark" />
+            <img src="/images/brand/desktop-white.png" alt="EzPro.SD" class="desktop-white" />
+            <img src="/images/brand/toggle-white.png" alt="EzPro" class="toggle-white" />
         </a>
-        <button class="sidebar-toggle" @onclick="ToggleSidebar" @onclick:stopPropagation="true">
-            <i class="fa-light fa-bars"></i>
-        </button>
     </div>
 
-    <!-- Body -->
-    <div class="sidebar-body">
-        @if (navigationMenu != null)
+    <!-- Sidebar Body -->
+    <div class="main-sidebar" id="sidebar-scroll">
+        @if (isLoading)
         {
-            <nav class="sidebar-nav">
-                <!-- Home -->
+            <div class="text-center p-4">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Cargando menú...</span>
+                </div>
+            </div>
+        }
+        else if (navigationMenu != null)
+        {
+            <nav class="slide-menu">
+                @* Home Item *@
                 @if (navigationMenu.HomeItem != null)
                 {
-                    <div class="nav-item">
-                        <a href="@navigationMenu.HomeItem.Href"
-                           class="@GetNavLinkClass(navigationMenu.HomeItem.Href)"
-                           @onclick="() => NavigateTo(navigationMenu.HomeItem.Href!)"
-                           @onclick:stopPropagation="true">
-                            <i class="nav-icon @navigationMenu.HomeItem.Icon"></i>
-                            @if (!IsCollapsed)
-                            {
-                                <span class="nav-text">@navigationMenu.HomeItem.Title</span>
-                            }
-                            else
-                            {
-                                <span class="nav-tooltip">@navigationMenu.HomeItem.Title</span>
-                            }
-                        </a>
-                    </div>
+                    <ul class="slide-menu-items">
+                        <SidebarMenuItem Item="@navigationMenu.HomeItem"
+                                         IsCollapsed="@IsCollapsed"
+                                         CurrentUrl="@currentUrl"
+                                         OnItemClick="@HandleMenuItemClick" />
+                    </ul>
                 }
 
-                @foreach (var navSection in navigationMenu.Sections.Where(s => s.IsVisible))
+                @* Navigation Sections *@
+                @foreach (var navSection in navigationMenu.Sections.OrderBy(s => s.Order))
                 {
-                    @if (navSection.Items.Any())
+                    <!-- Section Category -->
+                    @if (!string.IsNullOrEmpty(navSection.Title))
                     {
-                        @if (!IsCollapsed)
-                        {
-                            <div class="nav-divider"></div>
-                            <div class="nav-heading">@navSection.Title</div>
-                        }
-                        else
-                        {
-                            <div class="nav-divider"></div>
-                        }
-
-                        <!-- Items de la sección -->
-                        @foreach (var item in navSection.Items.Where(i => i.IsVisible))
-                        {
-                            @RenderNavigationItem(item)
-                        }
+                        <div class="slide__category">
+                            <span class="category-name">@navSection.Title</span>
+                        </div>
                     }
+
+                    <!-- Menu Items -->
+                    <ul class="slide-menu-items">
+                        @foreach (var item in navSection.Items.OrderBy(i => i.Order))
+                        {
+                            <SidebarMenuItem Item="@item"
+                                             IsCollapsed="@IsCollapsed"
+                                             CurrentUrl="@currentUrl"
+                                             OnItemClick="@HandleMenuItemClick" />
+                        }
+                    </ul>
                 }
             </nav>
         }
-        else
+        else if (!isLoading)
         {
-            <!-- Loading state -->
-            <div class="nav-loading">
-                <div class="spinner-border spinner-border-sm text-primary" role="status">
-                    <span class="visually-hidden">Cargando...</span>
-                </div>
+            <div class="text-center p-4">
+                <p class="text-muted">No hay elementos de menú disponibles</p>
             </div>
         }
     </div>
 
-    <!-- Footer -->
+    <!-- Sidebar Footer -->
     <div class="sidebar-footer">
-        @if (IsCollapsed)
+        @if (!IsCollapsed)
         {
-            <EzDropdown Direction="EzDropdown.DropdownDirection.End"
-                        Alignment="EzDropdown.DropdownAlignment.End"
-                        Variant="EzDropdown.ButtonVariant.Link"
-                        ButtonClass="sidebar-user-collapsed">
-                <ButtonContent>
-                    <EzAvatar Src="@userAvatar"
-                              Alt="@userName"
-                              Size="EzAvatar.AvatarSize.Small" />
-                </ButtonContent>
-                <ChildContent>
-                    <EzDropdownItem>
-                        <div class="px-3 py-2">
-                            <div class="fw-semibold">@userName</div>
-                            <div class="text-muted small">@userRole</div>
-                        </div>
-                    </EzDropdownItem>
-                    <EzDropdownItem IsDivider="true" />
-                    <EzDropdownItem Icon="fa-light fa-user" Href="/profile">Mi Perfil</EzDropdownItem>
-                    <EzDropdownItem Icon="fa-light fa-cog" Href="/settings">Configuración</EzDropdownItem>
-                    <EzDropdownItem IsDivider="true" />
-                    <EzDropdownItem Icon="fa-light fa-sign-out" Href="/authentication/logout">
-                        Cerrar Sesión
-                    </EzDropdownItem>
-                </ChildContent>
-            </EzDropdown>
+            <div class="sidebar-footer-content">
+                <small class="text-muted">
+                    <i class="fa-light fa-building me-1"></i>
+                    @companyName
+                </small>
+                <small class="text-muted">
+                    v@appVersion
+                </small>
+            </div>
         }
         else
         {
-            <div class="sidebar-user">
-                <EzAvatar Src="@userAvatar"
-                          Alt="@userName"
-                          Size="EzAvatar.AvatarSize.Default"
-                          ShowStatus="true"
-                          Status="EzAvatar.StatusType.Online" />
-                <div class="sidebar-user-info">
-                    <div class="sidebar-user-name">@userName</div>
-                    <div class="sidebar-user-role">@userRole</div>
-                </div>
-                <EzDropdown Direction="EzDropdown.DropdownDirection.Up"
-                            Alignment="EzDropdown.DropdownAlignment.End"
-                            Variant="EzDropdown.ButtonVariant.Link"
-                            ButtonClass="ms-auto p-1">
-                    <ButtonContent>
-                        <i class="fa-light fa-ellipsis-v"></i>
-                    </ButtonContent>
-                    <ChildContent>
-                        <EzDropdownItem Icon="fa-light fa-user" Href="/profile">Mi Perfil</EzDropdownItem>
-                        <EzDropdownItem Icon="fa-light fa-cog" Href="/settings">Configuración</EzDropdownItem>
-                        <EzDropdownItem IsDivider="true" />
-                        <EzDropdownItem Icon="fa-light fa-sign-out" Href="/authentication/logout">
-                            Cerrar Sesión
-                        </EzDropdownItem>
-                    </ChildContent>
-                </EzDropdown>
-            </div>
+            <button class="btn btn-link btn-sm" title="@companyName - v@appVersion">
+                <i class="fa-light fa-info-circle"></i>
+            </button>
         }
     </div>
 </aside>
 
-@if (IsMobile && !IsCollapsed)
-{
-    <div class="sidebar-backdrop" @onclick="CloseSidebar"></div>
-}
-
 @code {
-    [Parameter] public bool IsCollapsed { get; set; } = false;
-    [Parameter] public EventCallback<bool> IsCollapsedChanged { get; set; }
+    [Parameter] public bool IsCollapsed { get; set; }
+    [Parameter] public EventCallback<bool> OnToggle { get; set; }
 
     private NavigationMenu? navigationMenu;
+    private bool isLoading = true;
     private string currentUrl = "";
-    private string activeAccordionItem = "";
-    private bool IsMobile = false;
 
-    // User info
-    private string userName = "Usuario";
-    private string userRole = "Rol";
-    private string userAvatar = "/images/placeholder.png";
+    // Company info
+    private string companyName = "Mi Empresa";
+    private string appVersion = "1.0.0";
 
     protected override async Task OnInitializedAsync()
     {
         currentUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
         Navigation.LocationChanged += OnLocationChanged;
 
-        // Detectar si es móvil
-        await CheckIfMobile();
-
-        // Cargar menú para el usuario actual
-        await LoadNavigationMenu();
-
-        // Suscribirse a cambios en el menú
+        // Subscribe to navigation service events
         NavigationService.NavigationItemChanged += OnNavigationItemChanged;
         NavigationService.NavigationMenuRefreshed += OnNavigationMenuRefreshed;
 
-        // Establecer el item activo
-        SetActiveAccordionItem();
+        await LoadCompanyInfo();
+        await LoadMenu();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Detectar cambios de tamaño de ventana
-            await JS.InvokeVoidAsync("eval", @"
-                window.addEventListener('resize', () => {
-                    DotNet.invokeMethodAsync('Web', 'OnWindowResize', window.innerWidth <= 768);
-                });
-            ");
+            // Inicializar scrollbar personalizado usando SimpleBar
+            await JS.InvokeVoidAsync("EzProInterop.initializeScrollbar", "sidebar-scroll");
         }
     }
 
-    private async Task LoadNavigationMenu()
+    private async Task LoadCompanyInfo()
     {
+        // TODO: Cargar información real de la empresa desde el servicio
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.Identity?.IsAuthenticated == true)
+        if (authState.User.Identity?.IsAuthenticated == true)
         {
-            userName = user.Identity.Name ?? "Usuario";
-            userRole = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value ?? "Usuario";
-
-            // Obtener avatar del usuario (por ahora placeholder)
-            userAvatar = "/images/placeholder.png";
-
-            // Cargar menú filtrado por permisos del usuario
-            navigationMenu = await NavigationService.GetNavigationMenuForUserAsync(user);
+            // Aquí podrías obtener la empresa del claim del usuario
+            companyName = "Constructora XYZ";
+            appVersion = "1.0.0";
         }
-        else
+    }
+
+    private async Task LoadMenu()
+    {
+        try
         {
-            // Cargar menú básico para usuarios no autenticados
-            navigationMenu = new NavigationMenu
+            isLoading = true;
+
+            // Cargar menú desde el servicio de navegación
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated == true)
             {
-                HomeItem = new NavigationItem
-                {
-                    Id = "home",
-                    Title = "Inicio",
-                    Icon = "fa-light fa-home",
-                    Href = "/"
-                }
-            };
+                navigationMenu = await NavigationService.GetNavigationMenuForUserAsync(authState.User);
+            }
+            else
+            {
+                navigationMenu = GetGuestMenu();
+            }
+
+            // Expandir items activos
+            ExpandActiveItems();
         }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error loading menu: {ex.Message}");
+            navigationMenu = GetDefaultMenu();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    public async Task ReloadMenu(string projectId)
+    {
+        await LoadMenu();
+        StateHasChanged();
+    }
+
+    private void ExpandActiveItems()
+    {
+        if (navigationMenu == null) return;
+
+        // Check home item
+        if (navigationMenu.HomeItem != null)
+        {
+            ExpandIfActive(navigationMenu.HomeItem, currentUrl);
+        }
+
+        // Check sections
+        foreach (var section in navigationMenu.Sections)
+        {
+            foreach (var item in section.Items)
+            {
+                ExpandIfActive(item, currentUrl);
+            }
+        }
+    }
+
+    private bool ExpandIfActive(NavigationItem item, string url)
+    {
+        // Verificar si este item está activo
+        if (!string.IsNullOrEmpty(item.Href) && IsUrlActive(item.Href, url))
+        {
+            // No hay propiedad IsActive en NavigationItem, pero podemos usar CSS
+            return true;
+        }
+
+        // Verificar sub-items
+        if (item.Children != null && item.Children.Any())
+        {
+            foreach (var child in item.Children)
+            {
+                if (ExpandIfActive(child, url))
+                {
+                    // No hay propiedad IsExpanded, necesitamos manejar esto diferente
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsUrlActive(string itemUrl, string currentUrl)
+    {
+        if (string.IsNullOrEmpty(itemUrl)) return false;
+
+        // Normalizar URLs
+        itemUrl = itemUrl.Trim('/');
+        currentUrl = currentUrl.Trim('/');
+
+        // Exact match
+        if (itemUrl == currentUrl) return true;
+
+        // Parent match (current URL starts with item URL)
+        if (!string.IsNullOrEmpty(currentUrl) && currentUrl.StartsWith(itemUrl + "/"))
+            return true;
+
+        return false;
+    }
+
+    private async Task ToggleCollapse()
+    {
+        await OnToggle.InvokeAsync(!IsCollapsed);
+    }
+
+    private async Task HandleMenuItemClick(NavigationItem item)
+    {
+        if (!string.IsNullOrEmpty(item.Href) && !item.IsDisabled)
+        {
+            Navigation.NavigateTo(item.Href);
+
+            // En móvil, cerrar el sidebar después de navegar
+            if (await IsMobile())
+            {
+                await OnToggle.InvokeAsync(true);
+            }
+        }
+        else if (item.Children != null && item.Children.Any())
+        {
+            // Toggle expansion - esto debe manejarse en el componente SidebarMenuItem
+            StateHasChanged();
+        }
+    }
+
+    private async Task<bool> IsMobile()
+    {
+        return await JS.InvokeAsync<bool>("EzPro.Utils.isMobile");
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         currentUrl = Navigation.ToBaseRelativePath(e.Location);
-        SetActiveAccordionItem();
+
+        // Actualizar items activos
+        if (navigationMenu != null)
+        {
+            ExpandActiveItems();
+        }
+
         InvokeAsync(StateHasChanged);
     }
 
     private void OnNavigationItemChanged(object? sender, NavigationItemChangedEventArgs e)
     {
-        // Actualizar UI cuando cambia un item (ej: badge count)
+        // Reaccionar a cambios en items de navegación
         InvokeAsync(StateHasChanged);
     }
 
     private void OnNavigationMenuRefreshed(object? sender, EventArgs e)
     {
-        // Recargar el menú cuando se refresca
+        // Recargar el menú cuando sea necesario
         InvokeAsync(async () =>
         {
-            await LoadNavigationMenu();
+            await LoadMenu();
             StateHasChanged();
         });
     }
 
-    private void SetActiveAccordionItem()
+    private NavigationMenu GetGuestMenu()
     {
-        if (navigationMenu == null) return;
-
-        // Buscar el item activo basado en la URL
-        foreach (var section in navigationMenu.Sections)
+        return new NavigationMenu
         {
-            foreach (var item in section.Items.Where(i => i.Type == NavigationItemType.Section))
+            HomeItem = new NavigationItem
             {
-                if (item.Children.Any(child => IsActive(child.Href)))
+                Id = "home",
+                Title = "Inicio",
+                Icon = "fa-light fa-home",
+                Href = "/",
+                Type = NavigationItemType.Link
+            },
+            Sections = new List<NavigationSection>
+            {
+                new NavigationSection
                 {
-                    activeAccordionItem = item.Id;
-                    return;
+                    Title = "PÚBLICO",
+                    Order = 1,
+                    Items = new List<NavigationItem>
+                    {
+                        new NavigationItem
+                        {
+                            Id = "login",
+                            Title = "Iniciar Sesión",
+                            Icon = "fa-light fa-sign-in",
+                            Href = "/authentication/login",
+                            Type = NavigationItemType.Link
+                        }
+                    }
                 }
             }
-        }
-
-        activeAccordionItem = "";
+        };
     }
 
-    private async Task CheckIfMobile()
+    private NavigationMenu GetDefaultMenu()
     {
-        try
+        return new NavigationMenu
         {
-            IsMobile = await JS.InvokeAsync<bool>("eval", "window.innerWidth <= 768");
-        }
-        catch
-        {
-            IsMobile = false;
-        }
-    }
-
-    [JSInvokable]
-    public static Task OnWindowResize(bool isMobile)
-    {
-        // Este método será llamado desde JavaScript cuando cambie el tamaño de la ventana
-        // Necesitaríamos una forma de notificar a la instancia actual del componente
-        return Task.CompletedTask;
-    }
-
-    private async Task ToggleSidebar()
-    {
-        IsCollapsed = !IsCollapsed;
-        await IsCollapsedChanged.InvokeAsync(IsCollapsed);
-    }
-
-    private async Task CloseSidebar()
-    {
-        if (IsMobile)
-        {
-            IsCollapsed = true;
-            await IsCollapsedChanged.InvokeAsync(true);
-        }
-    }
-
-    private void NavigateTo(string url)
-    {
-        if (!string.IsNullOrEmpty(url) && !url.StartsWith("http"))
-        {
-            // Reemplazar {projectId} con el ID del proyecto actual si existe
-            var projectId = GetCurrentProjectId();
-            if (!string.IsNullOrEmpty(projectId))
+            HomeItem = new NavigationItem
             {
-                url = url.Replace("{projectId}", projectId);
-            }
-
-            Navigation.NavigateTo(url);
-
-            if (IsMobile)
+                Id = "home",
+                Title = "Dashboard",
+                Icon = "fa-light fa-home",
+                Href = "/",
+                Type = NavigationItemType.Link
+            },
+            Sections = new List<NavigationSection>
             {
-                _ = CloseSidebar();
-            }
-        }
-    }
-
-    private string? GetCurrentProjectId()
-    {
-        // Extraer el ID del proyecto de la URL actual
-        var segments = currentUrl.Split('/');
-        var projectIndex = Array.IndexOf(segments, "projects");
-
-        if (projectIndex >= 0 && projectIndex < segments.Length - 1)
-        {
-            var nextSegment = segments[projectIndex + 1];
-            if (Guid.TryParse(nextSegment, out _))
-            {
-                return nextSegment;
-            }
-        }
-
-        return null;
-    }
-
-    private void HandleSidebarClick()
-    {
-        // Solo manejar clicks en móvil para cerrar el sidebar
-        if (IsMobile && !IsCollapsed)
-        {
-            // El click en el sidebar no debería cerrarlo
-            // Solo el backdrop lo cierra
-        }
-    }
-
-    private string GetNavLinkClass(string? href)
-    {
-        var classes = new List<string> { "nav-link" };
-
-        if (IsActive(href))
-        {
-            classes.Add("active");
-        }
-
-        return string.Join(" ", classes);
-    }
-
-    private bool IsActive(string? href)
-    {
-        if (string.IsNullOrEmpty(href)) return false;
-
-        var normalizedHref = href.TrimStart('/').ToLower();
-        var normalizedCurrent = currentUrl.ToLower();
-
-        // Reemplazar {projectId} con un wildcard para la comparación
-        normalizedHref = System.Text.RegularExpressions.Regex.Replace(
-            normalizedHref,
-            @"\{[^}]+\}",
-            "[^/]+"
-        );
-
-        // Verificar coincidencia exacta o parcial
-        if (normalizedCurrent == normalizedHref)
-            return true;
-
-        // Verificar si la URL actual coincide con el patrón
-        var pattern = $"^{normalizedHref}$";
-        return System.Text.RegularExpressions.Regex.IsMatch(normalizedCurrent, pattern);
-    }
-
-    private void ToggleAccordion(string itemId)
-    {
-        activeAccordionItem = activeAccordionItem == itemId ? "" : itemId;
-    }
-
-    private RenderFragment RenderNavigationItem(NavigationItem item) => builder =>
-    {
-        if (item.Type == NavigationItemType.Divider)
-        {
-            builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", "nav-divider");
-            builder.CloseElement();
-        }
-        else if (item.Type == NavigationItemType.Header)
-        {
-            builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", "nav-heading");
-            builder.AddContent(2, item.Title);
-            builder.CloseElement();
-        }
-        else if (item.Type == NavigationItemType.Section && item.Children.Any())
-        {
-            // Sección con hijos (acordeón)
-            var isExpanded = activeAccordionItem == item.Id ||
-                           item.Children.Any(child => IsActive(child.Href));
-
-            builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", $"nav-item dropdown {(isExpanded ? "show" : "")}");
-
-            // Link del acordeón
-            builder.OpenElement(2, "a");
-            builder.AddAttribute(3, "href", "#");
-            builder.AddAttribute(4, "class", $"nav-link {(item.IsDisabled ? "disabled" : "")}");
-            builder.AddAttribute(5, "onclick", EventCallback.Factory.Create(this, (MouseEventArgs e) =>
-            {
-
-                ToggleAccordion(item.Id);
-            }));
-
-            // Icono
-            if (!string.IsNullOrEmpty(item.Icon))
-            {
-                builder.OpenElement(6, "i");
-                builder.AddAttribute(7, "class", $"nav-icon {item.Icon}");
-                builder.CloseElement();
-            }
-
-            // Texto
-            if (!IsCollapsed)
-            {
-                builder.OpenElement(8, "span");
-                builder.AddAttribute(9, "class", "nav-text");
-                builder.AddContent(10, item.Title);
-                builder.CloseElement();
-
-                // Badge si existe
-                if (!string.IsNullOrEmpty(item.Badge?.Text))
+                new NavigationSection
                 {
-                    builder.OpenElement(11, "span");
-                    builder.AddAttribute(12, "class", $"nav-badge badge bg-{GetBadgeClass(item.Badge.Variant)}");
-                    builder.AddContent(13, item.Badge);
-                    builder.CloseElement();
+                    Title = "PRINCIPAL",
+                    Order = 1,
+                    Items = new List<NavigationItem>
+                    {
+                        new NavigationItem
+                        {
+                            Id = "projects",
+                            Title = "Proyectos",
+                            Icon = "fa-light fa-project-diagram",
+                            Href = "/projects",
+                            Type = NavigationItemType.Link,
+                            Badge = new NavigationBadge { Text = "5", Variant = "primary" }
+                        }
+                    }
+                },
+                new NavigationSection
+                {
+                    Title = "GESTIÓN",
+                    Order = 2,
+                    Items = new List<NavigationItem>
+                    {
+                        new NavigationItem
+                        {
+                            Id = "scope",
+                            Title = "Alcance",
+                            Icon = "fa-light fa-tasks",
+                            Type = NavigationItemType.Section,
+                            Children = new List<NavigationItem>
+                            {
+                                new NavigationItem
+                                {
+                                    Id = "wbs",
+                                    Title = "WBS/EDT",
+                                    Href = "/scope/wbs",
+                                    Type = NavigationItemType.Link
+                                },
+                                new NavigationItem
+                                {
+                                    Id = "deliverables",
+                                    Title = "Entregables",
+                                    Href = "/scope/deliverables",
+                                    Type = NavigationItemType.Link
+                                },
+                                new NavigationItem
+                                {
+                                    Id = "changes",
+                                    Title = "Control de Cambios",
+                                    Href = "/scope/changes",
+                                    Type = NavigationItemType.Link
+                                }
+                            }
+                        },
+                        new NavigationItem
+                        {
+                            Id = "schedule",
+                            Title = "Cronograma",
+                            Icon = "fa-light fa-calendar-alt",
+                            Type = NavigationItemType.Section,
+                            Children = new List<NavigationItem>
+                            {
+                                new NavigationItem
+                                {
+                                    Id = "activities",
+                                    Title = "Actividades",
+                                    Href = "/schedule/activities",
+                                    Type = NavigationItemType.Link
+                                },
+                                new NavigationItem
+                                {
+                                    Id = "gantt",
+                                    Title = "Gantt",
+                                    Href = "/schedule/gantt",
+                                    Type = NavigationItemType.Link
+                                },
+                                new NavigationItem
+                                {
+                                    Id = "critical-path",
+                                    Title = "Ruta Crítica",
+                                    Href = "/schedule/critical-path",
+                                    Type = NavigationItemType.Link
+                                }
+                            }
+                        },
+                        new NavigationItem
+                        {
+                            Id = "costs",
+                            Title = "Costos",
+                            Icon = "fa-light fa-dollar-sign",
+                            Type = NavigationItemType.Section,
+                            Children = new List<NavigationItem>
+                            {
+                                new NavigationItem
+                                {
+                                    Id = "budget",
+                                    Title = "Presupuesto",
+                                    Href = "/costs/budget",
+                                    Type = NavigationItemType.Link
+                                },
+                                new NavigationItem
+                                {
+                                    Id = "control",
+                                    Title = "Control",
+                                    Href = "/costs/control",
+                                    Type = NavigationItemType.Link
+                                },
+                                new NavigationItem
+                                {
+                                    Id = "evm",
+                                    Title = "Earned Value",
+                                    Href = "/costs/evm",
+                                    Type = NavigationItemType.Link
+                                }
+                            }
+                        }
+                    }
+                },
+                new NavigationSection
+                {
+                    Title = "CONFIGURACIÓN",
+                    Order = 3,
+                    Items = new List<NavigationItem>
+                    {
+                        new NavigationItem
+                        {
+                            Id = "companies",
+                            Title = "Empresas",
+                            Icon = "fa-light fa-building",
+                            Href = "/config/companies",
+                            Type = NavigationItemType.Link
+                        },
+                        new NavigationItem
+                        {
+                            Id = "users",
+                            Title = "Usuarios",
+                            Icon = "fa-light fa-users",
+                            Href = "/config/users",
+                            Type = NavigationItemType.Link
+                        },
+                        new NavigationItem
+                        {
+                            Id = "settings",
+                            Title = "Ajustes",
+                            Icon = "fa-light fa-cog",
+                            Href = "/config/settings",
+                            Type = NavigationItemType.Link
+                        }
+                    }
                 }
             }
-            else
-            {
-                // Tooltip para vista colapsada
-                builder.OpenElement(14, "span");
-                builder.AddAttribute(15, "class", "nav-tooltip");
-                builder.AddContent(16, item.Title);
-                builder.CloseElement();
-            }
-
-            builder.CloseElement(); // a
-
-            // Dropdown menu (solo si no está colapsado)
-            if (!IsCollapsed && isExpanded)
-            {
-                builder.OpenElement(17, "div");
-                builder.AddAttribute(18, "class", "nav-dropdown");
-
-                foreach (var child in item.Children.Where(c => c.IsVisible))
-                {
-                    builder.AddContent(19, RenderNavigationItem(child));
-                }
-
-                builder.CloseElement(); // div.nav-dropdown
-            }
-
-            builder.CloseElement(); // div.nav-item
-        }
-        else
-        {
-            // Link simple
-            builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", "nav-item");
-
-            builder.OpenElement(2, "a");
-            builder.AddAttribute(3, "href", item.Href ?? "#");
-            builder.AddAttribute(4, "class", GetNavLinkClass(item.Href) + (item.IsDisabled ? " disabled" : ""));
-
-            if (!string.IsNullOrEmpty(item.Href))
-            {
-                builder.AddAttribute(5, "onclick", EventCallback.Factory.Create(this, (MouseEventArgs e) =>
-                {
-                    NavigateTo(item.Href);
-                }));
-            }
-
-            // Icono
-            if (!string.IsNullOrEmpty(item.Icon))
-            {
-                builder.OpenElement(6, "i");
-                builder.AddAttribute(7, "class", $"nav-icon {item.Icon}");
-                builder.CloseElement();
-            }
-
-            // Texto
-            if (!IsCollapsed)
-            {
-                builder.OpenElement(8, "span");
-                builder.AddAttribute(9, "class", "nav-text");
-                builder.AddContent(10, item.Title);
-                builder.CloseElement();
-
-                // Badge si existe
-                if (!string.IsNullOrEmpty(item.Badge))
-                {
-                    builder.OpenElement(11, "span");
-                    builder.AddAttribute(12, "class", $"nav-badge badge bg-{GetBadgeClass(item.BadgeVariant)}");
-                    builder.AddContent(13, item.Badge);
-                    builder.CloseElement();
-                }
-            }
-            else
-            {
-                // Tooltip para vista colapsada
-                builder.OpenElement(14, "span");
-                builder.AddAttribute(15, "class", "nav-tooltip");
-                builder.AddContent(16, item.Title);
-                builder.CloseElement();
-            }
-
-            builder.CloseElement(); // a
-            builder.CloseElement(); // div.nav-item
-        }
-    };
-
-    private string GetBadgeClass(BadgeType type)
-    {
-        return type switch
-        {
-            BadgeType.Primary => "primary",
-            BadgeType.Secondary => "secondary",
-            BadgeType.Success => "success",
-            BadgeType.Danger => "danger",
-            BadgeType.Warning => "warning",
-            BadgeType.Info => "info",
-            BadgeType.Light => "light",
-            BadgeType.Dark => "dark",
-            _ => "primary"
         };
     }
 

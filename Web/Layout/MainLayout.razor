@@ -1,157 +1,200 @@
 ﻿@inherits LayoutComponentBase
-@inject NavigationManager Navigation
 @inject IJSRuntime JS
-@inject IToastService ToastService
+@inject NavigationManager Navigation
+@inject IConfiguration Configuration
 
-<div class="main-layout">
-    <!-- Sidebar con binding bidireccional -->
-    <Sidebar @bind-IsCollapsed="sidebarCollapsed" />
-    
-    <!-- Main Container -->
-    <div class="main-container @(sidebarCollapsed ? "sidebar-collapsed" : "")">
-        <!-- TopBar -->
-        <TopBar OnToggleSidebar="ToggleSidebar" />
+<div class="app" data-theme-mode="light" data-menu-style="transparent" data-nav-layout="vertical">
+    <CascadingValue Value="@this" Name="MainLayout">
+        <!-- Sidebar -->
+        <Sidebar @ref="sidebar" 
+                 IsCollapsed="@sidebarCollapsed" 
+                 OnToggle="@HandleSidebarToggle" />
         
-        <!-- Main Content -->
-        <main class="main-content" role="main">
-            <!-- Breadcrumb -->
-            <BreadCrumb />
+        <!-- Main Wrapper -->
+        <div class="page">
+            <!-- Header/TopBar -->
+            <TopBar OnToggleSidebar="@ToggleSidebar" 
+                    OnProjectChanged="@HandleProjectChanged" />
             
-            <!-- Page Content -->
-            <div class="page-content">
-                <CascadingValue Value="this">
-                    <EzErrorBoundary @ref="errorBoundary">
+            <!-- Main Content -->
+            <div class="main-content app-content">
+                <div class="container-fluid">
+                    <!-- Breadcrumb -->
+                    <BreadCrumb />
+                    
+                    <!-- Page Content -->
+                    <EzErrorBoundary>
                         <ChildContent>
                             @Body
                         </ChildContent>
+
                     </EzErrorBoundary>
-                </CascadingValue>
+                </div>
             </div>
-        </main>
+            
+            <!-- Footer -->
+            <Footer />
+        </div>
         
-        <!-- Footer -->
-        <Footer />
+        <!-- Mobile Overlay -->
+        @if (!sidebarCollapsed && isMobile)
+        {
+            <div class="ez-overlay" @onclick="CloseSidebar"></div>
+        }
+    </CascadingValue>
+    
+    <!-- Global Components -->
+    <div class="ez-global-components">
+        <!-- Toast Container -->
+        <EzToast Position="ToastPosition.TopRight" />
+        
+        <!-- Loading Indicator -->
+        @if (isLoading)
+        {
+            <div class="ez-page-loader">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+        }
     </div>
-    
-    <!-- Toast Container -->
-    <EzToast @ref="toastContainer" />
-    
-    <!-- Confirm Dialog Global -->
-    <EzConfirmDialog @ref="confirmDialog" />
 </div>
 
 @code {
-    private EzToast? toastContainer;
-    private EzConfirmDialog? confirmDialog;
-    private EzErrorBoundary? errorBoundary;
+    private Sidebar? sidebar;
     private bool sidebarCollapsed = false;
+    private bool isMobile = false;
+    private bool isLoading = false;
+    private string currentProjectId = "";
+
+    // Public methods for child components
+    public void ShowLoading() => isLoading = true;
+    public void HideLoading() => isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Cargar preferencias del usuario
+        await LoadUserPreferences();
+        
+        // Detectar si es móvil usando función existente
+        isMobile = await JS.InvokeAsync<bool>("EzPro.Utils.isMobile");
+        
+        // Si es móvil, colapsar sidebar por defecto
+        if (isMobile)
+        {
+            sidebarCollapsed = true;
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Cargar estado del sidebar desde localStorage si existe
-            try
+            // Inicializar componentes usando funciones existentes
+            await JS.InvokeVoidAsync("EzPro.init");
+            
+            // Registrar event listener para resize
+            await JS.InvokeVoidAsync("EzProInterop.registerResizeHandler", 
+                DotNetObjectReference.Create(this));
+        }
+    }
+
+    private async Task LoadUserPreferences()
+    {
+        try
+        {
+            // Cargar estado del sidebar usando función existente
+            var savedState = await JS.InvokeAsync<string?>("EzPro.Utils.getLocalStorage", "sidebar-collapsed");
+            if (!string.IsNullOrEmpty(savedState))
             {
-                var savedState = await JS.InvokeAsync<string>("localStorage.getItem", "sidebarState");
-                if (savedState == "collapsed")
-                {
-                    sidebarCollapsed = true;
-                    StateHasChanged();
-                }
-            }
-            catch
-            {
-                // Si hay error al acceder a localStorage, usar estado por defecto
+                sidebarCollapsed = bool.Parse(savedState);
             }
 
-            // Agregar función JS para verificar si es móvil
-            await JS.InvokeVoidAsync("eval", @"
-                window.checkIfMobile = function() {
-                    return window.innerWidth <= 768;
-                }
-            ");
+            // Cargar proyecto activo
+            currentProjectId = await JS.InvokeAsync<string?>("EzPro.Utils.getLocalStorage", "current-project") ?? "";
         }
+        catch
+        {
+            // Si falla localStorage, usar valores por defecto
+        }
+    }
+
+    private async Task HandleSidebarToggle(bool collapsed)
+    {
+        sidebarCollapsed = collapsed;
+        await SaveSidebarState();
+        StateHasChanged();
     }
 
     private async Task ToggleSidebar()
     {
         sidebarCollapsed = !sidebarCollapsed;
+        await SaveSidebarState();
         
-        // Guardar estado en localStorage
+        // En móvil, actualizar el estado del overlay
+        if (isMobile)
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task CloseSidebar()
+    {
+        if (isMobile && !sidebarCollapsed)
+        {
+            sidebarCollapsed = true;
+            await SaveSidebarState();
+        }
+    }
+
+    private async Task SaveSidebarState()
+    {
         try
         {
-            await JS.InvokeVoidAsync("localStorage.setItem", "sidebarState", sidebarCollapsed ? "collapsed" : "expanded");
+            await JS.InvokeVoidAsync("EzPro.Utils.setLocalStorage", 
+                "sidebar-collapsed", sidebarCollapsed.ToString().ToLower());
+        }
+        catch
+        {
+            // Ignorar errores de localStorage
+        }
+    }
+
+    private async Task HandleProjectChanged(string projectId)
+    {
+        currentProjectId = projectId;
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "current-project", projectId);
         }
         catch
         {
             // Ignorar errores de localStorage
         }
         
-        StateHasChanged();
-    }
-
-    // Métodos públicos para que las páginas hijas puedan usar toast y confirm
-    public void ShowToast(string message, ToastType type = ToastType.Info)
-    {
-        // Usar el servicio en lugar de acceder directamente al componente
-        switch (type)
+        // Recargar el menú del sidebar con el contexto del nuevo proyecto
+        if (sidebar != null)
         {
-            case ToastType.Success:
-                ToastService.ShowSuccess(message);
-                break;
-            case ToastType.Error:
-                ToastService.ShowError(message);
-                break;
-            case ToastType.Warning:
-                ToastService.ShowWarning(message);
-                break;
-            default:
-                ToastService.ShowInfo(message);
-                break;
+            await sidebar.ReloadMenu(projectId);
         }
     }
 
-    public async Task<bool> ShowConfirmAsync(string message, string? title = null, string? confirmText = null, string? cancelText = null)
+    // Método llamado desde JavaScript cuando cambia el tamaño de la ventana
+    [JSInvokable]
+    public async Task OnWindowResize(bool isMobileView)
     {
-        if (confirmDialog != null)
+        if (isMobile != isMobileView)
         {
-            return await confirmDialog.ShowAsync(message, title, confirmText, cancelText);
+            isMobile = isMobileView;
+            
+            // Auto-colapsar en móvil
+            if (isMobile && !sidebarCollapsed)
+            {
+                sidebarCollapsed = true;
+                await SaveSidebarState();
+            }
+            
+            await InvokeAsync(StateHasChanged);
         }
-        return false;
-    }
-
-    public async Task<bool> ShowDeleteConfirmAsync(string itemName)
-    {
-        if (confirmDialog != null)
-        {
-            return await confirmDialog.ShowDeleteAsync(itemName);
-        }
-        return false;
-    }
-
-    // Método adicional para mostrar confirmación con opciones avanzadas
-    public async Task<bool> ShowAdvancedConfirmAsync(EzConfirmDialog.DialogOptions options)
-    {
-        if (confirmDialog != null)
-        {
-            return await confirmDialog.ShowAsync(options);
-        }
-        return false;
-    }
-
-    // Método para recuperar del error
-    private void RecoverError()
-    {
-        // Aquí podrías implementar lógica para recuperar del error, como recargar datos o navegar a otra página
-    }
-
-    // Enums locales para evitar dependencias
-    public enum ToastType
-    {
-        Info,
-        Success,
-        Warning,
-        Error
     }
 }

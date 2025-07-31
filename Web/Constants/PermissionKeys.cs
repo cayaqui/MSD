@@ -1,4 +1,7 @@
-﻿namespace Web.Constants
+﻿using System.Collections.Generic;
+using System.Reflection;
+
+namespace Web.Constants
 {
     /// <summary>
     /// Define todas las constantes de permisos del sistema siguiendo el patrón module.resource.action
@@ -144,7 +147,7 @@
 
             foreach (var type in permissionTypes)
             {
-                var fields = type.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static);
                 foreach (var field in fields)
                 {
                     if (field.FieldType == typeof(string))

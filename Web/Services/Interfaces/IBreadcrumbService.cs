@@ -1,5 +1,6 @@
 ﻿
-using Web.Models.UIUX;
+using Web.Models;
+using Web.Models.Navigation;
 
 namespace Web.Services.Interfaces;
 

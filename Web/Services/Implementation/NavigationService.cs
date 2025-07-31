@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using Web.Constants;
 using Web.Models;
+using Web.Models.Navigation;
 using Web.Services.Interfaces;
 
 namespace Web.Services.Implementation

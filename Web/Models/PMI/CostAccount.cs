@@ -1,4 +1,4 @@
-﻿namespace Web
+﻿namespace Web.Models.PMI
 {
     public class Class4adss
     {

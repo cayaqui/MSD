@@ -1,4 +1,4 @@
-﻿namespace Web
+﻿namespace Web.Models.Requests
 {
     public class Class3
     {

@@ -42,7 +42,7 @@ namespace Web.Extensions
 
             // Estado de carga
             services.AddScoped<ILoadingService, LoadingService>();
-
+            services.AddScoped<ISearchService, SearchService>();
             return services;
         }
 
