@@ -71,7 +71,7 @@ namespace Web.Services.Implementation
             // Intentar obtener datos del usuario desde el API
             try
             {
-                var response = await _apiService.GetAsync<UserDto>("api/users/me");
+                var response = await _apiService.GetAsync<UserDto>("api/auth/me");
                 if (response.IsSuccess && response.Data != null)
                 {
                     _currentUser = response.Data;

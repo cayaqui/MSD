@@ -69,7 +69,7 @@ namespace Web.Extensions
         public static IServiceCollection AddHttpServices(this IServiceCollection services, IConfiguration configuration)
         {
             // Configurar HttpClient para el API
-            var apiBaseUrl = configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7001";
+            var apiBaseUrl = configuration["ApiSettings:BaseUrl"] ?? "https://ez-capst-dev-api-eastus.azurewebsites.net/";
 
             services.AddHttpClient("EzProAPI", client =>
             {

@@ -1,0 +1,136 @@
+﻿@page "/authentication/{action}"
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using Microsoft.Extensions.Configuration
+
+<RemoteAuthenticatorView Action="@Action"
+                         OnLogInSucceeded="OnLogInSucceeded"
+                         OnLogOutSucceeded="OnLogOutSucceeded">
+    <LoggingIn>
+        <div class="authentication-loading">
+            <div class="text-center">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Iniciando sesión...</span>
+                </div>
+                <h4>Iniciando sesión</h4>
+                <p class="text-muted">Por favor espere mientras lo autenticamos...</p>
+            </div>
+        </div>
+    </LoggingIn>
+
+    <CompletingLoggingIn>
+        <div class="authentication-loading">
+            <div class="text-center">
+                <div class="spinner-border text-success mb-3" role="status">
+                    <span class="visually-hidden">Completando inicio de sesión...</span>
+                </div>
+                <h4>Completando inicio de sesión</h4>
+                <p class="text-muted">Estamos preparando su espacio de trabajo...</p>
+            </div>
+        </div>
+    </CompletingLoggingIn>
+
+    <LogOut>
+        <div class="authentication-loading">
+            <div class="text-center">
+                <div class="spinner-border text-warning mb-3" role="status">
+                    <span class="visually-hidden">Cerrando sesión...</span>
+                </div>
+                <h4>Cerrando sesión</h4>
+                <p class="text-muted">Gracias por usar EzPro...</p>
+            </div>
+        </div>
+    </LogOut>
+
+    <CompletingLogOut>
+        <div class="authentication-loading">
+            <div class="text-center">
+                <div class="spinner-border text-info mb-3" role="status">
+                    <span class="visually-hidden">Completando cierre de sesión...</span>
+                </div>
+                <h4>Completando cierre de sesión</h4>
+                <p class="text-muted">Limpiando su sesión de forma segura...</p>
+            </div>
+        </div>
+    </CompletingLogOut>
+
+    <LogInFailed>
+        <div class="authentication-error">
+            <div class="alert alert-danger">
+                <h4 class="alert-heading">Error al iniciar sesión</h4>
+                <p>No se pudo completar el inicio de sesión. Por favor intente nuevamente.</p>
+                <hr>
+                <p class="mb-0">
+                    <a href="/" class="btn btn-primary">Volver al inicio</a>
+                    <a href="authentication/login" class="btn btn-secondary ms-2">Intentar nuevamente</a>
+                </p>
+            </div>
+        </div>
+    </LogInFailed>
+
+    <LogOutFailed>
+        <div class="authentication-error">
+            <div class="alert alert-warning">
+                <h4 class="alert-heading">Error al cerrar sesión</h4>
+                <p>No se pudo completar el cierre de sesión correctamente.</p>
+                <hr>
+                <p class="mb-0">
+                    <a href="/" class="btn btn-primary">Volver al inicio</a>
+                </p>
+            </div>
+        </div>
+    </LogOutFailed>
+</RemoteAuthenticatorView>
+
+@code {
+    [Parameter] public string? Action { get; set; }
+
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+    [Inject] private ILogger<Authentication> Logger { get; set; } = null!;
+    [Inject] private IConfiguration Configuration { get; set; } = null!;
+
+    private async Task OnLogInSucceeded()
+    {
+        Logger.LogInformation("Usuario autenticado exitosamente");
+
+        // Aquí puedes agregar lógica adicional después del login exitoso
+        // Por ejemplo, cargar configuración del usuario, permisos, etc.
+
+        // Navegar al dashboard o a la página solicitada originalmente
+        var returnUrl = "/";
+        Navigation.NavigateTo(returnUrl);
+    }
+
+    private void OnLogOutSucceeded()
+    {
+        Logger.LogInformation("Usuario cerró sesión exitosamente");
+
+        // Limpiar cualquier estado local si es necesario
+
+        // Navegar a la página de inicio
+        Navigation.NavigateTo("/");
+    }
+}
+
+<style>
+    .authentication-loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: var(--bg-body);
+    }
+
+    .authentication-error {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 2rem;
+        background-color: var(--bg-body);
+    }
+
+        .authentication-error .alert {
+            max-width: 600px;
+            width: 100%;
+        }
+</style>

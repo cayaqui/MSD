@@ -1,0 +1,39 @@
+﻿@page "/access-denied"
+
+<div class="access-denied-container">
+    <div class="text-center">
+        <i class="fa-light fa-lock fa-5x text-danger mb-4"></i>
+        <h1 class="display-4 fw-bold text-danger">Acceso Denegado</h1>
+        <p class="lead mb-4">
+            No tiene los permisos necesarios para acceder a este recurso.
+        </p>
+        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+            <a href="/" class="btn btn-primary btn-lg px-4 gap-3">
+                <i class="fa-light fa-home me-2"></i>Ir al Inicio
+            </a>
+            <button class="btn btn-outline-secondary btn-lg px-4" @onclick="GoBack">
+                <i class="fa-light fa-arrow-left me-2"></i>Volver
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("javascript:history.back()");
+    }
+}
+
+<style>
+    .access-denied-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 2rem;
+        background-color: var(--bg-body);
+    }
+</style>

@@ -219,7 +219,7 @@
     private string userName = "Usuario";
     private string userEmail = "usuario@empresa.com";
     private string userRole = "Rol";
-    private string userAvatar = "/images/avatars/default.jpg";
+    private string userAvatar = "/images/avatars/default.png";
 
     // Projects
     private string currentProjectId = "";
@@ -278,7 +278,7 @@
             userRole = authState.User.Claims.FirstOrDefault(c => c.Type == "role")?.Value ?? "Usuario";
 
             // TODO: Cargar avatar real
-            userAvatar = "/images/avatars/user-1.jpg";
+            userAvatar = "/images/avatars/default.png";
         }
     }
 
