@@ -93,7 +93,7 @@ public class WBSElement : BaseEntity, IAuditable, ISoftDelete, IActivatable
     public bool CanHaveChildren() => ElementType != WBSElementType.WorkPackage &&
                                      ElementType != WBSElementType.PlanningPackage;
 
-    public void ConvertToWorkPackage(Guid controlAccountId, ProgressMethod progressMethod)
+    public void ConvertToWorkPackage(Guid controlAccountId, ProgressMethod progressMethod, )
     {
         if (Children.Any())
             throw new InvalidOperationException("Cannot convert to work package if element has children");
@@ -105,7 +105,7 @@ public class WBSElement : BaseEntity, IAuditable, ISoftDelete, IActivatable
         ControlAccountId = controlAccountId;
 
         // Create work package details
-        WorkPackageDetails = new WorkPackageDetails(Id, progressMethod);
+        WorkPackageDetails = new WorkPackageDetails(Id, GetTotalBudget(), progressMethod);
 
         UpdatedAt = DateTime.UtcNow;
     }

@@ -15,7 +15,6 @@ public class BudgetItem : BaseEntity, IAuditable
     // Basic Information
     public Guid BudgetId { get; private set; }
     public Guid? ControlAccountId { get; private set; }
-    public Guid? WorkPackageId { get; private set; }
     public string ItemCode { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
 
@@ -76,12 +75,6 @@ public class BudgetItem : BaseEntity, IAuditable
     public void AssignToControlAccount(Guid controlAccountId)
     {
         ControlAccountId = controlAccountId;
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void AssignToWorkPackage(Guid workPackageId)
-    {
-        WorkPackageId = workPackageId;
         UpdatedAt = DateTime.UtcNow;
     }
 

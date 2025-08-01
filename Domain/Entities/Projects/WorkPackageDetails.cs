@@ -78,6 +78,10 @@ public class WorkPackageDetails : BaseEntity, IAuditable
     // Constructor for EF Core
     private WorkPackageDetails() { }
     
+    public WorkPackageDetails (Guid wbsElementId, decimal budget, ProgressMethod progressMethod)
+    {
+
+    }
     public WorkPackageDetails(
         Guid wbsElementId,
         DateTime plannedStartDate,

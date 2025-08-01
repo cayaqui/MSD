@@ -1,123 +1,98 @@
-﻿using Domain.Entities.Projects;
+﻿// WBSElementConfiguration.cs - Corregida
+using Domain.Entities.Projects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Data.Configurations.Projects;
 
-/// <summary>
-/// Entity Framework configuration for WBSElement
-/// </summary>
 public class WBSElementConfiguration : IEntityTypeConfiguration<WBSElement>
 {
     public void Configure(EntityTypeBuilder<WBSElement> builder)
     {
-        // Table name and schema
-        builder.ToTable("WBSElements", "Projects");
+        // Table name and schema with check constraints
+        builder.ToTable("WBSElements", "Projects", t =>
+        {
+            t.HasCheckConstraint("CK_WBSElements_Level",
+                "[Level] >= 1 AND [Level] <= 10");
+            t.HasCheckConstraint("CK_WBSElements_PercentComplete",
+                "[PercentComplete] >= 0 AND [PercentComplete] <= 100");
+            t.HasCheckConstraint("CK_WBSElements_Budget",
+                "[Budget] IS NULL OR [Budget] >= 0");
+            t.HasCheckConstraint("CK_WBSElements_ActualCost",
+                "[ActualCost] >= 0");
+            t.HasCheckConstraint("CK_WBSElements_EarnedValue",
+                "[EarnedValue] >= 0");
+        });
 
-        // Primary Key
-        builder.HasKey(e => e.Id);
+        // Primary key
+        builder.HasKey(wbs => wbs.Id);
+
+        // Indexes
+        builder.HasIndex(wbs => new { wbs.ProjectId, wbs.Code }).IsUnique();
+        builder.HasIndex(wbs => wbs.ProjectId);
+        builder.HasIndex(wbs => wbs.ParentId);
+        builder.HasIndex(wbs => wbs.Level);
+        builder.HasIndex(wbs => wbs.IsDeleted);
+        builder.HasIndex(wbs => new { wbs.IsActive, wbs.ElementType });
 
         // Properties
-        builder.Property(e => e.Code)
+        builder.Property(wbs => wbs.Code)
             .IsRequired()
             .HasMaxLength(50);
 
-        builder.Property(e => e.Name)
+        builder.Property(wbs => wbs.Name)
             .IsRequired()
-            .HasMaxLength(200);
+            .HasMaxLength(256);
 
-        builder.Property(e => e.Description)
+        builder.Property(wbs => wbs.Description)
             .HasMaxLength(1000);
 
-        builder.Property(e => e.FullPath)
-            .IsRequired()
-            .HasMaxLength(500);
-
-        builder.Property(e => e.Level)
+        builder.Property(wbs => wbs.Level)
             .IsRequired();
 
-        builder.Property(e => e.SequenceNumber)
+        builder.Property(wbs => wbs.ElementType)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+
+        // Audit properties
+        builder.Property(wbs => wbs.CreatedAt)
             .IsRequired();
 
-        builder.Property(e => e.ElementType)
-            .IsRequired()
-            .HasConversion<string>();
+        builder.Property(wbs => wbs.CreatedBy)
+            .HasMaxLength(256);
 
-        // WBS Dictionary fields
-        builder.Property(e => e.DeliverableDescription)
-            .HasMaxLength(2000);
+        builder.Property(wbs => wbs.UpdatedAt);
 
-        builder.Property(e => e.AcceptanceCriteria)
-            .HasMaxLength(2000);
+        builder.Property(wbs => wbs.UpdatedBy)
+            .HasMaxLength(256);
 
-        builder.Property(e => e.Assumptions)
-            .HasMaxLength(2000);
+        // Soft delete properties
+        builder.Property(wbs => wbs.DeletedAt);
 
-        builder.Property(e => e.Constraints)
-            .HasMaxLength(2000);
+        builder.Property(wbs => wbs.DeletedBy)
+            .HasMaxLength(256);
 
-        builder.Property(e => e.ExclusionsInclusions)
-            .HasMaxLength(2000);
-
-        // Soft Delete
-        builder.Property(e => e.IsDeleted)
-            .IsRequired()
-            .HasDefaultValue(false);
-
-        builder.Property(e => e.DeletedBy)
-            .HasMaxLength(100);
-
-        // Activatable
-        builder.Property(e => e.IsActive)
-            .IsRequired()
-            .HasDefaultValue(true);
-
-        // Audit fields
-        builder.Property(e => e.CreatedAt)
-            .IsRequired();
-
-        builder.Property(e => e.CreatedBy)
-            .HasMaxLength(100);
-
-        builder.Property(e => e.UpdatedBy)
-            .HasMaxLength(100);
-
-        // Indexes
-        builder.HasIndex(e => new { e.ProjectId, e.Code })
-            .IsUnique()
-            .HasFilter("[IsDeleted] = 0");
-
-        builder.HasIndex(e => new { e.ProjectId, e.ParentId, e.SequenceNumber });
-
-        builder.HasIndex(e => e.ControlAccountId)
-            .HasFilter("[ControlAccountId] IS NOT NULL");
-
-        builder.HasIndex(e => e.ElementType);
-
-        builder.HasIndex(e => e.IsDeleted);
-
-        // Relationships
-        builder.HasOne(e => e.Project)
-            .WithMany(p => p.WBSElements)
-            .HasForeignKey(e => e.ProjectId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(e => e.Parent)
-            .WithMany(p => p.Children)
-            .HasForeignKey(e => e.ParentId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(e => e.ControlAccount)
-            .WithMany(ca => ca.WorkPackages)
-            .HasForeignKey(e => e.ControlAccountId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(e => e.WorkPackageDetails)
-            .WithOne(wp => wp.WBSElement)
-            .HasForeignKey<WorkPackageDetails>(wp => wp.WBSElementId)
+        // Foreign key relationships
+        builder.HasOne(wbs => wbs.Project)
+            .WithMany(p => p.WBSCode)
+            .HasForeignKey(wbs => wbs.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Query Filters
-        builder.HasQueryFilter(e => !e.IsDeleted);
+        builder.HasOne(wbs => wbs.Parent)
+            .WithMany(wbs => wbs.Children)
+            .HasForeignKey(wbs => wbs.ParentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        
+        builder.HasOne(wbs => wbs.ControlAccount)
+            .WithMany(ca => ca.WorkPackages)
+            .HasForeignKey(wbs => wbs.ControlAccountId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+
+        // Global query filter for soft delete
+        builder.HasQueryFilter(wbs => !wbs.IsDeleted);
     }
 }

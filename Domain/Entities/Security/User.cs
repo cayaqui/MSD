@@ -12,7 +12,6 @@ namespace Domain.Entities.Security
         // Private constructor for EF
         private User()
         {
-            //UserRoles = new HashSet<UserRole>();
             ProjectTeamMembers = new HashSet<ProjectTeamMember>();
             UserProjectPermissions = new HashSet<UserProjectPermission>();
         }
@@ -54,7 +53,6 @@ namespace Domain.Entities.Security
         public string? DeletedBy { get; set; }
 
         // Navigation properties
-        //public virtual ICollection<UserRole> UserRoles { get; private set; }
         public virtual ICollection<ProjectTeamMember> ProjectTeamMembers { get; private set; }
         public virtual ICollection<UserProjectPermission> UserProjectPermissions { get; private set; }
 

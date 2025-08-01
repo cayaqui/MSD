@@ -30,6 +30,7 @@ public class PlanningPackage : BaseEntity, IAuditable, ISoftDelete, IActivatable
     // Conversion Information
     public DateTime PlannedConversionDate { get; private set; } // When to convert to Work Packages
     public bool IsConverted { get; private set; }
+    public string ConversionNotes { get; private set; }
     public DateTime? ConversionDate { get; private set; }
     public string? ConvertedBy { get; private set; }
 

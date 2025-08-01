@@ -113,12 +113,8 @@ namespace Domain.Entities.Projects
         // Navigation Properties
         public virtual ICollection<ProjectTeamMember> ProjectTeamMembers { get; private set; }
         public virtual ICollection<UserProjectPermission> UserProjectPermissions { get; private set; }
-
-        // Future navigation properties (commented for now)
-        //public virtual ICollection<Phase> Phases { get; private set; }
-        //public virtual ICollection<WorkPackage> WorkPackages { get; private set; }
-        //public virtual ICollection<ControlAccount> ControlAccounts { get; private set; }
-        //public virtual ICollection<Budget> Budgets { get; private set; }
+        public virtual ICollection<ControlAccount> ControlAccounts { get; private set; }
+        public virtual ICollection<Budget> Budgets { get; private set; }
         //public virtual ICollection<Schedule> Schedules { get; private set; }
         //public virtual ICollection<Contract> Contracts { get; private set; }
         //public virtual ICollection<Risk> Risks { get; private set; }
