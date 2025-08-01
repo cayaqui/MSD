@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Core.Constants;
 
-namespace Infrastructure.Data.Configurations.Security
+namespace Infrastructure.Data.Configurations.Auth
 {
     public class ProjectTeamMemberConfiguration : IEntityTypeConfiguration<ProjectTeamMember>
     {

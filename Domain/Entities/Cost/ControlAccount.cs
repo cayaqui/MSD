@@ -28,7 +28,6 @@ public class ControlAccount : BaseEntity, IAuditable, ISoftDelete, IActivatable
 
     // Budget Information
     public decimal BAC { get; private set; } // Budget at Completion
-    public decimal AC { get; private set; } // Budget at Completion
     public decimal ContingencyReserve { get; private set; }
     public decimal ManagementReserve { get; private set; }
 
@@ -77,19 +76,12 @@ public class ControlAccount : BaseEntity, IAuditable, ISoftDelete, IActivatable
         CAMUserId = camUserId;
         BAC = bac;
         MeasurementMethod = measurementMethod;
-
-        Status = ControlAccountStatus.Planning;
-        IsActive = true;
-        CreatedAt = DateTime.UtcNow;
+        Status = ControlAccountStatus.Open;
         BaselineDate = DateTime.UtcNow;
-        PercentComplete = 0;
-        ContingencyReserve = 0;
-        ManagementReserve = 0;
-
-        Validate();
+        IsActive = true;
     }
 
-    // Methods
+    // Domain Methods
     public void UpdateBasicInfo(string name, string? description)
     {
         Name = name ?? throw new ArgumentNullException(nameof(name));
@@ -100,46 +92,72 @@ public class ControlAccount : BaseEntity, IAuditable, ISoftDelete, IActivatable
     public void UpdateBudget(decimal bac, decimal contingencyReserve, decimal managementReserve)
     {
         if (Status == ControlAccountStatus.Closed)
-            throw new InvalidOperationException("Cannot update budget for closed control account");
+            throw new InvalidOperationException("Cannot update budget on a closed Control Account");
+
+        if (bac < 0 || contingencyReserve < 0 || managementReserve < 0)
+            throw new ArgumentException("Budget values cannot be negative");
 
         BAC = bac;
         ContingencyReserve = contingencyReserve;
         ManagementReserve = managementReserve;
         UpdatedAt = DateTime.UtcNow;
-
-        Validate();
     }
 
-    public void UpdateCAM(Guid camUserId)
+    public void AssignCAM(Guid newCAMUserId, string updatedBy)
     {
-        CAMUserId = camUserId;
+        if (Status == ControlAccountStatus.Closed)
+            throw new InvalidOperationException("Cannot change CAM on a closed Control Account");
+
+        CAMUserId = newCAMUserId;
+        UpdatedBy = updatedBy;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateMeasurementMethod(MeasurementMethod method)
+    public void UpdateStatus(ControlAccountStatus newStatus, string updatedBy)
     {
-        if (Status == ControlAccountStatus.InProgress)
-            throw new InvalidOperationException("Cannot change measurement method for in-progress control account");
-
-        MeasurementMethod = method;
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void UpdateStatus(ControlAccountStatus newStatus)
-    {
-        if (!IsValidStatusTransition(Status, newStatus))
-            throw new InvalidOperationException($"Invalid status transition from {Status} to {newStatus}");
+        // Validate status transition
+        switch (Status)
+        {
+            case ControlAccountStatus.Open:
+                if (newStatus != ControlAccountStatus.Baselined && newStatus != ControlAccountStatus.Closed)
+                    throw new InvalidOperationException($"Cannot transition from {Status} to {newStatus}");
+                break;
+            case ControlAccountStatus.Baselined:
+                if (newStatus != ControlAccountStatus.InProgress && newStatus != ControlAccountStatus.Closed)
+                    throw new InvalidOperationException($"Cannot transition from {Status} to {newStatus}");
+                break;
+            case ControlAccountStatus.InProgress:
+                if (newStatus != ControlAccountStatus.Completed && newStatus != ControlAccountStatus.Closed)
+                    throw new InvalidOperationException($"Cannot transition from {Status} to {newStatus}");
+                break;
+            case ControlAccountStatus.Completed:
+                if (newStatus != ControlAccountStatus.Closed)
+                    throw new InvalidOperationException($"Cannot transition from {Status} to {newStatus}");
+                break;
+            case ControlAccountStatus.Closed:
+                throw new InvalidOperationException("Cannot change status of a closed Control Account");
+        }
 
         Status = newStatus;
+        UpdatedBy = updatedBy;
         UpdatedAt = DateTime.UtcNow;
+
+        if (newStatus == ControlAccountStatus.Baselined)
+        {
+            BaselineDate = DateTime.UtcNow;
+        }
     }
 
-    public void UpdateProgress(decimal percentComplete)
+    public void UpdateProgress(decimal percentComplete, string updatedBy)
     {
         if (percentComplete < 0 || percentComplete > 100)
-            throw new ArgumentOutOfRangeException(nameof(percentComplete), "Progress must be between 0 and 100");
+            throw new ArgumentException("Percent complete must be between 0 and 100");
+
+        if (Status == ControlAccountStatus.Closed)
+            throw new InvalidOperationException("Cannot update progress on a closed Control Account");
 
         PercentComplete = percentComplete;
+        UpdatedBy = updatedBy;
         UpdatedAt = DateTime.UtcNow;
 
         // Auto-update status based on progress
@@ -147,104 +165,67 @@ public class ControlAccount : BaseEntity, IAuditable, ISoftDelete, IActivatable
         {
             Status = ControlAccountStatus.Completed;
         }
+        else if (percentComplete > 0 && percentComplete < 100 && Status == ControlAccountStatus.Baselined)
+        {
+            Status = ControlAccountStatus.InProgress;
+        }
     }
 
-    public void Baseline()
+    public void Close(string closedBy)
     {
-        if (Status != ControlAccountStatus.Planning)
-            throw new InvalidOperationException("Only planning control accounts can be baselined");
+        if (Status == ControlAccountStatus.Closed)
+            throw new InvalidOperationException("Control Account is already closed");
 
-        Status = ControlAccountStatus.Baselined;
-        BaselineDate = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void Close()
-    {
-        if (Status != ControlAccountStatus.Completed)
-            throw new InvalidOperationException("Only completed control accounts can be closed");
+        // Verify all work packages are completeg
+        var incompleteWorkPackages = WorkPackages.Where(wp => wp.GetWeightedProgress() < 100).ToList();
+        if (incompleteWorkPackages.Any())
+            throw new InvalidOperationException($"Cannot close Control Account with {incompleteWorkPackages.Count} incomplete work packages");
 
         Status = ControlAccountStatus.Closed;
+        UpdatedBy = closedBy;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    // New helper methods for WBSElement
-    public IEnumerable<WBSElement> GetActiveWorkPackages()
+    public void Delete(string deletedBy)
     {
-        return WorkPackages.Where(w => w.IsWorkPackage() && w.IsActive && !w.IsDeleted);
+        if (Status != ControlAccountStatus.Open)
+            throw new InvalidOperationException("Only Control Accounts in Open status can be deleted");
+
+        if (WorkPackages.Any() || PlanningPackages.Any())
+            throw new InvalidOperationException("Cannot delete Control Account with assigned work packages or planning packages");
+
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
+        DeletedBy = deletedBy;
     }
 
-    public IEnumerable<WBSElement> GetPlanningPackages()
+    // Calculations
+    public decimal GetActualCost()
     {
-        return WorkPackages.Where(w => w.IsPlanningPackage() && w.IsActive && !w.IsDeleted);
+        return EVMRecords.OrderByDescending(e => e.DataDate).FirstOrDefault()?.AC ?? 0;
     }
 
-    public void AddWorkPackage(WBSElement wbsElement)
+    public decimal GetEarnedValue()
     {
-        if (!wbsElement.IsWorkPackage() && !wbsElement.IsPlanningPackage())
-            throw new InvalidOperationException("Only work packages or planning packages can be added to control account");
-
-        if (wbsElement.ControlAccountId != Id)
-            throw new InvalidOperationException("Work package must be assigned to this control account");
-
-        WorkPackages.Add(wbsElement);
-        UpdatedAt = DateTime.UtcNow;
+        return EVMRecords.OrderByDescending(e => e.DataDate).FirstOrDefault()?.EV ?? 0;
     }
 
-    // Calculate rollup from work packages
-    public void CalculateRollupProgress()
+    public decimal GetPlannedValue()
     {
-        var activeWorkPackages = GetActiveWorkPackages().ToList();
-        if (!activeWorkPackages.Any())
-        {
-            PercentComplete = 0;
-            return;
-        }
-
-        var totalBudget = activeWorkPackages.Sum(wp => wp.WorkPackageDetails?.Budget ?? 0);
-        if (totalBudget == 0)
-        {
-            // Simple average if no budget
-            PercentComplete = activeWorkPackages.Average(wp => wp.WorkPackageDetails?.ProgressPercentage ?? 0);
-        }
-        else
-        {
-            // Weighted average by budget
-            var weightedProgress = activeWorkPackages.Sum(wp =>
-                (wp.WorkPackageDetails?.ProgressPercentage ?? 0) * (wp.WorkPackageDetails?.Budget ?? 0));
-            PercentComplete = weightedProgress / totalBudget;
-        }
-
-        UpdatedAt = DateTime.UtcNow;
+        return EVMRecords.OrderByDescending(e => e.DataDate).FirstOrDefault()?.PV ?? 0;
     }
 
-    // Validation
-    private void Validate()
+    public decimal GetCPI()
     {
-        if (BAC < 0)
-            throw new ArgumentException("Budget at Completion cannot be negative");
-
-        if (ContingencyReserve < 0)
-            throw new ArgumentException("Contingency Reserve cannot be negative");
-
-        if (ManagementReserve < 0)
-            throw new ArgumentException("Management Reserve cannot be negative");
-
-        if (!System.Text.RegularExpressions.Regex.IsMatch(Code, @"^C-\d{3}-\d{2}-[A-Z]{3}-\d{2}$"))
-            throw new ArgumentException("Code must follow format: C-XXX-YY-CAM-##");
+        var ev = GetEarnedValue();
+        var ac = GetActualCost();
+        return ac > 0 ? ev / ac : 0;
     }
 
-    private bool IsValidStatusTransition(ControlAccountStatus current, ControlAccountStatus next)
+    public decimal GetSPI()
     {
-        return (current, next) switch
-        {
-            (ControlAccountStatus.Planning, ControlAccountStatus.Baselined) => true,
-            (ControlAccountStatus.Baselined, ControlAccountStatus.InProgress) => true,
-            (ControlAccountStatus.InProgress, ControlAccountStatus.Completed) => true,
-            (ControlAccountStatus.Completed, ControlAccountStatus.Closed) => true,
-            (ControlAccountStatus.InProgress, ControlAccountStatus.OnHold) => true,
-            (ControlAccountStatus.OnHold, ControlAccountStatus.InProgress) => true,
-            _ => false
-        };
+        var ev = GetEarnedValue();
+        var pv = GetPlannedValue();
+        return pv > 0 ? ev / pv : 0;
     }
 }

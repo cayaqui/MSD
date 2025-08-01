@@ -1,107 +1,98 @@
-﻿using Domain.Entities.Projects;
-using System.Diagnostics.Contracts;
+﻿using Domain.Common;
+using Domain.Entities.Cost;
+using System;
+using System.Collections.Generic;
 
 namespace Domain.Entities.Setup;
 
 /// <summary>
-/// Enhanced Contractor entity with complete vendor management capabilities
+/// Contractor/Vendor entity
+/// Represents external companies that provide services or materials
 /// </summary>
-public class Contractor : BaseEntity, ISoftDelete, ICodeEntity, INamedEntity
+public class Contractor : BaseEntity, IAuditable, ISoftDelete, ICodeEntity, INamedEntity, IActivatable
 {
-    public string Code { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-
-    // Business Information
-    public string? TaxId { get; private set; }
-    public string? DunsNumber { get; private set; } // Dun & Bradstreet Number
-    public ContractorType Type { get; private set; } // Vendor, Subcontractor, Supplier, Consultant
-    public string? BusinessCategory { get; private set; } // Small Business, MBE, WBE, etc.
-
-    // Address Information
-    public string? Address { get; private set; }
-    public string? City { get; private set; }
-    public string? State { get; private set; }
-    public string? Country { get; private set; }
-    public string? PostalCode { get; private set; }
+    // Basic Information
+    public string Code { get; set; } = string.Empty; // Contractor code
+    public string Name { get; set; } = string.Empty; // Legal name
+    public string? TradeName { get; set; } // DBA/Commercial name
+    public string TaxId { get; set; } = string.Empty; // RFC, RUT, etc.
+    public ContractorType Type { get; set; }
+    public ContractorClassification Classification { get; set; }
 
     // Contact Information
-    public string? PrimaryContactName { get; private set; }
-    public string? PrimaryContactEmail { get; private set; }
-    public string? PrimaryContactPhone { get; private set; }
-    public string? SecondaryContactName { get; private set; }
-    public string? SecondaryContactEmail { get; private set; }
-    public string? SecondaryContactPhone { get; private set; }
+    public string? ContactName { get; set; }
+    public string? ContactTitle { get; set; }
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string? MobilePhone { get; set; }
+    public string? Website { get; set; }
+
+    // Address
+    public string? Address { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? Country { get; set; }
+    public string? PostalCode { get; set; }
 
     // Financial Information
-    public string? BankName { get; private set; }
-    public string? BankAccountNumber { get; private set; }
-    public string? BankRoutingNumber { get; private set; }
-    public string? PaymentTerms { get; private set; } // Net 30, 2/10 Net 30, etc.
-    public string PreferredCurrency { get; private set; } = "USD";
-    public decimal? CreditLimit { get; private set; }
+    public string? BankName { get; set; }
+    public string? BankAccount { get; set; }
+    public string? BankRoutingNumber { get; set; }
+    public string? PaymentTerms { get; set; }
+    public decimal CreditLimit { get; set; }
+    public string DefaultCurrency { get; set; } = "USD";
 
-    // Qualification & Compliance
-    public bool IsPrequalified { get; private set; }
-    public DateTime? PrequalificationDate { get; private set; }
-    public DateTime? PrequalificationExpiry { get; private set; }
-    public string? InsuranceCertificate { get; private set; }
-    public DateTime? InsuranceExpiry { get; private set; }
-    public decimal? GeneralLiabilityLimit { get; private set; }
-    public decimal? WorkersCompLimit { get; private set; }
-    public bool HasValidW9 { get; private set; } // For US contractors
+    // Qualification
+    public bool IsPrequalified { get; set; }
+    public DateTime? PrequalificationDate { get; set; }
+    public string? PrequalificationNotes { get; set; }
+    public ContractorStatus Status { get; set; }
+    public decimal? PerformanceRating { get; set; } // 0-5 scale
 
-    // Performance Metrics
-    public decimal? OverallRating { get; private set; } // 1-5 scale
-    public decimal? QualityRating { get; private set; }
-    public decimal? DeliveryRating { get; private set; }
-    public decimal? SafetyRating { get; private set; }
-    public decimal? CostRating { get; private set; }
-    public int CompletedProjects { get; private set; }
-    public int ActiveProjects { get; private set; }
-    public decimal TotalContractValue { get; private set; }
+    // Insurance & Compliance
+    public bool HasInsurance { get; set; }
+    public DateTime? InsuranceExpiryDate { get; set; }
+    public decimal? InsuranceAmount { get; set; }
+    public string? InsuranceCompany { get; set; }
+    public string? InsurancePolicyNumber { get; set; }
 
-    // Service Categories
-    public string? ServiceCategories { get; private set; } // JSON array of categories
-    public string? Certifications { get; private set; } // JSON array of certifications
-    public string? SpecialCapabilities { get; private set; }
-
-    // Status & Risk
-    public ContractorStatus Status { get; private set; } // Active, Suspended, Blacklisted
-    public string? StatusReason { get; private set; }
-    public DateTime? StatusDate { get; private set; }
-    public RiskLevel RiskLevel { get; private set; } // Low, Medium, High
-    public string? Notes { get; private set; }
-
-    // Navigation properties
-    public ICollection<Package> Packages { get; private set; } = new List<Package>();
-    public ICollection<Invoice> Invoices { get; private set; } = new List<Invoice>();
-    public ICollection<ContractorEvaluation> Evaluations { get; private set; } = new List<ContractorEvaluation>();
+    // Certifications
+    public string? Certifications { get; set; } // JSON array of certifications
+    public string? SpecialtyAreas { get; set; } // JSON array of specialties
 
     // Soft Delete
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public string? DeletedBy { get; set; }
 
-    private Contractor() { } // EF Core
+    // Activatable
+    public bool IsActive { get; set; }
 
-    public Contractor(string code, string name, ContractorType type)
+    // Navigation Properties
+    public ICollection<Commitment> Commitments { get; set; } = new List<Commitment>();
+    public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
+
+    // Constructor for EF Core
+    private Contractor() { }
+
+    public Contractor(string code, string name, string taxId, ContractorType type)
     {
         Code = code ?? throw new ArgumentNullException(nameof(code));
         Name = name ?? throw new ArgumentNullException(nameof(name));
+        TaxId = taxId ?? throw new ArgumentNullException(nameof(taxId));
         Type = type;
+        Classification = ContractorClassification.Standard;
         Status = ContractorStatus.Active;
-        RiskLevel = RiskLevel.Low;
-        CompletedProjects = 0;
-        ActiveProjects = 0;
-        TotalContractValue = 0;
+        IsActive = true;
+        DefaultCurrency = "USD";
     }
 
-    // Methods
-    public void UpdateBusinessInfo(string name, string? taxId, string? dunsNumber)
+    // Domain Methods
+    public void UpdateContactInfo(string? contactName, string? email, string? phone)
     {
-        Name = name ?? throw new ArgumentNullException(nameof(name));
-        TaxId = taxId;
-        DunsNumber = dunsNumber;
+        ContactName = contactName;
+        Email = email;
+        Phone = phone;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -115,217 +106,91 @@ public class Contractor : BaseEntity, ISoftDelete, ICodeEntity, INamedEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdatePrimaryContact(string? name, string? email, string? phone)
-    {
-        PrimaryContactName = name;
-        PrimaryContactEmail = email;
-        PrimaryContactPhone = phone;
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void UpdateSecondaryContact(string? name, string? email, string? phone)
-    {
-        SecondaryContactName = name;
-        SecondaryContactEmail = email;
-        SecondaryContactPhone = phone;
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void UpdateFinancialInfo(string? bankName, string? paymentTerms, decimal? creditLimit)
+    public void UpdateFinancialInfo(string? bankName, string? bankAccount, string? paymentTerms, decimal creditLimit)
     {
         BankName = bankName;
+        BankAccount = bankAccount;
         PaymentTerms = paymentTerms;
         CreditLimit = creditLimit;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateBankingInfo(string? accountNumber, string? routingNumber)
-    {
-        BankAccountNumber = accountNumber;
-        BankRoutingNumber = routingNumber;
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void SetPrequalification(DateTime qualificationDate, DateTime expiryDate)
+    public void Prequalify(string notes, string approvedBy)
     {
         IsPrequalified = true;
-        PrequalificationDate = qualificationDate;
-        PrequalificationExpiry = expiryDate;
+        PrequalificationDate = DateTime.UtcNow;
+        PrequalificationNotes = notes;
+        UpdatedBy = approvedBy;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateInsurance(string certificateNumber, DateTime expiryDate, decimal generalLiability, decimal workersComp)
+    public void UpdateInsurance(DateTime expiryDate, decimal amount, string company, string policyNumber)
     {
-        InsuranceCertificate = certificateNumber;
-        InsuranceExpiry = expiryDate;
-        GeneralLiabilityLimit = generalLiability;
-        WorkersCompLimit = workersComp;
+        HasInsurance = true;
+        InsuranceExpiryDate = expiryDate;
+        InsuranceAmount = amount;
+        InsuranceCompany = company;
+        InsurancePolicyNumber = policyNumber;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateRatings(decimal? quality, decimal? delivery, decimal? safety, decimal? cost)
+    public void UpdateStatus(ContractorStatus status, string updatedBy)
     {
-        ValidateRating(quality);
-        ValidateRating(delivery);
-        ValidateRating(safety);
-        ValidateRating(cost);
+        if (Status == ContractorStatus.Blacklisted && status != ContractorStatus.Blacklisted)
+            throw new InvalidOperationException("Blacklisted contractors must go through a review process to change status");
 
-        QualityRating = quality;
-        DeliveryRating = delivery;
-        SafetyRating = safety;
-        CostRating = cost;
-
-        // Calculate overall rating
-        var ratings = new[] { quality, delivery, safety, cost }.Where(r => r.HasValue).ToList();
-        if (ratings.Any())
-        {
-            OverallRating = ratings.Average(r => r!.Value);
-        }
-
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void UpdateStatus(ContractorStatus status, string? reason)
-    {
         Status = status;
-        StatusReason = reason;
-        StatusDate = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
         UpdatedAt = DateTime.UtcNow;
 
-        // Update risk level based on status
-        if (status == ContractorStatus.Blacklisted)
+        if (status == ContractorStatus.Inactive || status == ContractorStatus.Blacklisted)
         {
-            RiskLevel = RiskLevel.High;
-        }
-        else if (status == ContractorStatus.Suspended)
-        {
-            RiskLevel = RiskLevel.Medium;
+            IsActive = false;
         }
     }
 
-    public void UpdateRiskLevel(RiskLevel level, string? notes)
+    public void UpdatePerformanceRating(decimal rating, string updatedBy)
     {
-        RiskLevel = level;
-        if (!string.IsNullOrEmpty(notes))
-        {
-            Notes = $"{DateTime.UtcNow:yyyy-MM-dd}: {notes}\n{Notes}";
-        }
-        UpdatedAt = DateTime.UtcNow;
-    }
+        if (rating < 0 || rating > 5)
+            throw new ArgumentException("Performance rating must be between 0 and 5");
 
-    public void IncrementProjectCount(bool isCompleted)
-    {
-        if (isCompleted)
-        {
-            CompletedProjects++;
-            ActiveProjects = Math.Max(0, ActiveProjects - 1);
-        }
+        PerformanceRating = rating;
+        UpdatedBy = updatedBy;
+        UpdatedAt = DateTime.UtcNow;
+
+        // Auto-update classification based on rating
+        if (rating >= 4.5m)
+            Classification = ContractorClassification.Preferred;
+        else if (rating < 2.0m)
+            Classification = ContractorClassification.Restricted;
         else
-        {
-            ActiveProjects++;
-        }
-        UpdatedAt = DateTime.UtcNow;
+            Classification = ContractorClassification.Standard;
     }
 
-    public void UpdateContractValue(decimal additionalValue)
+    public bool IsInsuranceExpired()
     {
-        TotalContractValue += additionalValue;
-        UpdatedAt = DateTime.UtcNow;
+        return HasInsurance && InsuranceExpiryDate.HasValue && InsuranceExpiryDate.Value < DateTime.UtcNow;
     }
 
-    public bool IsInsuranceExpired() => InsuranceExpiry.HasValue && InsuranceExpiry.Value < DateTime.UtcNow;
-
-    public bool IsPrequalificationExpired() => PrequalificationExpiry.HasValue && PrequalificationExpiry.Value < DateTime.UtcNow;
-
-    public bool CanBidOnProjects() => Status == ContractorStatus.Active &&
-                                      IsPrequalified &&
-                                      !IsPrequalificationExpired() &&
-                                      !IsInsuranceExpired();
-
-    private void ValidateRating(decimal? rating)
+    public bool CanBeAwarded()
     {
-        if (rating.HasValue && (rating.Value < 1 || rating.Value > 5))
-            throw new ArgumentException("Rating must be between 1 and 5");
+        return IsActive &&
+               IsPrequalified &&
+               Status == ContractorStatus.Active &&
+               !IsInsuranceExpired();
     }
-}
 
-// Supporting Enums
-public enum ContractorType
-{
-    Vendor = 1,
-    Subcontractor = 2,
-    Supplier = 3,
-    Consultant = 4,
-    ServiceProvider = 5
-}
-
-public enum ContractorStatus
-{
-    Active = 1,
-    Inactive = 2,
-    Suspended = 3,
-    Blacklisted = 4,
-    Pending = 5
-}
-
-public enum RiskLevel
-{
-    Low = 1,
-    Medium = 2,
-    High = 3,
-    Critical = 4
-}
-
-// Contractor Evaluation Entity
-public class ContractorEvaluation : BaseEntity
-{
-    public Guid ContractorId { get; private set; }
-    public Guid ProjectId { get; private set; }
-    public DateTime EvaluationDate { get; private set; }
-    public string EvaluatedBy { get; private set; } = string.Empty;
-
-    // Ratings
-    public decimal QualityScore { get; private set; }
-    public decimal DeliveryScore { get; private set; }
-    public decimal SafetyScore { get; private set; }
-    public decimal CostScore { get; private set; }
-    public decimal CommunicationScore { get; private set; }
-    public decimal OverallScore { get; private set; }
-
-    // Comments
-    public string? Strengths { get; private set; }
-    public string? AreasForImprovement { get; private set; }
-    public string? GeneralComments { get; private set; }
-    public bool WouldRehire { get; private set; }
-
-    // Navigation
-    public Contractor Contractor { get; private set; } = null!;
-    public Project Project { get; private set; } = null!;
-
-    private ContractorEvaluation() { }
-
-    public ContractorEvaluation(
-        Guid contractorId,
-        Guid projectId,
-        string evaluatedBy,
-        decimal quality,
-        decimal delivery,
-        decimal safety,
-        decimal cost,
-        decimal communication)
+    public decimal GetTotalCommitments()
     {
-        ContractorId = contractorId;
-        ProjectId = projectId;
-        EvaluatedBy = evaluatedBy;
-        EvaluationDate = DateTime.UtcNow;
+        return Commitments.Where(c => !c.IsDeleted && c.Status != CommitmentStatus.Cancelled)
+                         .Sum(c => c.TotalAmount);
+    }
 
-        QualityScore = quality;
-        DeliveryScore = delivery;
-        SafetyScore = safety;
-        CostScore = cost;
-        CommunicationScore = communication;
-
-        OverallScore = new[] { quality, delivery, safety, cost, communication }.Average();
-        WouldRehire = OverallScore >= 3.5m;
+    public decimal GetOpenCommitments()
+    {
+        return Commitments.Where(c => !c.IsDeleted &&
+                                     c.Status != CommitmentStatus.Cancelled &&
+                                     c.Status != CommitmentStatus.Closed)
+                         .Sum(c => c.TotalAmount - c.InvoicedAmount);
     }
 }

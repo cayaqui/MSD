@@ -1,18 +1,14 @@
 ﻿using Application.Interfaces.Auth;
 using Application.Interfaces.Common;
-using Domain.Entities.Projects;
 using Domain.Entities.Cost;
-using Domain.Entities.Progress;
-using Domain.Entities.Risk;
 using Domain.Entities.EVM;
-using Microsoft.EntityFrameworkCore;
+using Domain.Entities.Projects;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Graph.Models;
 using System.Data;
-using System.Linq.Expressions;
 using System.Reflection;
 using Operation = Domain.Entities.Setup.Operation;
 using User = Domain.Entities.Security.User;
-using Domain.Entities.Change;
 
 namespace Infrastructure.Data;
 
@@ -48,19 +44,19 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<Operation> Operations => Set<Operation>();
     public DbSet<Project> Projects => Set<Project>();
-    public DbSet<Phase> Phases => Set<Phase>();
-    public DbSet<Discipline> Disciplines => Set<Discipline>();
     public DbSet<Contractor> Contractors => Set<Contractor>();
-    public DbSet<ProjectTeamMember> ProjectTeamMembers => Set<ProjectTeamMember>();
+    public DbSet<Currency> Currencies => Set<Currency>();
+    public DbSet<Discipline> Disciplines => Set<Discipline>();
 
     #endregion
 
-    #region DbSets - WBS Module
+    #region DbSets - Projects Module
 
+    public DbSet<Phase> Phases => Set<Phase>();
     public DbSet<WBSElement> WBSElements => Set<WBSElement>();
     public DbSet<WorkPackageDetails> WorkPackageDetails => Set<WorkPackageDetails>();
-    public DbSet<Package> Packages => Set<Package>();
-    public DbSet<PackageDiscipline> PackageDisciplines => Set<PackageDiscipline>();
+    public DbSet<PlanningPackage> PlanningPackages => Set<PlanningPackage>();
+    public DbSet<ProjectTeamMember> ProjectTeamMembers => Set<ProjectTeamMember>();
 
     #endregion
 
@@ -70,10 +66,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<BudgetItem> BudgetItems => Set<BudgetItem>();
     public DbSet<ControlAccount> ControlAccounts => Set<ControlAccount>();
     public DbSet<ControlAccountAssignment> ControlAccountAssignments => Set<ControlAccountAssignment>();
-    public DbSet<CBS> CBSElements => Set<CBS>();
-    public DbSet<CostItem> CostItems => Set<CostItem>();
-    public DbSet<PlanningPackage> PlanningPackages => Set<PlanningPackage>();
     public DbSet<Commitment> Commitments => Set<Commitment>();
+    public DbSet<CommitmentItem> CommitmentItems => Set<CommitmentItem>();
     public DbSet<CommitmentWorkPackage> CommitmentWorkPackages => Set<CommitmentWorkPackage>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
@@ -82,9 +76,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     #region DbSets - Schedule Module
 
-    public DbSet<ScheduleVersion> Schedules => Set<ScheduleVersion>();
+    public DbSet<Schedule> Schedules => Set<Schedule>();
     public DbSet<Activity> Activities => Set<Activity>();
-    public DbSet<Resource> Resources => Set<Resource>();
     public DbSet<Milestone> Milestones => Set<Milestone>();
 
     #endregion
@@ -95,24 +88,9 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     #endregion
 
-    #region DbSets - Risk Module
+    #region DbSets - Document Module
 
-    public DbSet<Risk> Risks => Set<Risk>();
-    public DbSet<RiskResponse> RiskResponses => Set<RiskResponse>();
-    public DbSet<RiskReview> RiskReviews => Set<RiskReview>();
-
-    #endregion
-
-    #region DbSets - Change Management Module
-
-    public DbSet<ChangeOrder> ChangeOrders => Set<ChangeOrder>();
-    public DbSet<ChangeOrderApproval> ChangeOrderApprovals => Set<ChangeOrderApproval>();
-    public DbSet<ChangeOrderImpact> ChangeOrderImpacts => Set<ChangeOrderImpact>();
-
-    #endregion
-
-    #region DbSets - Document Module (Currently Inactive)
-
+    // TODO: Implement when document management is required
     //public DbSet<Document> Documents => Set<Document>();
     //public DbSet<DocumentRevision> DocumentRevisions => Set<DocumentRevision>();
     //public DbSet<Transmittal> Transmittals => Set<Transmittal>();
@@ -129,8 +107,51 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // Apply all configurations from the current assembly
+        // Apply configurations from assembly
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        // Configure schemas
+        modelBuilder.HasDefaultSchema("dbo");
+
+        // Security Module
+        modelBuilder.Entity<User>().ToTable("Users", "Security");
+        modelBuilder.Entity<ProjectTeamMember>().ToTable("ProjectTeamMembers", "Security");
+
+        // Setup Module
+        modelBuilder.Entity<Company>().ToTable("Companies", "Setup");
+        modelBuilder.Entity<Operation>().ToTable("Operations", "Setup");
+        modelBuilder.Entity<Project>().ToTable("Projects", "Setup");
+        modelBuilder.Entity<Contractor>().ToTable("Contractors", "Setup");
+        modelBuilder.Entity<Currency>().ToTable("Currencies", "Setup");
+        modelBuilder.Entity<Discipline>().ToTable("Disciplines", "Setup");
+
+        // Projects Module
+        modelBuilder.Entity<Phase>().ToTable("Phases", "Projects");
+        modelBuilder.Entity<WBSElement>().ToTable("WBSElements", "Projects");
+        modelBuilder.Entity<WorkPackageDetails>().ToTable("WorkPackageDetails", "Projects");
+        modelBuilder.Entity<PlanningPackage>().ToTable("PlanningPackages", "Projects");
+
+        // Cost Module
+        modelBuilder.Entity<Budget>().ToTable("Budgets", "Cost");
+        modelBuilder.Entity<BudgetItem>().ToTable("BudgetItems", "Cost");
+        modelBuilder.Entity<ControlAccount>().ToTable("ControlAccounts", "Cost");
+        modelBuilder.Entity<ControlAccountAssignment>().ToTable("ControlAccountAssignments", "Cost");
+        modelBuilder.Entity<Commitment>().ToTable("Commitments", "Cost");
+        modelBuilder.Entity<CommitmentItem>().ToTable("CommitmentItems", "Cost");
+        modelBuilder.Entity<CommitmentWorkPackage>().ToTable("CommitmentWorkPackages", "Cost");
+        modelBuilder.Entity<Invoice>().ToTable("Invoices", "Cost");
+        modelBuilder.Entity<InvoiceItem>().ToTable("InvoiceItems", "Cost");
+
+        // Schedule Module
+        modelBuilder.Entity<Schedule>().ToTable("Schedules", "Schedule");
+        modelBuilder.Entity<Activity>().ToTable("Activities", "Schedule");
+        modelBuilder.Entity<Milestone>().ToTable("Milestones", "Schedule");
+
+        // EVM Module
+        modelBuilder.Entity<EVMRecord>().ToTable("EVMRecords", "EVM");
+
+        // UI Module
+        modelBuilder.Entity<Notification>().ToTable("Notifications", "UI");
 
         // Apply global query filters for soft delete
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
@@ -140,66 +161,184 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 entityType.AddSoftDeleteQueryFilter();
             }
         }
+
+        // Set decimal precision
+        foreach (var property in modelBuilder.Model.GetEntityTypes()
+            .SelectMany(t => t.GetProperties())
+            .Where(p => p.ClrType == typeof(decimal) || p.ClrType == typeof(decimal?)))
+        {
+            property.SetColumnType("decimal(18,2)");
+        }
+
+        // Configure indexes
+        ConfigureIndexes(modelBuilder);
+
+        // Configure relationships
+        ConfigureRelationships(modelBuilder);
+    }
+
+    private void ConfigureIndexes(ModelBuilder modelBuilder)
+    {
+        // Company
+        modelBuilder.Entity<Company>()
+            .HasIndex(c => c.Code)
+            .IsUnique();
+        modelBuilder.Entity<Company>()
+            .HasIndex(c => c.TaxId)
+            .IsUnique();
+
+        // Project
+        modelBuilder.Entity<Project>()
+            .HasIndex(p => p.Code)
+            .IsUnique();
+        modelBuilder.Entity<Project>()
+            .HasIndex(p => new { p.IsDeleted, p.IsActive });
+
+        // Phase
+        modelBuilder.Entity<Phase>()
+            .HasIndex(p => new { p.ProjectId, p.SequenceNumber })
+            .IsUnique();
+
+        // WBSElement
+        modelBuilder.Entity<WBSElement>()
+            .HasIndex(w => new { w.ProjectId, w.Code })
+            .IsUnique();
+        modelBuilder.Entity<WBSElement>()
+            .HasIndex(w => w.FullPath);
+
+        // ControlAccount
+        modelBuilder.Entity<ControlAccount>()
+            .HasIndex(ca => ca.Code)
+            .IsUnique();
+
+        // Contractor
+        modelBuilder.Entity<Contractor>()
+            .HasIndex(c => c.Code)
+            .IsUnique();
+        modelBuilder.Entity<Contractor>()
+            .HasIndex(c => c.TaxId)
+            .IsUnique();
+
+        // Currency
+        modelBuilder.Entity<Currency>()
+            .HasIndex(c => c.Code)
+            .IsUnique();
+
+        // Commitment
+        modelBuilder.Entity<Commitment>()
+            .HasIndex(c => c.ContractNumber)
+            .IsUnique();
+    }
+
+    private void ConfigureRelationships(ModelBuilder modelBuilder)
+    {
+        // Phase -> Project
+        modelBuilder.Entity<Phase>()
+            .HasOne(p => p.Project)
+            .WithMany(pr => pr.Phases)
+            .HasForeignKey(p => p.ProjectId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // WBSElement self-referencing
+        modelBuilder.Entity<WBSElement>()
+            .HasOne(w => w.ParentWBSElement)
+            .WithMany(w => w.ChildElements)
+            .HasForeignKey(w => w.ParentWBSElementId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // WBSElement -> ControlAccount
+        modelBuilder.Entity<WBSElement>()
+            .HasOne(w => w.ControlAccount)
+            .WithMany(ca => ca.WorkPackages)
+            .HasForeignKey(w => w.ControlAccountId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // ControlAccount -> Phase
+        modelBuilder.Entity<ControlAccount>()
+            .HasOne(ca => ca.Phase)
+            .WithMany(p => p.ControlAccounts)
+            .HasForeignKey(ca => ca.PhaseId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // ControlAccount -> CAM User
+        modelBuilder.Entity<ControlAccount>()
+            .HasOne(ca => ca.CAMUser)
+            .WithMany()
+            .HasForeignKey(ca => ca.CAMUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // ControlAccountAssignment
+        modelBuilder.Entity<ControlAccountAssignment>()
+            .HasOne(a => a.ControlAccount)
+            .WithMany(ca => ca.Assignments)
+            .HasForeignKey(a => a.ControlAccountId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // EVMRecord -> ControlAccount
+        modelBuilder.Entity<EVMRecord>()
+            .HasOne(e => e.ControlAccount)
+            .WithMany(ca => ca.EVMRecords)
+            .HasForeignKey(e => e.ControlAccountId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // CommitmentWorkPackage
+        modelBuilder.Entity<CommitmentWorkPackage>()
+            .HasOne(cw => cw.Commitment)
+            .WithMany(c => c.WorkPackageAllocations)
+            .HasForeignKey(cw => cw.CommitmentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CommitmentWorkPackage>()
+            .HasOne(cw => cw.WBSElement)
+            .WithMany(w => w.CommitmentWorkPackages)
+            .HasForeignKey(cw => cw.WBSElementId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Commitment -> Contractor
+        modelBuilder.Entity<Commitment>()
+            .HasOne(c => c.Contractor)
+            .WithMany(ct => ct.Commitments)
+            .HasForeignKey(c => c.ContractorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Invoice -> Contractor
+        modelBuilder.Entity<Invoice>()
+            .HasOne(i => i.Contractor)
+            .WithMany(c => c.Invoices)
+            .HasForeignKey(i => i.ContractorId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+
+    public override int SaveChanges()
+    {
+        AddAuditInfo();
+        return base.SaveChanges();
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        // Update audit fields
-        UpdateAuditableEntities();
-
-        // Update soft delete fields
-        UpdateSoftDeleteEntities();
-
+        AddAuditInfo();
         return await base.SaveChangesAsync(cancellationToken);
     }
 
-    private void UpdateAuditableEntities()
+    private void AddAuditInfo()
     {
         var entries = ChangeTracker
             .Entries()
-            .Where(e => e.Entity is IAuditable &&
-                       (e.State == EntityState.Added || e.State == EntityState.Modified));
+            .Where(e => e.Entity is IAuditable && (e.State == EntityState.Added || e.State == EntityState.Modified));
 
         foreach (var entry in entries)
         {
             var entity = (IAuditable)entry.Entity;
-            var now = DateTime.UtcNow;
-            var userId = _currentUserId ?? "System";
 
             if (entry.State == EntityState.Added)
             {
-                entity.CreatedAt = now;
-                entity.CreatedBy = userId;
-            }
-            else
-            {
-                // Prevent modification of creation audit fields
-                entry.Property(nameof(IAuditable.CreatedAt)).IsModified = false;
-                entry.Property(nameof(IAuditable.CreatedBy)).IsModified = false;
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.CreatedBy = _currentUserId ?? "System";
             }
 
-            entity.UpdatedAt = now;
-            entity.UpdatedBy = userId;
-        }
-    }
-
-    private void UpdateSoftDeleteEntities()
-    {
-        var entries = ChangeTracker
-            .Entries()
-            .Where(e => e.Entity is ISoftDelete && e.State == EntityState.Deleted);
-
-        foreach (var entry in entries)
-        {
-            var entity = (ISoftDelete)entry.Entity;
-
-            // Change the state to modified instead of deleted
-            entry.State = EntityState.Modified;
-
-            // Set soft delete properties
-            entity.IsDeleted = true;
-            entity.DeletedAt = DateTime.UtcNow;
-            entity.DeletedBy = _currentUserId ?? "System";
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.UpdatedBy = _currentUserId ?? "System";
         }
     }
 }

@@ -1,17 +1,29 @@
-﻿namespace Domain.Entities.Cost;
+﻿using Core.Enums.Cost;
+using Domain.Common;
+using Domain.Entities.Security;
+using System;
+
+namespace Domain.Entities.Cost;
 
 /// <summary>
-/// Control Account Assignment for team members
+/// Assignment of team members to Control Accounts
+/// Tracks roles and responsibilities within a Control Account
 /// </summary>
-public class ControlAccountAssignment : BaseEntity
+public class ControlAccountAssignment : BaseEntity, IAuditable, IActivatable
 {
+    // Foreign Keys
     public Guid ControlAccountId { get; private set; }
-    public string UserId { get; private set; } = string.Empty;
+    public Guid UserId { get; private set; }
+
+    // Assignment Information
     public ControlAccountRole Role { get; private set; }
     public DateTime AssignedDate { get; private set; }
     public DateTime? EndDate { get; private set; }
-    public bool IsActive { get; private set; }
-    public decimal? AllocationPercentage { get; private set; }
+    public decimal? AllocationPercentage { get; private set; } // % of time allocated
+    public string? Notes { get; private set; }
+
+    // Activatable
+    public bool IsActive { get; set; }
 
     // Navigation Properties
     public ControlAccount ControlAccount { get; private set; } = null!;
@@ -22,36 +34,56 @@ public class ControlAccountAssignment : BaseEntity
 
     public ControlAccountAssignment(
         Guid controlAccountId,
-        string userId,
+        Guid userId,
         ControlAccountRole role,
         decimal? allocationPercentage = null)
     {
         ControlAccountId = controlAccountId;
-        UserId = userId ?? throw new ArgumentNullException(nameof(userId));
+        UserId = userId;
         Role = role;
         AllocationPercentage = allocationPercentage;
-
         AssignedDate = DateTime.UtcNow;
         IsActive = true;
-
-        Validate();
     }
 
-    public void EndAssignment()
+    // Domain Methods
+    public void UpdateRole(ControlAccountRole newRole, string updatedBy)
     {
-        IsActive = false;
-        EndDate = DateTime.UtcNow;
+        Role = newRole;
+        UpdatedBy = updatedBy;
+        UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateAllocation(decimal percentage)
+    public void UpdateAllocation(decimal percentage, string updatedBy)
     {
-        AllocationPercentage = percentage;
-        Validate();
-    }
-
-    private void Validate()
-    {
-        if (AllocationPercentage.HasValue && (AllocationPercentage < 0 || AllocationPercentage > 100))
+        if (percentage < 0 || percentage > 100)
             throw new ArgumentException("Allocation percentage must be between 0 and 100");
+
+        AllocationPercentage = percentage;
+        UpdatedBy = updatedBy;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void EndAssignment(string endedBy)
+    {
+        if (EndDate.HasValue)
+            throw new InvalidOperationException("Assignment has already ended");
+
+        EndDate = DateTime.UtcNow;
+        IsActive = false;
+        UpdatedBy = endedBy;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void AddNotes(string notes, string updatedBy)
+    {
+        Notes = notes;
+        UpdatedBy = updatedBy;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public bool IsCurrentlyActive()
+    {
+        return IsActive && !EndDate.HasValue;
     }
 }

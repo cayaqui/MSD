@@ -1,9 +1,14 @@
 ﻿using Core.Enums.Cost;
 using Core.Enums.Progress;
 using Domain.Common;
+using Domain.Entities.Cost;
+using Domain.Entities.EVM;
+using Domain.Entities.Progress;
 using Domain.Entities.Security;
 using Domain.Entities.Setup;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Domain.Entities.Projects;
 
@@ -15,7 +20,7 @@ public class WorkPackageDetails : BaseEntity, IAuditable
 {
     // Foreign Key
     public Guid WBSElementId { get; private set; }
-
+    
     // Schedule Information
     public DateTime PlannedStartDate { get; private set; }
     public DateTime PlannedEndDate { get; private set; }
@@ -25,7 +30,7 @@ public class WorkPackageDetails : BaseEntity, IAuditable
     public DateTime? ActualEndDate { get; private set; }
     public DateTime? ForecastStartDate { get; private set; }
     public DateTime? ForecastEndDate { get; private set; }
-
+    
     // Duration
     public int PlannedDuration { get; private set; } // in days
     public int? ActualDuration { get; private set; }
@@ -33,219 +38,182 @@ public class WorkPackageDetails : BaseEntity, IAuditable
     public decimal TotalFloat { get; private set; }
     public decimal FreeFloat { get; private set; }
     public bool IsCriticalPath { get; private set; }
-
+    
     // Budget Information
     public decimal Budget { get; private set; }
     public decimal ActualCost { get; private set; }
     public decimal CommittedCost { get; private set; }
     public decimal ForecastCost { get; private set; }
     public string Currency { get; private set; } = "USD";
-
+    
     // Progress Information
     public decimal ProgressPercentage { get; private set; }
     public decimal PhysicalProgressPercentage { get; private set; }
     public ProgressMethod ProgressMethod { get; private set; }
     public WorkPackageStatus Status { get; private set; }
     public decimal? WeightFactor { get; private set; }
-
+    
     // Resources
     public Guid? ResponsibleUserId { get; private set; }
     public Guid? PrimaryDisciplineId { get; private set; } // Main discipline
-
+    
     // Performance
     public decimal? CPI { get; private set; } // Cost Performance Index
     public decimal? SPI { get; private set; } // Schedule Performance Index
     public decimal EarnedValue { get; private set; }
     public decimal PlannedValue { get; private set; }
-
+    
     // Control
     public bool IsBaselined { get; private set; }
     public DateTime? BaselineDate { get; private set; }
-
+    
     // Tags for grouping/filtering
     public string? Tags { get; private set; } // JSON array
-
-    // Calculated Fields
-    public decimal RemainingCost => Budget - ActualCost;
-    public decimal CostVariance => Budget - ForecastCost;
-    public decimal ScheduleVariance => PlannedValue - EarnedValue;
-
+    
     // Navigation Properties
     public WBSElement WBSElement { get; private set; } = null!;
     public User? ResponsibleUser { get; private set; }
     public Discipline? PrimaryDiscipline { get; private set; }
-
+    
     // Constructor for EF Core
     private WorkPackageDetails() { }
-
-    // Constructor for creating new Work Package Details
-    public WorkPackageDetails(Guid wbsElementId, ProgressMethod progressMethod)
+    
+    public WorkPackageDetails(
+        Guid wbsElementId,
+        DateTime plannedStartDate,
+        DateTime plannedEndDate,
+        decimal budget,
+        ProgressMethod progressMethod = ProgressMethod.Manual)
     {
         WBSElementId = wbsElementId;
+        PlannedStartDate = plannedStartDate;
+        PlannedEndDate = plannedEndDate;
+        PlannedDuration = (plannedEndDate - plannedStartDate).Days;
+        Budget = budget;
+        ForecastCost = budget;
         ProgressMethod = progressMethod;
         Status = WorkPackageStatus.NotStarted;
-        PlannedStartDate = DateTime.Today;
-        PlannedEndDate = DateTime.Today.AddDays(30);
-        PlannedDuration = 30;
-        Budget = 0;
         Currency = "USD";
-        ProgressPercentage = 0;
-        PhysicalProgressPercentage = 0;
-        ActualCost = 0;
-        CommittedCost = 0;
-        ForecastCost = 0;
-        EarnedValue = 0;
-        PlannedValue = 0;
-        TotalFloat = 0;
-        FreeFloat = 0;
-        IsCriticalPath = false;
-        IsBaselined = false;
-        CreatedAt = DateTime.UtcNow;
     }
-
+    
     // Domain Methods
-    public void UpdateSchedule(
-        DateTime plannedStart,
-        DateTime plannedEnd,
-        DateTime? forecastStart,
-        DateTime? forecastEnd)
+    public void Start(string startedBy)
     {
-        if (plannedEnd <= plannedStart)
-            throw new ArgumentException("End date must be after start date");
-
-        PlannedStartDate = plannedStart;
-        PlannedEndDate = plannedEnd;
-        PlannedDuration = (int)(plannedEnd - plannedStart).TotalDays;
-
-        if (forecastStart.HasValue)
-            ForecastStartDate = forecastStart;
-
-        if (forecastEnd.HasValue)
-            ForecastEndDate = forecastEnd;
-
+        if (Status != WorkPackageStatus.NotStarted)
+            throw new InvalidOperationException("Work Package can only be started from NotStarted status");
+            
+        Status = WorkPackageStatus.InProgress;
+        ActualStartDate = DateTime.UtcNow;
+        UpdatedBy = startedBy;
         UpdatedAt = DateTime.UtcNow;
     }
-
-    public void UpdateBudget(decimal budget, string currency)
+    
+    public void Complete(string completedBy)
     {
-        if (budget < 0)
-            throw new ArgumentException("Budget cannot be negative");
-
-        if (string.IsNullOrWhiteSpace(currency))
-            throw new ArgumentNullException(nameof(currency));
-
-        Budget = budget;
-        Currency = currency;
-        ForecastCost = Math.Max(ForecastCost, budget);
+        if (Status != WorkPackageStatus.InProgress)
+            throw new InvalidOperationException("Work Package can only be completed from InProgress status");
+            
+        Status = WorkPackageStatus.Completed;
+        ActualEndDate = DateTime.UtcNow;
+        ActualDuration = ActualStartDate.HasValue ? 
+            (ActualEndDate.Value - ActualStartDate.Value).Days : PlannedDuration;
+        ProgressPercentage = 100;
+        PhysicalProgressPercentage = 100;
+        UpdatedBy = completedBy;
         UpdatedAt = DateTime.UtcNow;
     }
-
-    public void AssignResponsible(Guid userId)
+    
+    public void UpdateProgress(
+        decimal progressPercentage, 
+        decimal? physicalProgressPercentage,
+        decimal actualCost,
+        string updatedBy)
     {
-        ResponsibleUserId = userId;
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void AssignDiscipline(Guid disciplineId)
-    {
-        PrimaryDisciplineId = disciplineId;
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void SetWeightFactor(decimal weightFactor)
-    {
-        if (weightFactor < 0 || weightFactor > 100)
-            throw new ArgumentException("Weight factor must be between 0 and 100");
-
-        WeightFactor = weightFactor;
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void UpdateProgress(decimal percentage, decimal? physicalPercentage = null)
-    {
-        if (percentage < 0 || percentage > 100)
+        if (progressPercentage < 0 || progressPercentage > 100)
             throw new ArgumentException("Progress percentage must be between 0 and 100");
-
-        ProgressPercentage = percentage;
-
-        if (physicalPercentage.HasValue)
+            
+        ProgressPercentage = progressPercentage;
+        PhysicalProgressPercentage = physicalProgressPercentage ?? progressPercentage;
+        ActualCost = actualCost;
+        
+        // Calculate earned value
+        EarnedValue = Budget * (progressPercentage / 100);
+        
+        // Update forecast
+        if (progressPercentage > 0)
         {
-            if (physicalPercentage.Value < 0 || physicalPercentage.Value > 100)
-                throw new ArgumentException("Physical progress percentage must be between 0 and 100");
-
-            PhysicalProgressPercentage = physicalPercentage.Value;
+            var costPercentage = actualCost / EarnedValue;
+            ForecastCost = Budget * costPercentage;
         }
-
-        // Update status based on progress
-        if (percentage == 0 && !ActualStartDate.HasValue)
+        
+        // Calculate performance indices
+        if (actualCost > 0)
+            CPI = EarnedValue / actualCost;
+            
+        if (PlannedValue > 0)
+            SPI = EarnedValue / PlannedValue;
+            
+        // Update remaining duration
+        if (ActualStartDate.HasValue && progressPercentage < 100)
         {
-            Status = WorkPackageStatus.NotStarted;
-        }
-        else if (percentage > 0 && percentage < 100)
-        {
-            Status = WorkPackageStatus.InProgress;
-            if (!ActualStartDate.HasValue)
+            var elapsedDays = (DateTime.UtcNow - ActualStartDate.Value).Days;
+            var progressRate = progressPercentage / 100;
+            if (progressRate > 0)
             {
-                ActualStartDate = DateTime.UtcNow;
+                var estimatedTotalDuration = elapsedDays / progressRate;
+                RemainingDuration = (int)(estimatedTotalDuration - elapsedDays);
+                ForecastEndDate = DateTime.UtcNow.AddDays(RemainingDuration.Value);
             }
         }
-        else if (percentage == 100)
-        {
-            Status = WorkPackageStatus.Completed;
-            if (!ActualEndDate.HasValue)
-            {
-                ActualEndDate = DateTime.UtcNow;
-                ActualDuration = ActualStartDate.HasValue
-                    ? (int)(ActualEndDate.Value - ActualStartDate.Value).TotalDays
-                    : PlannedDuration;
-            }
-        }
-
+        
+        UpdatedBy = updatedBy;
         UpdatedAt = DateTime.UtcNow;
     }
-
-    public void Baseline()
+    
+    public void UpdateSchedule(
+        DateTime plannedStartDate,
+        DateTime plannedEndDate,
+        string updatedBy)
     {
+        if (IsBaselined)
+            throw new InvalidOperationException("Cannot update schedule for baselined Work Package");
+            
+        PlannedStartDate = plannedStartDate;
+        PlannedEndDate = plannedEndDate;
+        PlannedDuration = (plannedEndDate - plannedStartDate).Days;
+        UpdatedBy = updatedBy;
+        UpdatedAt = DateTime.UtcNow;
+    }
+    
+    public void Baseline(string baselinedBy)
+    {
+        if (IsBaselined)
+            throw new InvalidOperationException("Work Package is already baselined");
+            
+        IsBaselined = true;
+        BaselineDate = DateTime.UtcNow;
         BaselineStartDate = PlannedStartDate;
         BaselineEndDate = PlannedEndDate;
-        BaselineDate = DateTime.UtcNow;
-        IsBaselined = true;
+        UpdatedBy = baselinedBy;
         UpdatedAt = DateTime.UtcNow;
     }
-
-    public void UpdateActualCost(decimal actualCost)
+    
+    public void AssignResponsibility(Guid userId, Guid? disciplineId, string assignedBy)
     {
-        if (actualCost < 0)
-            throw new ArgumentException("Actual cost cannot be negative");
-
-        ActualCost = actualCost;
-        UpdatePerformanceIndices();
+        ResponsibleUserId = userId;
+        PrimaryDisciplineId = disciplineId;
+        UpdatedBy = assignedBy;
         UpdatedAt = DateTime.UtcNow;
     }
-
-    public void UpdateCommittedCost(decimal committedCost)
+    
+    public void UpdateCosts(decimal committedCost, decimal forecastCost, string updatedBy)
     {
-        if (committedCost < 0)
-            throw new ArgumentException("Committed cost cannot be negative");
-
         CommittedCost = committedCost;
+        ForecastCost = forecastCost;
+        UpdatedBy = updatedBy;
         UpdatedAt = DateTime.UtcNow;
     }
-
-    public void UpdateEarnedValue(decimal earnedValue, decimal plannedValue)
-    {
-        if (earnedValue < 0)
-            throw new ArgumentException("Earned value cannot be negative");
-
-        if (plannedValue < 0)
-            throw new ArgumentException("Planned value cannot be negative");
-
-        EarnedValue = earnedValue;
-        PlannedValue = plannedValue;
-        UpdatePerformanceIndices();
-        UpdatedAt = DateTime.UtcNow;
-    }
-
+    
     public void UpdateFloat(decimal totalFloat, decimal freeFloat, bool isCriticalPath)
     {
         TotalFloat = totalFloat;
@@ -253,74 +221,11 @@ public class WorkPackageDetails : BaseEntity, IAuditable
         IsCriticalPath = isCriticalPath;
         UpdatedAt = DateTime.UtcNow;
     }
-
-    public void SetStatus(WorkPackageStatus status)
-    {
-        Status = status;
-
-        // Update dates based on status changes
-        switch (status)
-        {
-            case WorkPackageStatus.InProgress:
-                if (!ActualStartDate.HasValue)
-                {
-                    ActualStartDate = DateTime.UtcNow;
-                }
-                break;
-
-            case WorkPackageStatus.Completed:
-                if (!ActualEndDate.HasValue)
-                {
-                    ActualEndDate = DateTime.UtcNow;
-                    if (ActualStartDate.HasValue)
-                    {
-                        ActualDuration = (int)(ActualEndDate.Value - ActualStartDate.Value).TotalDays;
-                    }
-                }
-                break;
-
-            case WorkPackageStatus.OnHold:
-            case WorkPackageStatus.Cancelled:
-                // Calculate remaining duration if in progress
-                if (ActualStartDate.HasValue && !ActualEndDate.HasValue)
-                {
-                    var elapsedDays = (int)(DateTime.UtcNow - ActualStartDate.Value).TotalDays;
-                    RemainingDuration = Math.Max(0, PlannedDuration - elapsedDays);
-                }
-                break;
-        }
-
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void UpdateTags(string? tags)
-    {
-        Tags = tags;
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    private void UpdatePerformanceIndices()
-    {
-        // Calculate Cost Performance Index (CPI)
-        if (ActualCost > 0)
-        {
-            CPI = EarnedValue / ActualCost;
-        }
-
-        // Calculate Schedule Performance Index (SPI)
-        if (PlannedValue > 0)
-        {
-            SPI = EarnedValue / PlannedValue;
-        }
-
-        // Update forecast cost based on CPI
-        if (CPI.HasValue && CPI.Value > 0)
-        {
-            ForecastCost = Budget / CPI.Value;
-        }
-        else
-        {
-            ForecastCost = Budget;
-        }
-    }
+    
+    // Calculations
+    public decimal GetCostVariance() => Budget - ActualCost;
+    public decimal GetScheduleVariance() => PlannedValue - EarnedValue;
+    public bool IsOverBudget() => ActualCost > Budget;
+    public bool IsDelayed() => ForecastEndDate > PlannedEndDate || 
+                               (DateTime.UtcNow > PlannedEndDate && Status != WorkPackageStatus.Completed);
 }

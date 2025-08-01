@@ -3,11 +3,11 @@ public enum ProjectStatus
 {
     Planning = 1,
     Active = 2,
-    OnHold = 3,
-    Completed = 4,
-    Cancelled = 5,
-    Delayed = 6,
-    Closed = 7
+    Delayed = 3,
+    OnHold = 4,
+    Completed = 5,
+    Closed = 6,
+    Cancelled = 7
 }
 
 public static class ProjectStatusExtensions

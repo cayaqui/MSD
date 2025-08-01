@@ -19,14 +19,11 @@ public enum BudgetItemStatus
 /// </summary>
 public enum ControlAccountStatus
 {
-
-    Planning = 1,
-    Baselined = 2,
-    InProgress = 3,
-    OnHold = 4,
-    Completed = 5,
-    Closed = 6,
-    UnderReview = 7,
+    Open = 1,         // Initial state, can be edited
+    Baselined = 2,    // Baselined, limited changes allowed
+    InProgress = 3,   // Work has started
+    Completed = 4,    // Work completed
+    Closed = 5        // Financially closed
 
 }
 
@@ -58,21 +55,6 @@ public enum CostType2
 }
 
 /// <summary>
-/// Cost Category
-/// </summary>
-public enum CostCategory
-{
-    Labor = 1,
-    Material = 2,
-    Equipment = 3,
-    Subcontract = 4,
-    Travel = 5,
-    Other = 6,
-    Overhead = 7,
-    Contingency = 8
-}
-
-/// <summary>
 /// Cost Item Status
 /// </summary>
 public enum CostItemStatus
@@ -89,21 +71,14 @@ public enum CostItemStatus
 /// </summary>
 public enum EVMPeriodType
 {
-    Weekly = 1,
-    Monthly = 2,
-    Quarterly = 3
+    Daily = 1,
+    Weekly = 2,
+    Monthly = 3,
+    Quarterly = 4,
+    Biannual = 5,
+    Yearly = 6
 }
 
-/// <summary>
-/// EVM Status based on performance indices
-/// </summary>
-public enum EVMStatus
-{
-    OnTrack = 1,      // CPI & SPI >= 0.95
-    AtRisk = 2,       // CPI & SPI >= 0.90
-    OffTrack = 3,     // CPI or SPI < 0.90
-    Critical = 4      // Severe issues
-}
 
 /// <summary>
 /// Control Account Role

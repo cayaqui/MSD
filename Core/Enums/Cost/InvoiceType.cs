@@ -6,9 +6,10 @@ namespace Core.Enums.Cost;
 public enum InvoiceType
 {
     Standard = 1,
-    CreditNote = 2,
-    DebitNote = 3,
-    Proforma = 4,
-    Advance = 5,
-    Final = 6,
+    Advance = 2,
+    Progress = 3,
+    Final = 4,
+    Retention = 5,
+    CreditNote = 6,
+    DebitNote = 7
 }

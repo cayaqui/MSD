@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Infrastructure.Data.Configurations.Security
+namespace Infrastructure.Data.Configurations.Auth
 {
     public class UserProjectPermissionConfiguration : IEntityTypeConfiguration<UserProjectPermission>
     {

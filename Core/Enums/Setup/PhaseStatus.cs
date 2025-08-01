@@ -4,9 +4,10 @@ public enum PhaseStatus
 {
     NotStarted = 1,
     InProgress = 2,
-    Completed = 3,
-    Delayed = 4,
-    Cancelled = 5
+    OnHold = 3,
+    Completed = 4,
+    Cancelled = 5,
+    Delayed = 6
 }
 
 public static class PhaseStatusExtensions

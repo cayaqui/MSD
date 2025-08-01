@@ -9,7 +9,8 @@ public enum BudgetStatus
     Draft = 1,
     UnderReview = 2,
     Approved = 3,
-    Rejected = 4,
-    Locked = 5,
-    Superseded = 6
+    Active = 4,
+    Frozen = 5,
+    Revised = 6,
+    Closed = 7
 }
