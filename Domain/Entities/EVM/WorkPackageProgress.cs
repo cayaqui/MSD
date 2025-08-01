@@ -50,10 +50,6 @@ public class WorkPackageProgress : BaseEntity, IAuditable
     public string? PhotoReferences { get; private set; } // JSON array of photo IDs
     public string? DocumentReferences { get; private set; } // JSON array of document IDs
 
-
-    // Navigation Properties
-    public WorkPackage WorkPackage { get; private set; } = null!;
-
     // Constructor for EF Core
     private WorkPackageProgress() { }
 

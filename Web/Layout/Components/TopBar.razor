@@ -16,10 +16,10 @@
                 <a href="javascript:void(0);" class="sidemenu-toggle header-link" 
                    data-bs-toggle="sidebar" @onclick="ToggleSidebar">
                     <span class="open-toggle">
-                        <i class="fe fe-menu header-link-icon"></i>
+                        <i class="fa-light fa-bars header-link-icon"></i>
                     </span>
                     <span class="close-toggle">
-                        <i class="fe fe-x header-link-icon"></i>
+                        <i class="fal fa-xmark header-link-icon"></i>
                     </span>
                 </a>
             </div>
@@ -29,7 +29,7 @@
                 <div class="dropdown">
                     <button class="btn btn-outline-light btn-sm dropdown-toggle" 
                             @onclick="ToggleProjectDropdown">
-                        <i class="fe fe-briefcase me-2"></i>
+                        <i class="fal fa-briefcase me-2"></i>
                         <span>@currentProjectName</span>
                     </button>
                     
@@ -50,13 +50,13 @@
                             {
                                 <a class="dropdown-item @(project.Id == currentProjectId ? "active" : "")" 
                                    @onclick="@(() => SelectProject(project))">
-                                    <i class="fe fe-folder me-2"></i>@project.Name
+                                    <i class="fal fa-folder me-2"></i>@project.Name
                                     <span class="badge bg-@project.StatusColor ms-auto">@project.Status</span>
                                 </a>
                             }
                             <div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="/projects">
-                                <i class="fe fe-grid me-2"></i>Ver Todos
+                                <i class="fal fa-grid me-2"></i>Ver Todos
                             </a>
                         </div>
                     }
@@ -71,7 +71,7 @@
                 <a href="javascript:void(0);" class="header-link" 
                    data-bs-toggle="modal" data-bs-target="#searchModal"
                    @onclick="OpenSearchModal">
-                    <i class="fe fe-search header-link-icon"></i>
+                    <i class="fal fa-search header-link-icon"></i>
                 </a>
             </div>
             
@@ -80,7 +80,7 @@
                 <a href="javascript:void(0);" class="header-link"
                    @onclick="ToggleQuickCreate"
                    data-bs-toggle="tooltip" title="Crear Nuevo">
-                    <i class="fe fe-plus header-link-icon"></i>
+                    <i class="fal fa-plus header-link-icon"></i>
                 </a>
             </div>
             
@@ -89,7 +89,7 @@
                 <a href="javascript:void(0);" class="header-link"
                    data-bs-toggle="dropdown" 
                    @onclick="ToggleNotifications">
-                    <i class="fe fe-bell header-link-icon"></i>
+                    <i class="fal fa-bell header-link-icon"></i>
                     @if (unreadCount > 0)
                     {
                         <span class="badge bg-danger header-icon-badge">@(unreadCount > 9 ? "9+" : unreadCount)</span>
@@ -152,17 +152,17 @@
                             <p class="main-notification-text mb-0">@userRole</p>
                         </div>
                         <a class="dropdown-item" href="/profile">
-                            <i class="fe fe-user fs-16 align-middle me-2"></i>Mi Perfil
+                            <i class="fal fa-user fs-16 align-middle me-2"></i>Mi Perfil
                         </a>
                         <a class="dropdown-item" href="/settings">
-                            <i class="fe fe-settings fs-16 align-middle me-2"></i>Configuración
+                            <i class="fal fa-settings fs-16 align-middle me-2"></i>Configuración
                         </a>
                         <a class="dropdown-item" href="/help">
-                            <i class="fe fe-help-circle fs-16 align-middle me-2"></i>Ayuda
+                            <i class="fal fa-help-circle fs-16 align-middle me-2"></i>Ayuda
                         </a>
                         <div class="dropdown-divider"></div>
                         <a class="dropdown-item" @onclick="Logout">
-                            <i class="fe fe-log-out fs-16 align-middle me-2"></i>Cerrar Sesión
+                            <i class="fal fa-log-out fs-16 align-middle me-2"></i>Cerrar Sesión
                         </a>
                     </div>
                 }

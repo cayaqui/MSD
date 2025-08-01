@@ -1,4 +1,5 @@
-﻿using Application.Interfaces.Auth;
+﻿using Application.Common.Exceptions;
+using Application.Interfaces.Auth;
 using Application.Interfaces.UIUX;
 using Domain.Entities.Projects;
 
@@ -211,7 +212,7 @@ public class NotificationService : INotificationService
         Guid projectId,
         string title,
         string message,
-        NotificationType type = NotificationType.Information,
+        NotificationType type = NotificationType.Info,
         ProjectNotificationCategory category = ProjectNotificationCategory.General)
     {
         // Get all active team members for the project

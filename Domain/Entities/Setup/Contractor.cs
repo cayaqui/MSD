@@ -73,7 +73,7 @@ public class Contractor : BaseEntity, ISoftDelete, ICodeEntity, INamedEntity
     public string? Notes { get; private set; }
 
     // Navigation properties
-    public ICollection<Contract> Contracts { get; private set; } = new List<Contract>();
+    public ICollection<Package> Packages { get; private set; } = new List<Package>();
     public ICollection<Invoice> Invoices { get; private set; } = new List<Invoice>();
     public ICollection<ContractorEvaluation> Evaluations { get; private set; } = new List<ContractorEvaluation>();
 

@@ -1,4 +1,5 @@
 ﻿@using Web.Pages.Auth
+@* Web/App.razor *@
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
@@ -10,24 +11,24 @@
                     }
                     else
                     {
-                        <AccessDenied />
+                        <AuthInitializer>
+                            <div class="container mt-5">
+                                <div class="alert alert-warning" role="alert">
+                                    <h4 class="alert-heading">Acceso Denegado</h4>
+                                    <p>No tiene permisos para acceder a esta página.</p>
+                                    <hr>
+                                    <p class="mb-0">
+                                        <a href="/" class="btn btn-primary">Volver al Dashboard</a>
+                                    </p>
+                                </div>
+                            </div>
+                        </AuthInitializer>
                     }
                 </NotAuthorized>
-                <Authorizing>
-                    <div class="d-flex justify-content-center align-items-center vh-100">
-                        <div class="text-center">
-                            <div class="spinner-border text-primary mb-3" role="status">
-                                <span class="visually-hidden">Verificando autorización...</span>
-                            </div>
-                            <p class="text-muted">Verificando autorización...</p>
-                        </div>
-                    </div>
-                </Authorizing>
             </AuthorizeRouteView>
-            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
         <NotFound>
-            <!-- Contenido 404 -->
+            <Web.Pages.Auth.NotFound></Web.Pages.Auth.NotFound>
         </NotFound>
     </Router>
 </CascadingAuthenticationState>

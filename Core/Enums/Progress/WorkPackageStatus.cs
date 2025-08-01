@@ -107,19 +107,6 @@ namespace Core.Enums.Progress
     }
 
     /// <summary>
-    /// Change Order Status
-    /// </summary>
-    public enum ChangeOrderStatus
-    {
-        Draft = 1,
-        Submitted = 2,
-        UnderReview = 3,
-        Approved = 4,
-        Rejected = 5,
-        Implemented = 6
-    }
-
-    /// <summary>
     /// Invoice Status
     /// </summary>
     public enum InvoiceStatus

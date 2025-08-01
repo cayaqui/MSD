@@ -1,200 +1,30 @@
-﻿@inherits LayoutComponentBase
-@inject IJSRuntime JS
-@inject NavigationManager Navigation
-@inject IConfiguration Configuration
+﻿@* Web/Layout/MainLayout.razor *@
+@inherits LayoutComponentBase
+@using Web.Layout.Components
+@using Web.Pages.Auth
 
-<div class="app" data-theme-mode="light" data-menu-style="transparent" data-nav-layout="vertical">
-    <CascadingValue Value="@this" Name="MainLayout">
-        <!-- Sidebar -->
-        <Sidebar @ref="sidebar" 
-                 IsCollapsed="@sidebarCollapsed" 
-                 OnToggle="@HandleSidebarToggle" />
+<PageTitle>EzPro.SD - Sistema de Control de Proyectos</PageTitle>
+
+<AuthInitializer>
+    <div class="page">
+        <Sidebar />
+        <TopBar />
         
-        <!-- Main Wrapper -->
-        <div class="page">
-            <!-- Header/TopBar -->
-            <TopBar OnToggleSidebar="@ToggleSidebar" 
-                    OnProjectChanged="@HandleProjectChanged" />
-            
-            <!-- Main Content -->
-            <div class="main-content app-content">
-                <div class="container-fluid">
-                    <!-- Breadcrumb -->
-                    <BreadCrumb />
-                    
-                    <!-- Page Content -->
-                    <EzErrorBoundary>
-                        <ChildContent>
-                            @Body
-                        </ChildContent>
+        <div class="main-content app-content">
+            <div class="container-fluid">
+                <EzErrorBoundary>
+                    <ChildContent>
+                        @Body
+                    </ChildContent>
 
-                    </EzErrorBoundary>
-                </div>
+                </EzErrorBoundary>
             </div>
-            
-            <!-- Footer -->
-            <Footer />
         </div>
         
-        <!-- Mobile Overlay -->
-        @if (!sidebarCollapsed && isMobile)
-        {
-            <div class="ez-overlay" @onclick="CloseSidebar"></div>
-        }
-    </CascadingValue>
-    
-    <!-- Global Components -->
-    <div class="ez-global-components">
-        <!-- Toast Container -->
-        <EzToast Position="ToastPosition.TopRight" />
-        
-        <!-- Loading Indicator -->
-        @if (isLoading)
-        {
-            <div class="ez-page-loader">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Cargando...</span>
-                </div>
-            </div>
-        }
+        <Footer />
     </div>
-</div>
+</AuthInitializer>
 
 @code {
-    private Sidebar? sidebar;
-    private bool sidebarCollapsed = false;
-    private bool isMobile = false;
-    private bool isLoading = false;
-    private string currentProjectId = "";
-
-    // Public methods for child components
-    public void ShowLoading() => isLoading = true;
-    public void HideLoading() => isLoading = false;
-
-    protected override async Task OnInitializedAsync()
-    {
-        // Cargar preferencias del usuario
-        await LoadUserPreferences();
-        
-        // Detectar si es móvil usando función existente
-        isMobile = await JS.InvokeAsync<bool>("EzPro.Utils.isMobile");
-        
-        // Si es móvil, colapsar sidebar por defecto
-        if (isMobile)
-        {
-            sidebarCollapsed = true;
-        }
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            // Inicializar componentes usando funciones existentes
-            await JS.InvokeVoidAsync("EzPro.init");
-            
-            // Registrar event listener para resize
-            await JS.InvokeVoidAsync("EzProInterop.registerResizeHandler", 
-                DotNetObjectReference.Create(this));
-        }
-    }
-
-    private async Task LoadUserPreferences()
-    {
-        try
-        {
-            // Cargar estado del sidebar usando función existente
-            var savedState = await JS.InvokeAsync<string?>("EzPro.Utils.getLocalStorage", "sidebar-collapsed");
-            if (!string.IsNullOrEmpty(savedState))
-            {
-                sidebarCollapsed = bool.Parse(savedState);
-            }
-
-            // Cargar proyecto activo
-            currentProjectId = await JS.InvokeAsync<string?>("EzPro.Utils.getLocalStorage", "current-project") ?? "";
-        }
-        catch
-        {
-            // Si falla localStorage, usar valores por defecto
-        }
-    }
-
-    private async Task HandleSidebarToggle(bool collapsed)
-    {
-        sidebarCollapsed = collapsed;
-        await SaveSidebarState();
-        StateHasChanged();
-    }
-
-    private async Task ToggleSidebar()
-    {
-        sidebarCollapsed = !sidebarCollapsed;
-        await SaveSidebarState();
-        
-        // En móvil, actualizar el estado del overlay
-        if (isMobile)
-        {
-            StateHasChanged();
-        }
-    }
-
-    private async Task CloseSidebar()
-    {
-        if (isMobile && !sidebarCollapsed)
-        {
-            sidebarCollapsed = true;
-            await SaveSidebarState();
-        }
-    }
-
-    private async Task SaveSidebarState()
-    {
-        try
-        {
-            await JS.InvokeVoidAsync("EzPro.Utils.setLocalStorage", 
-                "sidebar-collapsed", sidebarCollapsed.ToString().ToLower());
-        }
-        catch
-        {
-            // Ignorar errores de localStorage
-        }
-    }
-
-    private async Task HandleProjectChanged(string projectId)
-    {
-        currentProjectId = projectId;
-        try
-        {
-            await JS.InvokeVoidAsync("localStorage.setItem", "current-project", projectId);
-        }
-        catch
-        {
-            // Ignorar errores de localStorage
-        }
-        
-        // Recargar el menú del sidebar con el contexto del nuevo proyecto
-        if (sidebar != null)
-        {
-            await sidebar.ReloadMenu(projectId);
-        }
-    }
-
-    // Método llamado desde JavaScript cuando cambia el tamaño de la ventana
-    [JSInvokable]
-    public async Task OnWindowResize(bool isMobileView)
-    {
-        if (isMobile != isMobileView)
-        {
-            isMobile = isMobileView;
-            
-            // Auto-colapsar en móvil
-            if (isMobile && !sidebarCollapsed)
-            {
-                sidebarCollapsed = true;
-                await SaveSidebarState();
-            }
-            
-            await InvokeAsync(StateHasChanged);
-        }
-    }
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
 }

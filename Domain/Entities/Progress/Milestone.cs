@@ -63,7 +63,6 @@ public class Milestone : BaseEntity, IAuditable, ISoftDelete
     // Navigation Properties
     public Project Project { get; private set; } = null!;
     public Phase? Phase { get; private set; }
-    public WorkPackage? WorkPackage { get; private set; }
 
     // Constructor for EF Core
     private Milestone() { }

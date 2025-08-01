@@ -35,7 +35,7 @@ public class ProjectPermissionsDto
     /// Key: permission name (e.g., "budget.view")
     /// Value: whether the user has the permission
     /// </summary>
-    public Dictionary<string, bool> Permissions { get; set; } = new();
+    public List<string> Permissions { get; set; } = new();
 
     /// <summary>
     /// Is the user active in this project
@@ -52,7 +52,7 @@ public class ProjectPermissionsDto
     /// </summary>
     public bool HasPermission(string permission)
     {
-        return Permissions.ContainsKey(permission) && Permissions[permission];
+        return Permissions.Contains(permission);
     }
 
     /// <summary>
@@ -77,8 +77,6 @@ public class ProjectPermissionsDto
     public List<string> GetGrantedPermissions()
     {
         return Permissions
-            .Where(p => p.Value)
-            .Select(p => p.Key)
             .ToList();
     }
 }

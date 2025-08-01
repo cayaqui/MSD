@@ -1,4 +1,4 @@
-﻿using Application.Common.Interfaces.Setup;
+﻿
 using Application.Common.Exceptions;
 using Carter;
 using Core.DTOs.Auth;

@@ -1,4 +1,5 @@
-﻿using Application.Interfaces.Auth;
+﻿using Application.Common.Exceptions;
+using Application.Interfaces.Auth;
 using Domain.Entities.Projects;
 using InvalidOperationException = Application.Common.Exceptions.InvalidOperationException;
 

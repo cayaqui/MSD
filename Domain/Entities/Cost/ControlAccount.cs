@@ -28,6 +28,7 @@ public class ControlAccount : BaseEntity, IAuditable, ISoftDelete, IActivatable
 
     // Budget Information
     public decimal BAC { get; private set; } // Budget at Completion
+    public decimal AC { get; private set; } // Budget at Completion
     public decimal ContingencyReserve { get; private set; }
     public decimal ManagementReserve { get; private set; }
 

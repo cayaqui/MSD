@@ -1,4 +1,5 @@
-﻿using Application.Interfaces.Auth;
+﻿using Application.Common.Exceptions;
+using Application.Interfaces.Auth;
 using Application.Interfaces.Setup;
 using Core.DTOs.Companies;
 

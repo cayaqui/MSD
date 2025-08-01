@@ -1,4 +1,4 @@
-﻿global using Application.Common.Interfaces.Auth;
+﻿global using Application.Interfaces.Auth;
 global using Application.Services.Auth;
 global using Application.Services.Setup;
 global using Domain.Common;

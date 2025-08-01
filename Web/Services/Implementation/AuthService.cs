@@ -1,56 +1,63 @@
-﻿using Core.Dtos.Files;
-using Core.DTOs.Auth;
+﻿// Web/Services/Implementation/AuthService.cs
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using System.Security.Claims;
 using Web.Services.Interfaces;
+using Core.DTOs.Auth;
+using System.Net.Http.Json;
+using Microsoft.Extensions.Logging;
 
 namespace Web.Services.Implementation
 {
-    /// <summary>
-    /// Implementación del servicio de autenticación
-    /// </summary>
     public class AuthService : IAuthService
     {
+        private readonly HttpClient _httpClient;
         private readonly AuthenticationStateProvider _authenticationStateProvider;
-        private readonly IAccessTokenProvider _tokenProvider;
-        private readonly IApiService _apiService;
+        private readonly ILogger<AuthService> _logger;
+
         private UserDto? _currentUser;
+        private UserPermissionsDto? _userPermissions;
+        private DateTime _lastPermissionsFetch = DateTime.MinValue;
+        private readonly TimeSpan _permissionsCacheDuration = TimeSpan.FromMinutes(5);
 
         public AuthService(
+            HttpClient httpClient,
             AuthenticationStateProvider authenticationStateProvider,
-            IAccessTokenProvider tokenProvider,
-            IApiService apiService)
+            ILogger<AuthService> logger)
         {
+            _httpClient = httpClient;
             _authenticationStateProvider = authenticationStateProvider;
-            _tokenProvider = tokenProvider;
-            _apiService = apiService;
+            _logger = logger;
         }
 
         public async Task InitializeAsync()
         {
-            // Cargar datos del usuario actual si está autenticado
-            var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
-            if (authState.User.Identity?.IsAuthenticated == true)
+            try
             {
-                await RefreshUserDataAsync();
+                var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
+                if (authState.User?.Identity?.IsAuthenticated == true)
+                {
+                    await RefreshUserDataAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error initializing auth service");
             }
         }
 
         public async Task<bool> IsAuthenticatedAsync()
         {
             var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
-            return authState.User.Identity?.IsAuthenticated ?? false;
+            return authState.User?.Identity?.IsAuthenticated ?? false;
         }
 
-        public async Task<string?> GetAccessTokenAsync()
+        public async Task<UserDto?> GetCurrentUserAsync()
         {
-            var result = await _tokenProvider.RequestAccessToken();
-            if (result.TryGetToken(out var token))
+            if (_currentUser == null)
             {
-                return token.Value;
+                await RefreshUserDataAsync();
             }
-            return null;
+            return _currentUser;
         }
 
         public async Task<ClaimsPrincipal> GetCurrentUserPrincipalAsync()
@@ -59,174 +66,217 @@ namespace Web.Services.Implementation
             return authState.User;
         }
 
-        public async Task<UserDto?> GetCurrentUserAsync()
+        public string GetUserEmail()
         {
-            if (_currentUser != null)
-                return _currentUser;
-
-            var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
-            if (!authState.User.Identity?.IsAuthenticated ?? true)
-                return null;
-
-            // Intentar obtener datos del usuario desde el API
-            try
-            {
-                var response = await _apiService.GetAsync<UserDto>("api/auth/me");
-                if (response.IsSuccess && response.Data != null)
-                {
-                    _currentUser = response.Data;
-                    return _currentUser;
-                }
-            }
-            catch
-            {
-                // Si falla, crear un DTO básico desde los claims
-                _currentUser = CreateUserFromClaims(authState.User);
-            }
-
-            return _currentUser;
+            return _currentUser?.Email ?? string.Empty;
         }
 
         public string GetUserName()
         {
-            var authState = _authenticationStateProvider.GetAuthenticationStateAsync().Result;
-            return authState.User.Identity?.Name ?? "Usuario";
-        }
-
-        public string GetUserEmail()
-        {
-            var authState = _authenticationStateProvider.GetAuthenticationStateAsync().Result;
-            return authState.User.FindFirst(ClaimTypes.Email)?.Value
-                ?? authState.User.FindFirst("email")?.Value
-                ?? authState.User.FindFirst("preferred_username")?.Value
-                ?? "";
+            return _currentUser?.DisplayName ?? string.Empty;
         }
 
         public string GetUserInitials()
         {
-            var name = GetUserName();
-            if (string.IsNullOrWhiteSpace(name))
-                return "??";
+            if (string.IsNullOrEmpty(_currentUser?.DisplayName))
+                return "U";
 
-            var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var parts = _currentUser.DisplayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length >= 2)
-                return $"{parts[0][0]}{parts[parts.Length - 1][0]}".ToUpper();
+                return $"{parts[0][0]}{parts[1][0]}".ToUpper();
 
-            return name.Substring(0, Math.Min(2, name.Length)).ToUpper();
-        }
-
-        public async Task<bool> IsInRoleAsync(string role)
-        {
-            var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
-            return authState.User.IsInRole(role);
-        }
-
-        public async Task<bool> HasPermissionAsync(Guid? projectId, string permission)
-        {
-            // Verificar si el usuario está autenticado
-            if (!await IsAuthenticatedAsync())
-                return false;
-
-            var user = await GetCurrentUserAsync();
-            if (user == null)
-                return false;
-
-            // Si el usuario es administrador del sistema, tiene todos los permisos
-            if (await IsInRoleAsync("System.Admin") || await IsInRoleAsync("Admin"))
-                return true;
-
-            // Si no se especifica un proyecto, verificar permisos globales
-            if (!projectId.HasValue)
-            {
-                return await CheckGlobalPermissionAsync(user, permission);
-            }
-
-            // Si se especifica un proyecto, verificar permisos del proyecto
-            return await CheckProjectPermissionAsync(user, projectId.Value, permission);
-        }
-
-        private async Task<bool> CheckGlobalPermissionAsync(UserDto user, string permission)
-        {
-            // Verificar permisos basados en roles globales
-            var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
-            var userRoles = authState.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-
-            // Mapear roles a permisos (simplificado - en producción esto vendría del backend)
-            var rolePermissions = new Dictionary<string, List<string>>
-            {
-                ["ProjectManager"] = new List<string>
-                {
-                    "project.view", "project.create", "project.edit",
-                    "project.wbs.view", "project.wbs.create", "project.wbs.edit",
-                    "project.schedule.view", "project.schedule.edit",
-                    "project.cost.view", "project.cost.edit",
-                    "project.contract.view", "project.contract.create",
-                    "project.document.view", "project.document.upload",
-                    "project.quality.view", "project.risk.view",
-                    "report.project.view", "report.kpis.view"
-                },
-                ["TeamMember"] = new List<string>
-                {
-                    "project.view",
-                    "project.wbs.view",
-                    "project.schedule.view",
-                    "project.cost.view",
-                    "project.document.view",
-                    "project.quality.view",
-                    "project.risk.view"
-                },
-                ["CompanyManager"] = new List<string>
-                {
-                    "company.view", "company.create", "company.edit",
-                    "company.operations.view", "company.operations.manage"
-                }
-            };
-
-            // Verificar si alguno de los roles del usuario tiene el permiso
-            foreach (var role in userRoles)
-            {
-                if (rolePermissions.ContainsKey(role) && rolePermissions[role].Contains(permission))
-                {
-                    return true;
-                }
-            }
-
-            // Verificar permisos específicos del usuario desde claims
-            var permissionClaim = authState.User.FindFirst($"permission:{permission}");
-            return permissionClaim != null;
-        }
-
-        private async Task<bool> CheckProjectPermissionAsync(UserDto user, Guid projectId, string permission)
-        {
-            try
-            {
-                // Llamar al API para verificar permisos específicos del proyecto
-                var response = await _apiService.GetAsync<bool>($"api/projects/{projectId}/permissions/check?permission={permission}");
-                return response.IsSuccess && response.Data;
-            }
-            catch
-            {
-                // Si falla la verificación remota, recurrir a permisos globales
-                return await CheckGlobalPermissionAsync(user, permission);
-            }
+            return parts[0][0].ToString().ToUpper();
         }
 
         public async Task RefreshUserDataAsync()
         {
-            _currentUser = null;
-            await GetCurrentUserAsync();
+            try
+            {
+                // Get current user
+                var userResponse = await _httpClient.GetAsync("/api/auth/me");
+                if (userResponse.IsSuccessStatusCode)
+                {
+                    _currentUser = await userResponse.Content.ReadFromJsonAsync<UserDto>();
+                }
+
+                // Get user permissions
+                await RefreshPermissionsAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error refreshing user data");
+            }
         }
 
-        private UserDto CreateUserFromClaims(ClaimsPrincipal principal)
+        public async Task<bool> HasPermissionAsync(Guid? projectId, string permission)
         {
-            return new UserDto
+            try
             {
-                Id = Guid.Parse(principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString()),
-                Email = GetUserEmail(),
-                GivenName = principal.FindFirst(ClaimTypes.GivenName)?.Value ?? GetUserName().Split(' ').FirstOrDefault() ?? "",
-                Surname = principal.FindFirst(ClaimTypes.Surname)?.Value ?? GetUserName().Split(' ').LastOrDefault() ?? "",
-                IsActive = true,
+                // Ensure permissions are loaded and not stale
+                if (_userPermissions == null || DateTime.UtcNow - _lastPermissionsFetch > _permissionsCacheDuration)
+                {
+                    await RefreshPermissionsAsync();
+                }
+
+                if (_userPermissions == null)
+                    return false;
+
+                // Check global permissions first
+                if (_userPermissions.GlobalPermissions.Contains(permission))
+                    return true;
+
+                // If a project ID is specified, check project-specific permissions
+                if (projectId.HasValue)
+                {
+                    var projectPermissions = _userPermissions.ProjectPermissions
+                        .FirstOrDefault(p => p.ProjectId == projectId.Value);
+
+                    if (projectPermissions != null)
+                    {
+                        return projectPermissions.Permissions.Contains(permission);
+                    }
+                }
+
+                // If no project ID specified, check if user has this permission in ANY project
+                return _userPermissions.ProjectPermissions
+                    .Any(p => p.Permissions.Contains(permission));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking permission {Permission} for project {ProjectId}",
+                    permission, projectId);
+                return false;
+            }
+        }
+
+        public async Task<bool> IsInRoleAsync(string role)
+        {
+            try
+            {
+                if (_userPermissions == null)
+                {
+                    await RefreshPermissionsAsync();
+                }
+
+                if (_userPermissions == null)
+                    return false;
+
+                // Check if user has this role in any project
+                return _userPermissions.ProjectPermissions
+                    .Any(p => p.Role.Equals(role, StringComparison.OrdinalIgnoreCase));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking role {Role}", role);
+                return false;
+            }
+        }
+
+        public async Task<string?> GetAccessTokenAsync()
+        {
+            // This would be implemented based on your authentication method
+            // For example, if using MSAL, you would get the token from the token cache
+            var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
+
+            // Extract token from claims or authentication context
+            var tokenClaim = authState.User?.Claims?.FirstOrDefault(c => c.Type == "access_token");
+            return tokenClaim?.Value;
+        }
+
+        public async Task<UserPermissionsDto?> GetUserPermissionsAsync()
+        {
+            if (_userPermissions == null || DateTime.UtcNow - _lastPermissionsFetch > _permissionsCacheDuration)
+            {
+                await RefreshPermissionsAsync();
+            }
+            return _userPermissions;
+        }
+
+        public async Task<bool> HasProjectAccessAsync(Guid projectId, string? requiredRole = null)
+        {
+            try
+            {
+                if (_userPermissions == null)
+                {
+                    await RefreshPermissionsAsync();
+                }
+
+                if (_userPermissions == null)
+                    return false;
+
+                var projectPermissions = _userPermissions.ProjectPermissions
+                    .FirstOrDefault(p => p.ProjectId == projectId);
+
+                if (projectPermissions == null || !projectPermissions.IsActive)
+                    return false;
+
+                // If no specific role required, just check if user has access
+                if (string.IsNullOrEmpty(requiredRole))
+                    return true;
+
+                // Check if user has the required role or higher
+                return IsRoleEqualOrHigher(projectPermissions.Role, requiredRole);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking project access for {ProjectId}", projectId);
+                return false;
+            }
+        }
+
+        public void ClearCache()
+        {
+            _currentUser = null;
+            _userPermissions = null;
+            _lastPermissionsFetch = DateTime.MinValue;
+        }
+
+        private async Task RefreshPermissionsAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("/api/auth/permissions");
+                if (response.IsSuccessStatusCode)
+                {
+                    _userPermissions = await response.Content.ReadFromJsonAsync<UserPermissionsDto>();
+                    _lastPermissionsFetch = DateTime.UtcNow;
+
+                    _logger.LogInformation("Refreshed permissions for user {UserId}: {GlobalCount} global, {ProjectCount} projects",
+                        _currentUser?.Id,
+                        _userPermissions?.GlobalPermissions.Count ?? 0,
+                        _userPermissions?.ProjectPermissions.Count ?? 0);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to fetch permissions: {StatusCode}", response.StatusCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error refreshing permissions");
+            }
+        }
+
+        private bool IsRoleEqualOrHigher(string userRole, string requiredRole)
+        {
+            var roleHierarchy = new Dictionary<string, int>
+            {
+                { "Viewer", 1 },
+                { "TeamMember", 2 },
+                { "TeamLead", 3 },
+                { "SchedController", 4 },
+                { "CostController", 4 },
+                { "ProjectController", 5 },
+                { "ProjectManager", 6 }
             };
+
+            if (!roleHierarchy.TryGetValue(userRole, out var userLevel))
+                return false;
+
+            if (!roleHierarchy.TryGetValue(requiredRole, out var requiredLevel))
+                return false;
+
+            return userLevel >= requiredLevel;
         }
     }
 }

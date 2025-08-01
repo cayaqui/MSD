@@ -35,7 +35,7 @@ public class BudgetItem : BaseEntity, IAuditable
     // Navigation Properties
     public Budget Budget { get; private set; } = null!;
     public ControlAccount? ControlAccount { get; private set; }
-    public WorkPackage? WorkPackage { get; private set; }
+    //public WorkPackage? WorkPackage { get; private set; }
 
     // Constructor for EF Core
     private BudgetItem() { }

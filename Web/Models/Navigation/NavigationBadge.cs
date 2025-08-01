@@ -7,5 +7,7 @@ namespace Web.Models.Navigation
     {
         public string Text { get; set; } = string.Empty;
         public string? Variant { get; set; }
+        public int? Count { get; set; }
+        public string? Color { get; set; }
     }
 }

@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Folder Include="DTOs\Docs\" />
+    <Folder Include="DTOs\Reports\" />
+    <Folder Include="DTOs\Risk\" />
+    <Folder Include="Enums\Docs\" />
+    <Folder Include="Enums\Reports\" />
     <Folder Include="Enums\Setup\" />
   </ItemGroup>
 

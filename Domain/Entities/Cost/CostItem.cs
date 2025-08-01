@@ -171,7 +171,6 @@ public class PlanningPackage : BaseEntity, IAuditable
 
     // Navigation Properties
     public ControlAccount ControlAccount { get; private set; } = null!;
-    public ICollection<WorkPackage> ConvertedWorkPackages { get; private set; } = new List<WorkPackage>();
 
     // Constructor for EF Core
     private PlanningPackage() { }

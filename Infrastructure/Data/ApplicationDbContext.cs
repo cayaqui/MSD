@@ -1,9 +1,15 @@
 ﻿using Application.Interfaces.Auth;
 using Application.Interfaces.Common;
 using Domain.Entities.Projects;
+using Domain.Entities.Cost;
+using Domain.Entities.Progress;
+using Domain.Entities.Risk;
+using Domain.Entities.ChangeManagement;
+using Domain.Entities.EVM;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.Graph.Models;
 using System.Data;
+using System.Linq.Expressions;
 using System.Reflection;
 using Operation = Domain.Entities.Setup.Operation;
 using User = Domain.Entities.Security.User;
@@ -34,7 +40,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<ProjectTeamMember> TeamMembers => Set<ProjectTeamMember>();
-    
+
     #endregion
 
     #region DbSets - Setup Module
@@ -42,12 +48,19 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<Operation> Operations => Set<Operation>();
     public DbSet<Project> Projects => Set<Project>();
-    //public DbSet<ProjectPhase> ProjectPhases => Set<ProjectPhase>();
-    public DbSet<WorkPackage> WorkPackages => Set<WorkPackage>();
-    public DbSet<ProjectTeamMember> ProjectTeamMembers => Set<ProjectTeamMember>();
+    public DbSet<Phase> Phases => Set<Phase>();
     public DbSet<Discipline> Disciplines => Set<Discipline>();
-    //public DbSet<DocumentType> DocumentTypes => Set<DocumentType>();
-    //public DbSet<Currency> Currencies => Set<Currency>();
+    public DbSet<Contractor> Contractors => Set<Contractor>();
+    public DbSet<ProjectTeamMember> ProjectTeamMembers => Set<ProjectTeamMember>();
+
+    #endregion
+
+    #region DbSets - WBS Module
+
+    public DbSet<WBSElement> WBSElements => Set<WBSElement>();
+    public DbSet<WorkPackageDetails> WorkPackageDetails => Set<WorkPackageDetails>();
+    public DbSet<Package> Packages => Set<Package>();
+    public DbSet<PackageDiscipline> PackageDisciplines => Set<PackageDiscipline>();
 
     #endregion
 
@@ -55,9 +68,13 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     public DbSet<Budget> Budgets => Set<Budget>();
     public DbSet<BudgetItem> BudgetItems => Set<BudgetItem>();
-    //public DbSet<CostAccount> CostAccounts => Set<CostAccount>();
+    public DbSet<ControlAccount> ControlAccounts => Set<ControlAccount>();
+    public DbSet<ControlAccountAssignment> ControlAccountAssignments => Set<ControlAccountAssignment>();
+    public DbSet<CBS> CBSElements => Set<CBS>();
+    public DbSet<CostItem> CostItems => Set<CostItem>();
+    public DbSet<PlanningPackage> PlanningPackages => Set<PlanningPackage>();
     public DbSet<Commitment> Commitments => Set<Commitment>();
-    //public DbSet<CommitmentItem> CommitmentItems => Set<CommitmentItem>();
+    public DbSet<CommitmentWorkPackage> CommitmentWorkPackages => Set<CommitmentWorkPackage>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
 
@@ -65,14 +82,36 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     #region DbSets - Schedule Module
 
-    public DbSet<Schedule> Schedules => Set<Schedule>();
+    public DbSet<ScheduleVersion> Schedules => Set<ScheduleVersion>();
     public DbSet<Activity> Activities => Set<Activity>();
-    //public DbSet<ActivityDependency> ActivityDependencies => Set<ActivityDependency>();
+    public DbSet<Resource> Resources => Set<Resource>();
     public DbSet<Milestone> Milestones => Set<Milestone>();
 
     #endregion
 
-    #region DbSets - Document Module
+    #region DbSets - EVM Module
+
+    public DbSet<EVMRecord> EVMRecords => Set<EVMRecord>();
+
+    #endregion
+
+    #region DbSets - Risk Module
+
+    public DbSet<Risk> Risks => Set<Risk>();
+    public DbSet<RiskResponse> RiskResponses => Set<RiskResponse>();
+    public DbSet<RiskReview> RiskReviews => Set<RiskReview>();
+
+    #endregion
+
+    #region DbSets - Change Management Module
+
+    public DbSet<ChangeOrder> ChangeOrders => Set<ChangeOrder>();
+    public DbSet<ChangeOrderApproval> ChangeOrderApprovals => Set<ChangeOrderApproval>();
+    public DbSet<ChangeOrderImpact> ChangeOrderImpacts => Set<ChangeOrderImpact>();
+
+    #endregion
+
+    #region DbSets - Document Module (Currently Inactive)
 
     //public DbSet<Document> Documents => Set<Document>();
     //public DbSet<DocumentRevision> DocumentRevisions => Set<DocumentRevision>();
@@ -80,8 +119,10 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     #endregion
 
-    #region UIUX
+    #region DbSets - UI/UX Module
+
     public DbSet<Notification> Notifications => Set<Notification>();
+
     #endregion
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -184,4 +225,3 @@ public static class ModelBuilderExtensions
         return filter;
     }
 }
-

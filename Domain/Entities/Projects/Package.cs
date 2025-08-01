@@ -36,8 +36,7 @@ public class Package : BaseEntity, ISoftDelete, ICodeEntity, INamedEntity, IDesc
     public Phase? Phase { get; private set; }
     public WBSElement? WBSElement { get; private set; }
     public Contractor? Contractor { get; private set; }
-    public ICollection<PackageDiscipline> PackageDisciplines { get; private set; } =
-        new List<PackageDiscipline>();
+    
     public ICollection<BudgetItem> BudgetItems { get; private set; } =
         new List<BudgetItem>();
 
@@ -214,46 +213,5 @@ public class Package : BaseEntity, ISoftDelete, ICodeEntity, INamedEntity, IDesc
         return (decimal)(actualDuration - plannedDuration) / plannedDuration * 100;
     }
 
-    public void AddDiscipline(PackageDiscipline packageDiscipline)
-    {
-        if (packageDiscipline == null)
-            throw new ArgumentNullException(nameof(packageDiscipline));
-
-        if (PackageDisciplines.Any(pd => pd.DisciplineId == packageDiscipline.DisciplineId))
-            throw new InvalidOperationException("Discipline already assigned to this package");
-
-        PackageDisciplines.Add(packageDiscipline);
-    }
-
-    public void RemoveDiscipline(Guid disciplineId)
-    {
-        var packageDiscipline = PackageDisciplines.FirstOrDefault(pd =>
-            pd.DisciplineId == disciplineId
-        );
-        if (packageDiscipline != null)
-        {
-            PackageDisciplines.Remove(packageDiscipline);
-        }
-    }
-
-    public decimal GetTotalEstimatedHours()
-    {
-        return PackageDisciplines.Sum(pd => pd.EstimatedHours);
-    }
-
-    public decimal GetTotalActualHours()
-    {
-        return PackageDisciplines.Sum(pd => pd.ActualHours);
-    }
-
-    public decimal GetHoursVariance()
-    {
-        var estimated = GetTotalEstimatedHours();
-        var actual = GetTotalActualHours();
-
-        if (estimated == 0)
-            return 0;
-
-        return (actual - estimated) / estimated * 100;
-    }
+ 
 }

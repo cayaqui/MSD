@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// Web/Services/Implementation/NavigationService.cs
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using Web.Constants;
 using Web.Models;
@@ -8,21 +10,28 @@ using Web.Services.Interfaces;
 namespace Web.Services.Implementation
 {
     /// <summary>
-    /// Implementación del servicio de navegación
+    /// Implementación del servicio de navegación con verificación de permisos
     /// </summary>
     public class NavigationService : INavigationService
     {
         private readonly IAuthorizationService _authorizationService;
         private readonly IAuthService _authService;
+        private readonly ILogger<NavigationService> _logger;
         private NavigationMenu? _cachedMenu;
+        private NavigationMenu? _cachedUserMenu;
+        private string? _cachedUserId;
 
         public event EventHandler<NavigationItemChangedEventArgs>? NavigationItemChanged;
         public event EventHandler? NavigationMenuRefreshed;
 
-        public NavigationService(IAuthorizationService authorizationService, IAuthService authService)
+        public NavigationService(
+            IAuthorizationService authorizationService,
+            IAuthService authService,
+            ILogger<NavigationService> logger)
         {
             _authorizationService = authorizationService;
             _authService = authService;
+            _logger = logger;
         }
 
         public async Task<NavigationMenu> GetNavigationMenuAsync()
@@ -56,7 +65,7 @@ namespace Web.Services.Implementation
                                 Icon = "fa-light fa-building",
                                 Href = Routes.Configuration.Companies,
                                 Type = NavigationItemType.Link,
-                                RequiredPolicy = PermissionKeys.Company.View
+                                RequiredPolicy = "company.view"
                             },
                             new NavigationItem
                             {
@@ -65,7 +74,7 @@ namespace Web.Services.Implementation
                                 Icon = "fa-light fa-users",
                                 Href = Routes.Configuration.Users,
                                 Type = NavigationItemType.Link,
-                                RequiredPolicy = PermissionKeys.System.ViewUsers
+                                RequiredPolicy = "system.users.view"
                             },
                             new NavigationItem
                             {
@@ -74,206 +83,229 @@ namespace Web.Services.Implementation
                                 Icon = "fa-light fa-shield-check",
                                 Href = Routes.Configuration.Roles,
                                 Type = NavigationItemType.Link,
-                                RequiredPolicy = PermissionKeys.System.ViewRoles
+                                RequiredPolicy = "system.roles.view"
+                            },
+                            new NavigationItem
+                            {
+                                Id = "project-types",
+                                Title = "Tipos de Proyecto",
+                                Icon = "fa-light fa-layer-group",
+                                Href = Routes.Configuration.ProjectTypes,
+                                Type = NavigationItemType.Link,
+                                RequiredPolicy = "project.settings.view"
                             }
                         }
                     },
+
                     // Sección de Proyectos
                     new NavigationSection
                     {
-                        Title = "Gestión de Proyectos",
+                        Title = "Proyectos",
                         Order = 2,
                         Items = new List<NavigationItem>
                         {
                             new NavigationItem
                             {
                                 Id = "projects",
-                                Title = "Proyectos",
-                                Icon = "fa-light fa-project-diagram",
+                                Title = "Mis Proyectos",
+                                Icon = "fa-light fa-diagram-project",
                                 Href = Routes.Projects.List,
                                 Type = NavigationItemType.Link,
-                                RequiredPolicy = PermissionKeys.Project.View,
-                                Badge = new NavigationBadge { Text = "12", Variant = "primary" }
+                                RequiredPolicy = "project.view"
                             },
                             new NavigationItem
                             {
-                                Id = "project-management",
-                                Title = "Gestión del Proyecto",
-                                Icon = "fa-light fa-tasks",
-                                Type = NavigationItemType.Section,
-                                Children = new List<NavigationItem>
-                                {
-                                    new NavigationItem
-                                    {
-                                        Id = "wbs",
-                                        Title = "WBS/EDT",
-                                        Icon = "fa-light fa-sitemap",
-                                        Href = "/projects/current/wbs",
-                                        Type = NavigationItemType.Link,
-                                        RequiredPolicy = PermissionKeys.WBS.View
-                                    },
-                                    new NavigationItem
-                                    {
-                                        Id = "schedule",
-                                        Title = "Cronograma",
-                                        Icon = "fa-light fa-calendar-alt",
-                                        Href = "/projects/current/schedule",
-                                        Type = NavigationItemType.Link,
-                                        RequiredPolicy = PermissionKeys.Schedule.View
-                                    },
-                                    new NavigationItem
-                                    {
-                                        Id = "gantt",
-                                        Title = "Diagrama Gantt",
-                                        Icon = "fa-light fa-chart-gantt",
-                                        Href = "/projects/current/schedule/gantt",
-                                        Type = NavigationItemType.Link,
-                                        RequiredPolicy = PermissionKeys.Schedule.ViewGantt
-                                    }
-                                }
+                                Id = "new-project",
+                                Title = "Nuevo Proyecto",
+                                Icon = "fa-light fa-plus",
+                                Href = Routes.Projects.New,
+                                Type = NavigationItemType.Link,
+                                RequiredPolicy = "project.create"
                             }
                         }
                     },
-                    // Sección de Costos
+
+                    // Sección de Gestión de Proyectos (accordion con hijos)
                     new NavigationSection
                     {
-                        Title = "Control de Costos",
+                        Title = "Gestión de Proyectos",
                         Order = 3,
                         Items = new List<NavigationItem>
                         {
                             new NavigationItem
                             {
-                                Id = "costs",
+                                Id = "scope-management",
+                                Title = "Gestión de Alcance",
+                                Icon = "fa-light fa-bullseye-arrow",
+                                Type = NavigationItemType.Accordion,
+                                Children = new List<NavigationItem>
+                                {
+                                    new NavigationItem
+                                    {
+                                        Id = "wbs",
+                                        Title = "EDT/WBS",
+                                        Icon = "fa-light fa-sitemap",
+                                        Href = "/scope/wbs",
+                                        Type = NavigationItemType.Link,
+                                        RequiredPolicy = "project.view"
+                                    },
+                                    new NavigationItem
+                                    {
+                                        Id = "deliverables",
+                                        Title = "Entregables",
+                                        Icon = "fa-light fa-box-check",
+                                        Href = "/scope/deliverables",
+                                        Type = NavigationItemType.Link,
+                                        RequiredPolicy = "project.view"
+                                    }
+                                }
+                            },
+                            new NavigationItem
+                            {
+                                Id = "schedule-management",
+                                Title = "Gestión de Cronograma",
+                                Icon = "fa-light fa-calendar-days",
+                                Type = NavigationItemType.Accordion,
+                                Children = new List<NavigationItem>
+                                {
+                                    new NavigationItem
+                                    {
+                                        Id = "activities",
+                                        Title = "Actividades",
+                                        Icon = "fa-light fa-tasks",
+                                        Href = "/schedule/activities",
+                                        Type = NavigationItemType.Link,
+                                        RequiredPolicy = "schedule.view"
+                                    },
+                                    new NavigationItem
+                                    {
+                                        Id = "critical-path",
+                                        Title = "Ruta Crítica",
+                                        Icon = "fa-light fa-route",
+                                        Href = "/schedule/critical-path",
+                                        Type = NavigationItemType.Link,
+                                        RequiredPolicy = "schedule.view"
+                                    },
+                                    new NavigationItem
+                                    {
+                                        Id = "progress",
+                                        Title = "Avance",
+                                        Icon = "fa-light fa-chart-line",
+                                        Href = "/schedule/progress",
+                                        Type = NavigationItemType.Link,
+                                        RequiredPolicy = "schedule.view"
+                                    }
+                                }
+                            },
+                            new NavigationItem
+                            {
+                                Id = "cost-management",
                                 Title = "Gestión de Costos",
-                                Icon = "fa-light fa-dollar-sign",
-                                Type = NavigationItemType.Section,
+                                Icon = "fa-light fa-coins",
+                                Type = NavigationItemType.Accordion,
                                 Children = new List<NavigationItem>
                                 {
                                     new NavigationItem
                                     {
                                         Id = "budget",
                                         Title = "Presupuesto",
+                                        Icon = "fa-light fa-sack-dollar",
+                                        Href = "/cost/budget",
+                                        Type = NavigationItemType.Link,
+                                        RequiredPolicy = "budget.view"
+                                    },
+                                    new NavigationItem
+                                    {
+                                        Id = "costs",
+                                        Title = "Control de Costos",
                                         Icon = "fa-light fa-calculator",
-                                        Href = "/projects/current/costs/budget",
+                                        Href = "/cost/control",
                                         Type = NavigationItemType.Link,
-                                        RequiredPolicy = PermissionKeys.Cost.ViewBudget
+                                        RequiredPolicy = "cost.view"
                                     },
                                     new NavigationItem
                                     {
-                                        Id = "control-accounts",
-                                        Title = "Control Accounts",
-                                        Icon = "fa-light fa-folder-tree",
-                                        Href = "/projects/current/control-accounts",
+                                        Id = "earned-value",
+                                        Title = "Valor Ganado",
+                                        Icon = "fa-light fa-chart-mixed",
+                                        Href = "/cost/earned-value",
                                         Type = NavigationItemType.Link,
-                                        RequiredPolicy = PermissionKeys.Cost.ViewControlAccounts
+                                        RequiredPolicy = "cost.view"
+                                    }
+                                }
+                            },
+                            new NavigationItem
+                            {
+                                Id = "contract-management",
+                                Title = "Gestión de Contratos",
+                                Icon = "fa-light fa-file-contract",
+                                Type = NavigationItemType.Accordion,
+                                Children = new List<NavigationItem>
+                                {
+                                    new NavigationItem
+                                    {
+                                        Id = "contracts",
+                                        Title = "Contratos",
+                                        Icon = "fa-light fa-handshake",
+                                        Href = "/contracts",
+                                        Type = NavigationItemType.Link,
+                                        RequiredPolicy = "contract.view"
                                     },
                                     new NavigationItem
                                     {
-                                        Id = "cbs",
-                                        Title = "CBS",
-                                        Icon = "fa-light fa-coins",
-                                        Href = "/projects/current/costs/cbs",
+                                        Id = "contractors",
+                                        Title = "Contratistas",
+                                        Icon = "fa-light fa-hard-hat",
+                                        Href = "/contracts/contractors",
                                         Type = NavigationItemType.Link,
-                                        RequiredPolicy = PermissionKeys.Cost.ViewCBS
-                                    },
-                                    new NavigationItem
-                                    {
-                                        Id = "evm",
-                                        Title = "Valor Ganado (EVM)",
-                                        Icon = "fa-light fa-chart-line",
-                                        Href = "/projects/current/costs/evm",
-                                        Type = NavigationItemType.Link,
-                                        RequiredPolicy = PermissionKeys.Cost.ViewEVM
+                                        RequiredPolicy = "contract.view"
                                     }
                                 }
                             }
                         }
                     },
-                    // Sección de Contratos
+
+                    // Sección de Documentos
                     new NavigationSection
                     {
-                        Title = "Contratos",
+                        Title = "Documentos",
                         Order = 4,
                         Items = new List<NavigationItem>
                         {
                             new NavigationItem
                             {
-                                Id = "contracts",
-                                Title = "Gestión de Contratos",
-                                Icon = "fa-light fa-file-contract",
-                                Href = "/projects/current/contracts",
-                                Type = NavigationItemType.Link,
-                                RequiredPolicy = PermissionKeys.Contract.View
-                            }
-                        }
-                    },
-                    // Sección de Documentos
-                    new NavigationSection
-                    {
-                        Title = "Documentación",
-                        Order = 5,
-                        Items = new List<NavigationItem>
-                        {
-                            new NavigationItem
-                            {
                                 Id = "documents",
-                                Title = "Gestión Documental",
+                                Title = "Repositorio",
                                 Icon = "fa-light fa-folder-open",
-                                Href = "/projects/current/documents",
+                                Href = "/documents",
                                 Type = NavigationItemType.Link,
-                                RequiredPolicy = PermissionKeys.Document.View
-                            }
-                        }
-                    },
-                    // Sección de Calidad
-                    new NavigationSection
-                    {
-                        Title = "Calidad",
-                        Order = 6,
-                        Items = new List<NavigationItem>
-                        {
+                                RequiredPolicy = "document.view"
+                            },
                             new NavigationItem
                             {
-                                Id = "quality",
-                                Title = "Gestión de Calidad",
-                                Icon = "fa-light fa-check-circle",
-                                Href = "/projects/current/quality",
+                                Id = "transmittals",
+                                Title = "Transmittals",
+                                Icon = "fa-light fa-paper-plane",
+                                Href = "/documents/transmittals",
                                 Type = NavigationItemType.Link,
-                                RequiredPolicy = PermissionKeys.Quality.View
+                                RequiredPolicy = "document.view"
                             }
                         }
                     },
-                    // Sección de Riesgos
-                    new NavigationSection
-                    {
-                        Title = "Riesgos",
-                        Order = 7,
-                        Items = new List<NavigationItem>
-                        {
-                            new NavigationItem
-                            {
-                                Id = "risks",
-                                Title = "Gestión de Riesgos",
-                                Icon = "fa-light fa-exclamation-triangle",
-                                Href = "/projects/current/risks",
-                                Type = NavigationItemType.Link,
-                                RequiredPolicy = PermissionKeys.Risk.View
-                            }
-                        }
-                    },
+
                     // Sección de Reportes
                     new NavigationSection
                     {
-                        Title = "Reportes y Análisis",
-                        Order = 8,
+                        Title = "Reportes",
+                        Order = 5,
                         Items = new List<NavigationItem>
                         {
                             new NavigationItem
                             {
                                 Id = "reports",
                                 Title = "Reportes",
-                                Icon = "fa-light fa-chart-bar",
-                                Type = NavigationItemType.Section,
+                                Icon = "fa-light fa-chart-pie",
+                                Type = NavigationItemType.Accordion,
                                 Children = new List<NavigationItem>
                                 {
                                     new NavigationItem
@@ -283,7 +315,7 @@ namespace Web.Services.Implementation
                                         Icon = "fa-light fa-tachometer-alt",
                                         Href = Routes.Reports.ExecutiveDashboard,
                                         Type = NavigationItemType.Link,
-                                        RequiredPolicy = PermissionKeys.Report.ViewExecutiveDashboard
+                                        RequiredPolicy = "report.executive.view"
                                     },
                                     new NavigationItem
                                     {
@@ -292,7 +324,7 @@ namespace Web.Services.Implementation
                                         Icon = "fa-light fa-file-chart-line",
                                         Href = "/reports/projects",
                                         Type = NavigationItemType.Link,
-                                        RequiredPolicy = PermissionKeys.Report.ViewProjectReports
+                                        RequiredPolicy = "report.project.view"
                                     },
                                     new NavigationItem
                                     {
@@ -301,7 +333,7 @@ namespace Web.Services.Implementation
                                         Icon = "fa-light fa-analytics",
                                         Href = "/reports/kpis",
                                         Type = NavigationItemType.Link,
-                                        RequiredPolicy = PermissionKeys.Report.ViewKPIs
+                                        RequiredPolicy = "report.kpi.view"
                                     }
                                 }
                             }
@@ -316,12 +348,25 @@ namespace Web.Services.Implementation
 
         public async Task<NavigationMenu> GetNavigationMenuForUserAsync(ClaimsPrincipal user)
         {
+            var currentUserId = user.FindFirst("sub")?.Value ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            // Check if we have a cached menu for this user
+            if (_cachedUserMenu != null && _cachedUserId == currentUserId)
+            {
+                return _cachedUserMenu;
+            }
+
             var fullMenu = await GetNavigationMenuAsync();
             var filteredMenu = new NavigationMenu
             {
                 HomeItem = fullMenu.HomeItem,
                 Sections = new List<NavigationSection>()
             };
+
+            // Get user permissions once
+            var userPermissions = await _authService.GetUserPermissionsAsync();
+            _logger.LogInformation("Filtering menu for user {UserId} with {PermissionCount} permissions",
+                currentUserId, userPermissions?.GlobalPermissions.Count ?? 0);
 
             foreach (var section in fullMenu.Sections)
             {
@@ -334,7 +379,7 @@ namespace Web.Services.Implementation
 
                 foreach (var item in section.Items)
                 {
-                    var filteredItem = await FilterNavigationItemAsync(item, user);
+                    var filteredItem = await FilterNavigationItemAsync(item, user, userPermissions);
                     if (filteredItem != null)
                     {
                         filteredSection.Items.Add(filteredItem);
@@ -347,37 +392,44 @@ namespace Web.Services.Implementation
                 }
             }
 
+            // Cache the filtered menu
+            _cachedUserMenu = filteredMenu;
+            _cachedUserId = currentUserId;
+
             return filteredMenu;
         }
 
-        private async Task<NavigationItem?> FilterNavigationItemAsync(NavigationItem item, ClaimsPrincipal user)
+        private async Task<NavigationItem?> FilterNavigationItemAsync(
+            NavigationItem item,
+            ClaimsPrincipal user,
+            UserPermissionsDto? userPermissions)
         {
-            // Verificar acceso al item
-            if (!await UserHasAccessToItemAsync(item, user))
+            // Check if user has access to this item
+            if (!await UserHasAccessToItemAsync(item, user, userPermissions))
             {
                 return null;
             }
 
-            // Si tiene hijos, filtrarlos recursivamente
-            if (item.Children?.Any() == true)
+            // If item has children, filter them recursively
+            if (item.Children != null && item.Children.Any())
             {
                 var filteredChildren = new List<NavigationItem>();
                 foreach (var child in item.Children)
                 {
-                    var filteredChild = await FilterNavigationItemAsync(child, user);
+                    var filteredChild = await FilterNavigationItemAsync(child, user, userPermissions);
                     if (filteredChild != null)
                     {
                         filteredChildren.Add(filteredChild);
                     }
                 }
 
-                // Si no quedan hijos después del filtrado, no incluir el item
+                // Only include parent if it has accessible children
                 if (!filteredChildren.Any())
                 {
                     return null;
                 }
 
-                // Clonar el item con los hijos filtrados
+                // Clone the item with filtered children
                 return new NavigationItem
                 {
                     Id = item.Id,
@@ -385,64 +437,88 @@ namespace Web.Services.Implementation
                     Icon = item.Icon,
                     Href = item.Href,
                     Type = item.Type,
+                    Badge = new NavigationBadge
+                    {
+                        Count = item.Badge?.Count,
+                        Color = item.Badge.Color
+                    },
                     RequiredPolicy = item.RequiredPolicy,
-                    RequiredRole = item.RequiredRole,
-                    Badge = item.Badge,
-                    IsExternal = item.IsExternal,
-                    Order = item.Order,
+                    RequiredRole = item.RequiredRole
                     Children = filteredChildren
                 };
             }
 
-            return item;
+            // Clone the item without children
+            return new NavigationItem
+            {
+                Id = item.Id,
+                Title = item.Title,
+                Icon = item.Icon,
+                Href = item.Href,
+                Type = item.Type,
+                Badge = new NavigationBadge
+                {
+                    Count = item.Badge?.Count,
+                    Color = item.Badge.Color
+                },
+                RequiredPolicy = item.RequiredPolicy,
+                RequiredRole = item.RequiredRole
+            };
         }
 
         public async Task<bool> UserHasAccessToItemAsync(NavigationItem item, ClaimsPrincipal user)
         {
-            if (!user.Identity?.IsAuthenticated ?? true)
-            {
-                return false;
-            }
+            var userPermissions = await _authService.GetUserPermissionsAsync();
+            return await UserHasAccessToItemAsync(item, user, userPermissions);
+        }
 
-            // Si no requiere política o rol específico, está disponible para todos los usuarios autenticados
+        private async Task<bool> UserHasAccessToItemAsync(
+            NavigationItem item,
+            ClaimsPrincipal user,
+            UserPermissionsDto? userPermissions)
+        {
+            // If no permission required, allow access
             if (string.IsNullOrEmpty(item.RequiredPolicy) && string.IsNullOrEmpty(item.RequiredRole))
             {
                 return true;
             }
 
-            // Verificar rol si es requerido
-            if (!string.IsNullOrEmpty(item.RequiredRole))
-            {
-                if (!user.IsInRole(item.RequiredRole))
-                {
-                    return false;
-                }
-            }
-
-            // Verificar política/permiso si es requerido
+            // Check policy-based permission
             if (!string.IsNullOrEmpty(item.RequiredPolicy))
             {
-                try
+                // Quick check against cached permissions
+                if (userPermissions != null)
                 {
-                    var authResult = await _authorizationService.AuthorizeAsync(user, item.RequiredPolicy);
-                    return authResult.Succeeded;
+                    var hasPermission = userPermissions.GlobalPermissions.Contains(item.RequiredPolicy) ||
+                                      userPermissions.ProjectPermissions.Any(p => p.Permissions.Contains(item.RequiredPolicy));
+
+                    if (!hasPermission)
+                    {
+                        _logger.LogDebug("User lacks permission {Permission} for menu item {ItemId}",
+                            item.RequiredPolicy, item.Id);
+                    }
+
+                    return hasPermission;
                 }
-                catch
-                {
-                    // Si hay algún error al verificar la autorización, denegar acceso
-                    return false;
-                }
+
+                // Fallback to authorization service
+                var authResult = await _authorizationService.AuthorizeAsync(user, item.RequiredPolicy);
+                return authResult.Succeeded;
             }
 
-            return true;
+            // Check role-based permission
+            if (!string.IsNullOrEmpty(item.RequiredRole))
+            {
+                return await _authService.IsInRoleAsync(item.RequiredRole);
+            }
+
+            return false;
         }
 
-        public Task<NavigationItem?> GetNavigationItemByIdAsync(string itemId)
+        public async Task<NavigationItem?> GetNavigationItemByIdAsync(string itemId)
         {
-            // Implementación simplificada
-            var menu = _cachedMenu ?? GetNavigationMenuAsync().Result;
-            var item = FindItemById(menu, itemId);
-            return Task.FromResult(item);
+            var menu = await GetNavigationMenuAsync();
+            return FindItemById(menu, itemId);
         }
 
         private NavigationItem? FindItemById(NavigationMenu menu, string itemId)
@@ -452,27 +528,24 @@ namespace Web.Services.Implementation
 
             foreach (var section in menu.Sections)
             {
-                foreach (var item in section.Items)
-                {
-                    var found = FindItemInTree(item, itemId);
-                    if (found != null)
-                        return found;
-                }
+                var found = FindItemInList(section.Items, itemId);
+                if (found != null)
+                    return found;
             }
 
             return null;
         }
 
-        private NavigationItem? FindItemInTree(NavigationItem item, string itemId)
+        private NavigationItem? FindItemInList(List<NavigationItem> items, string itemId)
         {
-            if (item.Id == itemId)
-                return item;
-
-            if (item.Children != null)
+            foreach (var item in items)
             {
-                foreach (var child in item.Children)
+                if (item.Id == itemId)
+                    return item;
+
+                if (item.Children != null)
                 {
-                    var found = FindItemInTree(child, itemId);
+                    var found = FindItemInList(item.Children, itemId);
                     if (found != null)
                         return found;
                 }
@@ -481,99 +554,90 @@ namespace Web.Services.Implementation
             return null;
         }
 
-        public Task<List<NavigationItem>> GetNavigationItemsByPathAsync(string path)
+        public async Task<List<NavigationItem>> GetNavigationItemsByPathAsync(string path)
         {
+            var menu = await GetNavigationMenuAsync();
             var items = new List<NavigationItem>();
-            var menu = _cachedMenu ?? GetNavigationMenuAsync().Result;
+
+            if (menu.HomeItem?.Href == path)
+                items.Add(menu.HomeItem);
 
             foreach (var section in menu.Sections)
             {
-                foreach (var item in section.Items)
-                {
-                    AddItemsByPath(item, path, items);
-                }
+                FindItemsByPath(section.Items, path, items);
             }
 
-            return Task.FromResult(items);
+            return items;
         }
 
-        private void AddItemsByPath(NavigationItem item, string path, List<NavigationItem> items)
+        private void FindItemsByPath(List<NavigationItem> items, string path, List<NavigationItem> result)
         {
-            if (!string.IsNullOrEmpty(item.Href) && item.Href.StartsWith(path))
+            foreach (var item in items)
             {
-                items.Add(item);
-            }
+                if (item.Href == path)
+                    result.Add(item);
 
-            if (item.Children != null)
-            {
-                foreach (var child in item.Children)
-                {
-                    AddItemsByPath(child, path, items);
-                }
+                if (item.Children != null)
+                    FindItemsByPath(item.Children, path, result);
             }
         }
 
-        public Task UpdateNavigationItemAsync(string itemId, Action<NavigationItem> updateAction)
+        public async Task UpdateNavigationItemAsync(string itemId, Action<NavigationItem> updateAction)
         {
-            var item = GetNavigationItemByIdAsync(itemId).Result;
+            var item = await GetNavigationItemByIdAsync(itemId);
             if (item != null)
             {
                 updateAction(item);
                 NavigationItemChanged?.Invoke(this, new NavigationItemChangedEventArgs { Item = item });
             }
-            return Task.CompletedTask;
         }
 
-        public Task RefreshMenuAsync()
+        public async Task RefreshMenuAsync()
         {
             _cachedMenu = null;
+            _cachedUserMenu = null;
+            _cachedUserId = null;
+            await GetNavigationMenuAsync();
             NavigationMenuRefreshed?.Invoke(this, EventArgs.Empty);
-            return Task.CompletedTask;
         }
 
-        public Task<List<NavigationItem>> GetBreadcrumbPathAsync(string currentUrl)
+        public async Task<List<NavigationItem>> GetBreadcrumbPathAsync(string currentUrl)
         {
-            var breadcrumbs = new List<NavigationItem>();
-            var menu = _cachedMenu ?? GetNavigationMenuAsync().Result;
+            var menu = await GetNavigationMenuAsync();
+            var path = new List<NavigationItem>();
 
-            // Siempre agregar home como primer item
+            // Always start with home
             if (menu.HomeItem != null)
             {
-                breadcrumbs.Add(menu.HomeItem);
+                path.Add(menu.HomeItem);
             }
 
-            // Buscar la ruta completa al item actual
+            // Find the current item and build path
             foreach (var section in menu.Sections)
             {
-                foreach (var item in section.Items)
-                {
-                    if (FindBreadcrumbPath(item, currentUrl, breadcrumbs))
-                    {
-                        break;
-                    }
-                }
+                if (BuildBreadcrumbPath(section.Items, currentUrl, path))
+                    break;
             }
 
-            return Task.FromResult(breadcrumbs);
+            return path;
         }
 
-        private bool FindBreadcrumbPath(NavigationItem item, string targetUrl, List<NavigationItem> path)
+        private bool BuildBreadcrumbPath(List<NavigationItem> items, string targetUrl, List<NavigationItem> path)
         {
-            if (item.Href == targetUrl)
+            foreach (var item in items)
             {
-                path.Add(item);
-                return true;
-            }
-
-            if (item.Children != null)
-            {
-                foreach (var child in item.Children)
+                if (item.Href == targetUrl)
                 {
-                    if (FindBreadcrumbPath(child, targetUrl, path))
-                    {
-                        path.Insert(1, item); // Insertar después de home
+                    path.Add(item);
+                    return true;
+                }
+
+                if (item.Children != null)
+                {
+                    path.Add(item);
+                    if (BuildBreadcrumbPath(item.Children, targetUrl, path))
                         return true;
-                    }
+                    path.RemoveAt(path.Count - 1);
                 }
             }
 

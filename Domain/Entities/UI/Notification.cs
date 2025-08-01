@@ -45,7 +45,7 @@ public class Notification : BaseEntity, IAuditable, ISoftDelete
         string title,
         string message,
         Guid userId,
-        NotificationType type = NotificationType.Information,
+        NotificationType type = NotificationType.Info,
         NotificationPriority priority = NotificationPriority.Normal
     )
     {

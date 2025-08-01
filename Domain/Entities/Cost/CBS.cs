@@ -75,7 +75,7 @@ public class CBS : BaseEntity, IAuditable, ISoftDelete, IActivatable
     public ICollection<CBS> Children { get; private set; } = new List<CBS>();
     public ICollection<CostItem> CostItems { get; private set; } = new List<CostItem>();
     public ICollection<BudgetItem> BudgetItems { get; private set; } = new List<BudgetItem>();
-    public ICollection<WBS> WBSMappings { get; private set; } = new List<WBS>();
+    public ICollection<WBSElement> WBSMappings { get; private set; } = new List<WBSElement>();
 
     // Constructor for EF Core
     private CBS() { }

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using AutoMapper;
 using Microsoft.Extensions.Logging;
 using Application.Interfaces.Auth;
+using Core.Constants;
 
 namespace Application.Services.Auth;
 
@@ -83,13 +84,19 @@ public class AuthService : IAuthService
         // Add global permissions based on user type
         if (user.IsSupport())
         {
+            // Support users get all system permissions
             permissions.GlobalPermissions.AddRange(GetAllSystemPermissions());
         }
         else if (user.ProjectTeamMembers.Any())
         {
-            // Basic permissions for all authenticated users with projects
-            permissions.GlobalPermissions.Add("user.view");
-            permissions.GlobalPermissions.Add("user.edit.own");
+            // Regular users get permissions based on their highest project role
+            var highestRole = GetHighestProjectRole(user.ProjectTeamMembers);
+            permissions.GlobalPermissions.AddRange(GetGlobalPermissionsForProjectRole(highestRole));
+        }
+        else
+        {
+            // Users without projects get basic permissions
+            permissions.GlobalPermissions.AddRange(GetBasicUserPermissions());
         }
 
         // Add project-specific permissions
@@ -129,86 +136,51 @@ public class AuthService : IAuthService
         if (membership == null)
             return null;
 
-        var permissions = new ProjectPermissionsDto
+        return new ProjectPermissionsDto
         {
             ProjectId = membership.ProjectId,
             ProjectName = membership.Project.Name,
+            ProjectCode = membership.Project.Code,
             UserRole = membership.Role,
+            IsActive = membership.IsActive,
             Permissions = GetPermissionsForRole(membership.Role)
-                .ToDictionary(p => p, p => true)
         };
-
-        return permissions;
     }
 
     public async Task<UserDto?> SyncCurrentUserWithAzureAsync()
     {
-        if (!_currentUserService.IsAuthenticated)
+        if (!_currentUserService.IsAuthenticated || string.IsNullOrEmpty(_currentUserService.UserId))
             return null;
 
-        // Here you would call Microsoft Graph API to get updated user info
-        // For now, we'll just update the last sync timestamp
-        var user = await _unitOfWork.Repository<User>()
-            .Query()
-            .FirstOrDefaultAsync(u => u.EntraId == _currentUserService.UserId);
-
-        if (user == null)
-            return null;
-
-        // Update user properties from Azure AD claims
-        if (!string.IsNullOrEmpty(_currentUserService.UserName) && user.Name != _currentUserService.UserName)
-        {
-            user.UpdateProfile(_currentUserService.UserName, null, null);
-            user.UpdatedAt = DateTime.UtcNow;
-        }
-
-        if (!string.IsNullOrEmpty(_currentUserService.Email) && user.Email != _currentUserService.Email)
-        {
-            user.UpdateEmail(_currentUserService.Email);
-            user.UpdatedAt = DateTime.UtcNow;
-        }
-
-        user.RecordLogin();
-        await _unitOfWork.SaveChangesAsync();
-
-        _logger.LogInformation("Synced user {UserId} with Azure AD", user.Id);
-
-        return _mapper.Map<UserDto>(user);
+        return await SyncUserWithAzureAsync(
+            _currentUserService.UserId,
+            _currentUserService.Email ?? "",
+            _currentUserService.UserName ?? "");
     }
 
     public async Task<UserDto?> SyncUserWithAzureAsync(string entraId, string email, string displayName)
     {
         try
         {
-            // Check if user already exists
-            var existingUser = await _unitOfWork.Repository<User>()
+            var user = await _unitOfWork.Repository<User>()
                 .Query()
-                .FirstOrDefaultAsync(u => u.EntraId == entraId || u.Email == email);
+                .FirstOrDefaultAsync(u => u.EntraId == entraId);
 
-            if (existingUser != null)
+            if (user == null)
             {
-                existingUser.UpdateProfile(displayName);
-                existingUser.UpdateEmail(email);
-                // Update existing user
-                existingUser.UpdateEntraId(entraId);
-                existingUser.UpdatedAt = DateTime.UtcNow;
-                existingUser.RecordLogin();
-
-                await _unitOfWork.SaveChangesAsync();
-                return _mapper.Map<UserDto>(existingUser);
+                // Create new user
+                user = new User(entraId, email, displayName);
+                await _unitOfWork.Repository<User>().AddAsync(user);
+            }
+            else
+            {
+                user.UpdateProfile(displayName);
+                user.RecordLogin();
+                _unitOfWork.Repository<User>().Update(user);
             }
 
-            // Create new user
-            var newUser = new User(entraId, email, displayName);
-
-            newUser.RecordLogin();
-
-            await _unitOfWork.Repository<User>().AddAsync(newUser);
             await _unitOfWork.SaveChangesAsync();
-
-            _logger.LogInformation("Created new user {UserId} from Azure AD", newUser.Id);
-
-            return _mapper.Map<UserDto>(newUser);
+            return _mapper.Map<UserDto>(user);
         }
         catch (Exception ex)
         {
@@ -217,71 +189,235 @@ public class AuthService : IAuthService
         }
     }
 
-    private List<string> GetPermissionsForRole(string role)
+    #region Private Helper Methods
+
+    private string GetHighestProjectRole(IEnumerable<ProjectTeamMember> memberships)
     {
+        var activeRoles = memberships
+            .Where(m => m.IsActive)
+            .Select(m => m.Role)
+            .ToList();
+
+        // Return the highest role based on hierarchy
+        if (activeRoles.Contains(ProjectRoles.ProjectManager))
+            return ProjectRoles.ProjectManager;
+        if (activeRoles.Contains(ProjectRoles.ProjectController))
+            return ProjectRoles.ProjectController;
+        if (activeRoles.Contains(ProjectRoles.TeamLead))
+            return ProjectRoles.TeamLead;
+        if (activeRoles.Contains(ProjectRoles.TeamMember))
+            return ProjectRoles.TeamMember;
+
+        return ProjectRoles.Viewer;
+    }
+
+    private List<string> GetGlobalPermissionsForProjectRole(string role)
+    {
+        // Map project roles to global navigation permissions
         return role switch
         {
-            ProjectRoles.ProjectManager => PredefinedRoles.ProjectManager.Permissions.ToList(),
-            ProjectRoles.CostController => PredefinedRoles.CostController.Permissions.ToList(),
-            ProjectRoles.TeamLead => PredefinedRoles.CostController.Permissions.ToList(),
-            ProjectRoles.Viewer => PredefinedRoles.Viewer.Permissions.ToList(),
-            _ => new List<string>()
+            ProjectRoles.ProjectManager => new List<string>
+            {
+                // Configuration
+                "company.view",
+                "system.users.view",
+                "system.roles.view",
+                
+                // Projects
+                "project.view",
+                "project.create",
+                "project.team.view",
+                
+                // Budget & Cost
+                "budget.view",
+                "cost.view",
+                
+                // Schedule
+                "schedule.view",
+                
+                // Documents
+                "document.view",
+                
+                // Reports
+                "report.dashboard.view",
+                "report.executive.view",
+                "report.project.view",
+                "report.kpi.view"
+            },
+
+            ProjectRoles.ProjectController => new List<string>
+            {
+                // Configuration
+                "company.view",
+                "system.users.view",
+                
+                // Projects
+                "project.view",
+                "project.team.view",
+                
+                // Budget & Cost
+                "budget.view",
+                "cost.view",
+                
+                // Schedule
+                "schedule.view",
+                
+                // Documents
+                "document.view",
+                
+                // Reports
+                "report.dashboard.view",
+                "report.project.view",
+                "report.kpi.view"
+            },
+
+            ProjectRoles.TeamLead => new List<string>
+            {
+                // Projects
+                "project.view",
+                "project.team.view",
+                
+                // Budget & Cost
+                "budget.view",
+                "cost.view",
+                
+                // Schedule
+                "schedule.view",
+                
+                // Documents
+                "document.view",
+                
+                // Reports
+                "report.dashboard.view",
+                "report.project.view"
+            },
+
+            ProjectRoles.TeamMember => new List<string>
+            {
+                // Projects
+                "project.view",
+                
+                // Budget & Cost
+                "budget.view",
+                "cost.view",
+                
+                // Schedule
+                "schedule.view",
+                
+                // Documents
+                "document.view",
+                
+                // Reports
+                "report.dashboard.view"
+            },
+
+            _ => GetBasicUserPermissions()
+        };
+    }
+
+    private List<string> GetBasicUserPermissions()
+    {
+        return new List<string>
+        {
+            "user.view",
+            "user.edit.own",
+            "project.view",
+            "report.dashboard.view"
         };
     }
 
     private List<string> GetAllSystemPermissions()
     {
-        var permissions = new List<string>();
-
-        // Add all permissions from all modules
-        foreach (var module in PermissionModules.All)
+        // For support users - all permissions
+        return new List<string>
         {
-            foreach (var resource in GetResourcesForModule(module))
-            {
-                foreach (var action in PermissionActions.All)
-                {
-                    permissions.Add($"{resource.ToLower()}.{action}");
-                }
-            }
-        }
-
-        return permissions;
-    }
-
-    private string[] GetResourcesForModule(string module)
-    {
-        return module switch
-        {
-            PermissionModules.Setup => new[] {
-                PermissionResources.Company,
-                PermissionResources.Operation,
-                PermissionResources.Project,
-                PermissionResources.Phase,
-                PermissionResources.WorkPackage
-            },
-            PermissionModules.Cost => new[] {
-                PermissionResources.Budget,
-                PermissionResources.Trend,
-                PermissionResources.Commitment,
-                PermissionResources.Invoice,
-                PermissionResources.Contingency
-            },
-            PermissionModules.Progress => new[] {
-                PermissionResources.Schedule,
-                PermissionResources.ActualProgress,
-                PermissionResources.PlanProgress
-            },
-            PermissionModules.Reports => new[] {
-                PermissionResources.Dashboard,
-                PermissionResources.MonthlyReport,
-                PermissionResources.Analytics
-            },
-            PermissionModules.Admin => new[] {
-                PermissionResources.User,
-                PermissionResources.Role,
-                PermissionResources.Permission
-            },
-            _ => Array.Empty<string>()
+            // System
+            "system.configuration.view",
+            "system.configuration.edit",
+            "system.users.view",
+            "system.users.manage",
+            "system.roles.view",
+            "system.roles.manage",
+            "system.permissions.view",
+            "system.permissions.manage",
+            
+            // Company
+            "company.view",
+            "company.create",
+            "company.edit",
+            "company.delete",
+            "company.operations.view",
+            "company.operations.manage",
+            
+            // Projects
+            "project.view",
+            "project.create",
+            "project.edit",
+            "project.delete",
+            "project.team.view",
+            "project.team.manage",
+            "project.settings.view",
+            "project.settings.manage",
+            
+            // Budget & Cost
+            "budget.view",
+            "budget.create",
+            "budget.edit",
+            "budget.delete",
+            "budget.approve",
+            "cost.view",
+            "cost.create",
+            "cost.edit",
+            "cost.delete",
+            "cost.approve",
+            
+            // Schedule
+            "schedule.view",
+            "schedule.create",
+            "schedule.edit",
+            "schedule.delete",
+            "schedule.approve",
+            
+            // Contracts
+            "contract.view",
+            "contract.create",
+            "contract.edit",
+            "contract.delete",
+            "contract.approve",
+            
+            // Documents
+            "document.view",
+            "document.create",
+            "document.edit",
+            "document.delete",
+            "document.approve",
+            
+            // Reports
+            "report.dashboard.view",
+            "report.executive.view",
+            "report.project.view",
+            "report.kpi.view",
+            "report.create",
+            "report.export",
+            
+            // Risk
+            "risk.view",
+            "risk.create",
+            "risk.edit",
+            "risk.delete",
+            
+            // Quality
+            "quality.view",
+            "quality.create",
+            "quality.edit",
+            "quality.delete"
         };
     }
+
+    private List<string> GetPermissionsForRole(string role)
+    {
+        return ProjectRoles.GetPermissionsForRole(role).ToList();
+    }
+
+    #endregion
 }

@@ -21,11 +21,10 @@ global using Domain.Entities.Setup;
 global using Domain.Entities.UI;
 global using Domain.Interfaces;
 
-global using Application.Common.Interfaces.Auth;
-global using Application.Common.Interfaces.Common;
-global using Application.Common.Exceptions;
-global using Application.Common.Interfaces.Setup;
-global using Application.Common.Interfaces.UIUX;
+global using Application.Interfaces.Auth;
+global using Application.Interfaces.Common;
+global using Application.Interfaces.Setup;
+global using Application.Interfaces.UIUX;
 global using Application.Services.Common;
 global using Application.Services.UIUX;
 
