@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <Folder Include="DTOs\Docs\" />
-    <Folder Include="DTOs\Reports\" />
+    <Folder Include="DTOs\Reports\Nine\" />
     <Folder Include="DTOs\Risk\" />
     <Folder Include="Enums\Docs\" />
     <Folder Include="Enums\Reports\" />

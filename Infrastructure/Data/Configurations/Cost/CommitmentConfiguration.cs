@@ -216,11 +216,6 @@ public class CommitmentConfiguration : IEntityTypeConfiguration<Commitment>
             .HasForeignKey(i => i.CommitmentId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasMany(c => c.WorkPackages)
-            .WithOne(cwp => cwp.Commitment)
-            .HasForeignKey(cwp => cwp.CommitmentId)
-            .OnDelete(DeleteBehavior.Cascade);
-
         builder.HasMany(c => c.Revisions)
             .WithOne(cr => cr.Commitment)
             .HasForeignKey(cr => cr.CommitmentId)

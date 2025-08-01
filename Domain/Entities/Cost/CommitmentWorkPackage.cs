@@ -104,4 +104,9 @@ public class CommitmentWorkPackage : BaseEntity
     public decimal GetBalanceToPay() => InvoicedAmount - RetainedAmount - PaidAmount;
     public bool IsFullyInvoiced() => InvoicedAmount >= AllocatedAmount;
     public bool IsFullyPaid() => PaidAmount >= (InvoicedAmount - RetainedAmount);
+
+    public decimal GetUtilizationPercentage()
+    {
+        return 0; //TODO 
+    }
 }

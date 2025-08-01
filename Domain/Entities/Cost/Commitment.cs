@@ -1,6 +1,8 @@
-﻿
-
+﻿using Domain.Common;
 using Domain.Entities.Projects;
+using Domain.Entities.Setup;
+using Core.Enums.Cost;
+using Core.ValueObjects.Common;
 
 namespace Domain.Entities.Cost;
 
@@ -18,6 +20,9 @@ public class Commitment : BaseEntity, IAuditable, ISoftDelete
 
     public Guid? ContractorId { get; private set; }
     public Contractor? Contractor { get; private set; }
+
+    public Guid? ControlAccountId { get; private set; }
+    public ControlAccount? ControlAccount { get; private set; }
 
     // Commitment Information
     public string CommitmentNumber { get; private set; } = string.Empty;
@@ -73,9 +78,9 @@ public class Commitment : BaseEntity, IAuditable, ISoftDelete
 
     // Navigation Properties
     public ICollection<Invoice> Invoices { get; private set; } = new List<Invoice>();
-    public ICollection<CommitmentWorkPackage> WorkPackages { get; private set; } = new List<CommitmentWorkPackage>();
-    public ICollection<CommitmentRevision> Revisions { get; private set; } =
-        new List<CommitmentRevision>();
+    public ICollection<CommitmentItem> Items { get; private set; } = new List<CommitmentItem>();
+    public ICollection<CommitmentWorkPackage> WorkPackageAllocations { get; private set; } = new List<CommitmentWorkPackage>();
+    public ICollection<CommitmentRevision> Revisions { get; private set; } = new List<CommitmentRevision>();
 
     private Commitment() { } // EF Core
 
@@ -92,8 +97,7 @@ public class Commitment : BaseEntity, IAuditable, ISoftDelete
     )
     {
         ProjectId = projectId;
-        CommitmentNumber =
-            commitmentNumber ?? throw new ArgumentNullException(nameof(commitmentNumber));
+        CommitmentNumber = commitmentNumber ?? throw new ArgumentNullException(nameof(commitmentNumber));
         Title = title ?? throw new ArgumentNullException(nameof(title));
         Type = type;
         OriginalAmount = originalAmount;
@@ -123,12 +127,49 @@ public class Commitment : BaseEntity, IAuditable, ISoftDelete
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void AddWorkPackage(Guid wbsElementId, decimal allocatedAmount)
+    public void AssignToControlAccount(Guid controlAccountId)
     {
-        var commitmentWP = new CommitmentWorkPackage(Id, wbsElementId, allocatedAmount);
-        WorkPackages.Add(commitmentWP);
+        ControlAccountId = controlAccountId;
         UpdatedAt = DateTime.UtcNow;
     }
+
+    public void AddItem(
+        int itemNumber,
+        string itemCode,
+        string description,
+        decimal quantity,
+        string unitOfMeasure,
+        decimal unitPrice)
+    {
+        var item = new CommitmentItem(
+            Id,
+            itemNumber,
+            itemCode,
+            description,
+            quantity,
+            unitOfMeasure,
+            unitPrice,
+            Currency
+        );
+
+        Items.Add(item);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void AddWorkPackageAllocation(Guid wbsElementId, decimal allocatedAmount)
+    {
+        if (allocatedAmount <= 0)
+            throw new ArgumentException("Allocated amount must be greater than zero");
+
+        var totalAllocated = WorkPackageAllocations.Sum(w => w.AllocatedAmount) + allocatedAmount;
+        if (totalAllocated > CommittedAmount)
+            throw new InvalidOperationException("Total allocated amount exceeds committed amount");
+
+        var allocation = new CommitmentWorkPackage(Id, wbsElementId, allocatedAmount);
+        WorkPackageAllocations.Add(allocation);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void UpdateDetails(
         string title,
         string? description,
@@ -171,6 +212,12 @@ public class Commitment : BaseEntity, IAuditable, ISoftDelete
 
     public void SetContractType(bool isFixedPrice, bool isTimeAndMaterial)
     {
+        if (isFixedPrice && isTimeAndMaterial)
+            throw new ArgumentException("Commitment cannot be both Fixed Price and Time & Material");
+
+        if (!isFixedPrice && !isTimeAndMaterial)
+            throw new ArgumentException("Commitment must be either Fixed Price or Time & Material");
+
         IsFixedPrice = isFixedPrice;
         IsTimeAndMaterial = isTimeAndMaterial;
         UpdatedAt = DateTime.UtcNow;
@@ -179,9 +226,7 @@ public class Commitment : BaseEntity, IAuditable, ISoftDelete
     public void SubmitForApproval()
     {
         if (Status != CommitmentStatus.Draft)
-            throw new InvalidOperationException(
-                "Only draft commitments can be submitted for approval"
-            );
+            throw new InvalidOperationException("Only draft commitments can be submitted for approval");
 
         Status = CommitmentStatus.PendingApproval;
         UpdatedAt = DateTime.UtcNow;
@@ -213,6 +258,9 @@ public class Commitment : BaseEntity, IAuditable, ISoftDelete
         if (Status != CommitmentStatus.Active && Status != CommitmentStatus.PartiallyInvoiced)
             throw new InvalidOperationException("Only active commitments can be revised");
 
+        if (revisedAmount < InvoicedAmount)
+            throw new InvalidOperationException("Revised amount cannot be less than invoiced amount");
+
         var revision = new CommitmentRevision(Id, RevisedAmount, revisedAmount, reason);
         Revisions.Add(revision);
 
@@ -223,6 +271,9 @@ public class Commitment : BaseEntity, IAuditable, ISoftDelete
 
     public void RecordInvoice(decimal invoiceAmount, decimal paidAmount, decimal retentionAmount)
     {
+        if (invoiceAmount < 0 || paidAmount < 0 || retentionAmount < 0)
+            throw new ArgumentException("Invoice amounts cannot be negative");
+
         InvoicedAmount += invoiceAmount;
         PaidAmount += paidAmount;
         RetentionAmount += retentionAmount;
@@ -237,6 +288,9 @@ public class Commitment : BaseEntity, IAuditable, ISoftDelete
         DateTime? expectedCompletion = null
     )
     {
+        if (performancePercentage < 0 || performancePercentage > 100)
+            throw new ArgumentException("Performance percentage must be between 0 and 100");
+
         PerformancePercentage = performancePercentage;
         ExpectedCompletionDate = expectedCompletion;
         UpdatedAt = DateTime.UtcNow;
@@ -254,9 +308,7 @@ public class Commitment : BaseEntity, IAuditable, ISoftDelete
     public void Cancel(string reason)
     {
         if (Status == CommitmentStatus.Closed || Status == CommitmentStatus.FullyInvoiced)
-            throw new InvalidOperationException(
-                "Cannot cancel closed or fully invoiced commitments"
-            );
+            throw new InvalidOperationException("Cannot cancel closed or fully invoiced commitments");
 
         Status = CommitmentStatus.Cancelled;
         ApprovalNotes = $"Cancelled: {reason}";
@@ -278,30 +330,30 @@ public class Commitment : BaseEntity, IAuditable, ISoftDelete
 
     // Calculated Properties
     public Money GetOriginalAmountMoney() => new(OriginalAmount, Currency);
-
     public Money GetRevisedAmountMoney() => new(RevisedAmount, Currency);
-
     public Money GetCommittedAmountMoney() => new(CommittedAmount, Currency);
-
     public Money GetInvoicedAmountMoney() => new(InvoicedAmount, Currency);
-
     public Money GetPaidAmountMoney() => new(PaidAmount, Currency);
-
     public Money GetRetentionAmountMoney() => new(RetentionAmount, Currency);
 
     public decimal GetRemainingAmount() => CommittedAmount - InvoicedAmount;
-
     public decimal GetUnpaidAmount() => InvoicedAmount - PaidAmount;
-
     public decimal GetInvoicedPercentage() =>
         CommittedAmount > 0 ? (InvoicedAmount / CommittedAmount) * 100 : 0;
-
     public decimal GetPaidPercentage() =>
         InvoicedAmount > 0 ? (PaidAmount / InvoicedAmount) * 100 : 0;
-
     public bool IsOverCommitted() => InvoicedAmount > CommittedAmount;
-
     public bool IsExpired() => DateTime.UtcNow > EndDate && Status == CommitmentStatus.Active;
 
     public DateRange GetContractPeriod() => new(StartDate, EndDate);
+
+    // Summary calculations from items
+    public decimal GetItemsTotal() => Items.Sum(i => i.LineTotal);
+    public int GetActiveItemsCount() => Items.Count(i => i.Status == CommitmentItemStatus.Active);
+    public decimal GetDeliveredPercentage()
+    {
+        var totalQuantity = Items.Sum(i => i.Quantity);
+        var deliveredQuantity = Items.Sum(i => i.DeliveredQuantity);
+        return totalQuantity > 0 ? (deliveredQuantity / totalQuantity) * 100 : 0;
+    }
 }
