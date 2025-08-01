@@ -1,8 +1,9 @@
 ﻿using System;
 using Domain.Common;
-using Core.Enums.ChangeManagement;
+using Core.Enums.Change;
+using Domain.Entities.Change;
 
-namespace Domain.Entities.ChangeManagement;
+namespace Domain.Entities.Risk;
 
 /// <summary>
 /// Detailed impact analysis for Change Orders

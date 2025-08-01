@@ -1,4 +1,4 @@
-﻿namespace Core.Enums.ChangeManagement;
+﻿namespace Core.Enums.Change;
 
 /// <summary>
 /// Change order types

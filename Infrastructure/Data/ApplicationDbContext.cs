@@ -4,7 +4,6 @@ using Domain.Entities.Projects;
 using Domain.Entities.Cost;
 using Domain.Entities.Progress;
 using Domain.Entities.Risk;
-using Domain.Entities.ChangeManagement;
 using Domain.Entities.EVM;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -13,6 +12,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using Operation = Domain.Entities.Setup.Operation;
 using User = Domain.Entities.Security.User;
+using Domain.Entities.Change;
 
 namespace Infrastructure.Data;
 

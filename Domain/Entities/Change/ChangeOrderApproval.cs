@@ -1,9 +1,9 @@
 ﻿using System;
 using Domain.Common;
 using Domain.Entities.Security;
-using Core.Enums.ChangeManagement;
+using Core.Enums.Change;
 
-namespace Domain.Entities.ChangeManagement;
+namespace Domain.Entities.Change;
 
 /// <summary>
 /// Change Order Approval tracking

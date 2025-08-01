@@ -1,6 +1,6 @@
 ﻿using Core.Enums.Progress;
 
-namespace Domain.Entities.EVM;
+namespace Domain.Entities.Projects;
 
 /// <summary>
 /// Work Package Progress record for tracking progress history

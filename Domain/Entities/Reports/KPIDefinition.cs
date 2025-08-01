@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Domain.Entities.Projects
+namespace Domain.Entities.Reports
 {
-    public class WorkPackageDetails
+    internal class KPIDefinition
     {
     }
 }

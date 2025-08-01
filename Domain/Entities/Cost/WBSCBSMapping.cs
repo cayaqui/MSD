@@ -1,8 +1,8 @@
 ﻿using System;
 using Domain.Common;
-using Domain.Entities.Cost;
+using Domain.Entities.Projects;
 
-namespace Domain.Entities.Projects;
+namespace Domain.Entities.Cost;
 
 /// <summary>
 /// Mapeo entre elementos del WBS y CBS para distribución de costos

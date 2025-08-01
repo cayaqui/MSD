@@ -1,14 +1,15 @@
-﻿using Core.Enums.ChangeManagement;
+﻿using Core.Enums.Change;
 using Core.Enums.Progress;
 using Domain.Common;
 using Domain.Entities.Cost;
 using Domain.Entities.Projects;
+using Domain.Entities.Risk;
 using Domain.Entities.Security;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Domain.Entities.ChangeManagement;
+namespace Domain.Entities.Change;
 
 /// <summary>
 /// Change Order entity following PMI Change Management standards
