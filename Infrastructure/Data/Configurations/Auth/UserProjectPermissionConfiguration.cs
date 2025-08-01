@@ -2,83 +2,70 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Infrastructure.Data.Configurations.Auth
+namespace Infrastructure.Data.Configurations.Security;
+
+/// <summary>
+/// Entity configuration for UserProjectPermission
+/// </summary>
+public class UserProjectPermissionConfiguration : IEntityTypeConfiguration<UserProjectPermission>
 {
-    public class UserProjectPermissionConfiguration : IEntityTypeConfiguration<UserProjectPermission>
+    public void Configure(EntityTypeBuilder<UserProjectPermission> builder)
     {
-        public void Configure(EntityTypeBuilder<UserProjectPermission> builder)
+        // Table name and schema
+        builder.ToTable("UserProjectPermissions", "Security", t=>
         {
-            builder.ToTable("UserProjectPermissions", "Security");
+            t.HasCheckConstraint("CK_UserProjectPermissions_ValidDates",
+            "[ValidTo] IS NULL OR [ValidTo] > [ValidFrom]");
+        });
 
-            // Primary Key
-            builder.HasKey(upp => upp.Id);
+        // Primary key
+        builder.HasKey(upp => upp.Id);
 
-            // Properties
-            builder.Property(upp => upp.PermissionCode)
-                .IsRequired()
-                .HasMaxLength(100);
+        // Indexes
+        builder.HasIndex(upp => new { upp.UserId, upp.ProjectId, upp.PermissionId }).IsUnique();
+        builder.HasIndex(upp => upp.UserId);
+        builder.HasIndex(upp => upp.ProjectId);
+        builder.HasIndex(upp => upp.PermissionId);
+        builder.HasIndex(upp => new { upp.IsActive, upp.GrantedAt, upp.ExpiresAt});
 
-            builder.Property(upp => upp.IsGranted)
-                .IsRequired();
+        // Properties
+        builder.Property(upp => upp.GrantedAt)
+            .IsRequired();
 
-            builder.Property(upp => upp.Reason)
-                .HasMaxLength(500);
+        builder.Property(upp => upp.ExpiresAt);
 
-            builder.Property(upp => upp.IsActive)
-                .IsRequired()
-                .HasDefaultValue(true);
+        builder.Property(upp => upp.GrantedBy)
+            .HasMaxLength(256);
 
-            builder.Property(upp => upp.GrantedAt)
-                .IsRequired();
+        builder.Property(upp => upp.Reason)
+            .HasMaxLength(500);
 
-            builder.Property(upp => upp.GrantedBy)
-                .IsRequired()
-                .HasMaxLength(450);
+        // Audit properties
+        builder.Property(upp => upp.CreatedAt)
+            .IsRequired();
 
-            builder.Property(upp => upp.RevokedBy)
-                .HasMaxLength(450);
+        builder.Property(upp => upp.CreatedBy)
+            .HasMaxLength(256);
 
-            // Relationships
-            builder.HasOne(upp => upp.User)
-                .WithMany()
-                .HasForeignKey(upp => upp.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
+        builder.Property(upp => upp.UpdatedAt);
 
-            builder.HasOne(upp => upp.Project)
-                .WithMany()
-                .HasForeignKey(upp => upp.ProjectId)
-                .OnDelete(DeleteBehavior.Cascade);
+        builder.Property(upp => upp.UpdatedBy)
+            .HasMaxLength(256);
 
-            builder.HasOne(upp => upp.Permission)
-                .WithMany(p => p.UserProjectPermissions)
-                .HasForeignKey(upp => upp.PermissionId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .IsRequired(false);
+        // Foreign key relationships
+        builder.HasOne(upp => upp.User)
+            .WithMany(u => u.UserProjectPermissions)
+            .HasForeignKey(upp => upp.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-            // Indexes
-            builder.HasIndex(upp => new { upp.UserId, upp.ProjectId, upp.PermissionCode })
-                .HasDatabaseName("IX_UserProjectPermissions_User_Project_Permission")
-                .IsUnique()
-                .HasFilter("[IsActive] = 1");
+        builder.HasOne(upp => upp.Project)
+            .WithMany(p => p.UserProjectPermissions)
+            .HasForeignKey(upp => upp.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-            builder.HasIndex(upp => upp.UserId)
-                .HasDatabaseName("IX_UserProjectPermissions_UserId");
-
-            builder.HasIndex(upp => upp.ProjectId)
-                .HasDatabaseName("IX_UserProjectPermissions_ProjectId");
-
-            builder.HasIndex(upp => upp.PermissionCode)
-                .HasDatabaseName("IX_UserProjectPermissions_PermissionCode");
-
-            builder.HasIndex(upp => upp.IsActive)
-                .HasDatabaseName("IX_UserProjectPermissions_IsActive");
-
-            builder.HasIndex(upp => upp.ExpiresAt)
-                .HasDatabaseName("IX_UserProjectPermissions_ExpiresAt")
-                .HasFilter("[ExpiresAt] IS NOT NULL");
-
-            // Query Filters
-            builder.HasQueryFilter(upp => upp.IsActive);
-        }
+        builder.HasOne(upp => upp.Permission)
+            .WithMany(p => p.UserProjectPermissions)
+            .HasForeignKey(upp => upp.PermissionId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

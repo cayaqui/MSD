@@ -7,7 +7,7 @@ namespace Domain.Entities.Security
     /// <summary>
     /// Represents a system permission that can be checked for authorization
     /// </summary>
-    public class Permission : BaseEntity
+    public class Permission : BaseEntity, ISoftDelete
     {
         private Permission() { } // EF Core
 
@@ -64,6 +64,9 @@ namespace Domain.Entities.Security
 
         // Navigation properties
         public virtual ICollection<UserProjectPermission> UserProjectPermissions { get; private set; } = new HashSet<UserProjectPermission>();
+        public bool IsDeleted { get ; set ; }
+        public DateTime? DeletedAt { get; set; }
+        public string? DeletedBy { get; set; }
 
         // Methods
         public void UpdateDetails(string displayName, string? description = null)

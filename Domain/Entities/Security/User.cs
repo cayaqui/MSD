@@ -39,7 +39,10 @@ namespace Domain.Entities.Security
         public string? JobTitle { get; set; }
         public string? CompanyId { get; set; }
         public string? PreferredLanguage { get; set; }
+
+        public string? PhotoUrl { get; set; }
         public bool IsActive { get; private set; }
+
 
         // Login Tracking
         public DateTime? LastLoginAt { get; set; }

@@ -1,81 +1,65 @@
-﻿using Domain.Entities.Security;
+﻿using Domain.Entities.Projects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Core.Constants;
 
-namespace Infrastructure.Data.Configurations.Auth
+namespace Infrastructure.Data.Configurations.Projects;
+
+/// <summary>
+/// Entity configuration for ProjectTeamMember
+/// </summary>
+public class ProjectTeamMemberConfiguration : IEntityTypeConfiguration<ProjectTeamMember>
 {
-    public class ProjectTeamMemberConfiguration : IEntityTypeConfiguration<ProjectTeamMember>
+    public void Configure(EntityTypeBuilder<ProjectTeamMember> builder)
     {
-        public void Configure(EntityTypeBuilder<ProjectTeamMember> builder)
+        // Table name and schema
+        builder.ToTable("ProjectTeamMembers", "Projects", t =>
         {
-            builder.ToTable("ProjectTeamMembers", "Security", p =>
-            {
-                p.HasCheckConstraint("CK_ProjectTeamMembers_EndDate", "[EndDate] IS NULL OR [EndDate] > [StartDate]");
-                p.HasCheckConstraint("CK_ProjectTeamMembers_ValidRole", "[Role] IN ('" + string.Join("','", ProjectRoles.AllRoles) + "')");
-                p.HasCheckConstraint("CK_ProjectTeamMembers_AllocationPercentage", "[AllocationPercentage] IS NULL OR ([AllocationPercentage] >= 0 AND [AllocationPercentage] <= 100)");
-            });
+            t.HasCheckConstraint("CK_ProjectTeamMembers_Dates",
+            "[EndDate] IS NULL OR [EndDate] > [StartDate]");
+            t.HasCheckConstraint("CK_ProjectTeamMembers_Role",
+            "[Role] IN ('PROJECT_MANAGER', 'PROJECT_ENGINEER', 'COST_CONTROLLER', 'PLANNER', 'QA_QC', 'DOCUMENT_CONTROLLER', 'TEAM_MEMBER', 'OBSERVER')")
+        });
 
-            // Primary Key
-            builder.HasKey(ptm => ptm.Id);
+        // Primary key
+        builder.HasKey(ptm => ptm.Id);
 
-            // Properties
-            builder.Property(ptm => ptm.Role)
-                .IsRequired()
-                .HasMaxLength(50);
+        // Indexes
+        builder.HasIndex(ptm => new { ptm.UserId, ptm.ProjectId }).IsUnique();
+        builder.HasIndex(ptm => ptm.UserId);
+        builder.HasIndex(ptm => ptm.ProjectId);
+        builder.HasIndex(ptm => ptm.Role);
+        builder.HasIndex(ptm => new { ptm.IsActive, ptm.StartDate, ptm.EndDate });
 
-            builder.Property(ptm => ptm.AllocationPercentage)
-                .HasPrecision(5, 2)
-                .HasDefaultValue(100m);
+        // Properties
+        builder.Property(ptm => ptm.Role)
+            .IsRequired()
+            .HasMaxLength(50);
 
-            builder.Property(ptm => ptm.StartDate)
-                .IsRequired();
+        builder.Property(ptm => ptm.StartDate)
+            .IsRequired();
 
-            builder.Property(ptm => ptm.IsActive)
-                .IsRequired()
-                .HasDefaultValue(true);
+        builder.Property(ptm => ptm.EndDate);
+        // Audit properties
+        builder.Property(ptm => ptm.CreatedAt)
+            .IsRequired();
 
-            // Audit properties
-            builder.Property(ptm => ptm.CreatedBy)
-                .HasMaxLength(450);
+        builder.Property(ptm => ptm.CreatedBy)
+            .HasMaxLength(256);
 
-            builder.Property(ptm => ptm.UpdatedBy)
-                .HasMaxLength(450);
+        builder.Property(ptm => ptm.UpdatedAt);
 
-            // Relationships
-            builder.HasOne(ptm => ptm.User)
-                .WithMany(u => u.ProjectTeamMembers)
-                .HasForeignKey(ptm => ptm.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
+        builder.Property(ptm => ptm.UpdatedBy)
+            .HasMaxLength(256);
 
-            builder.HasOne(ptm => ptm.Project)
-                .WithMany(p => p.ProjectTeamMembers)
-                .HasForeignKey(ptm => ptm.ProjectId)
-                .OnDelete(DeleteBehavior.Cascade);
+        // Foreign key relationships
+        builder.HasOne(ptm => ptm.User)
+            .WithMany(u => u.ProjectTeamMembers)
+            .HasForeignKey(ptm => ptm.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-            // Indexes
-            builder.HasIndex(ptm => new { ptm.ProjectId, ptm.UserId, ptm.IsActive })
-                .HasDatabaseName("IX_ProjectTeamMembers_Project_User_Active")
-                .IsUnique()
-                .HasFilter("[IsActive] = 1");
-
-            builder.HasIndex(ptm => ptm.UserId)
-                .HasDatabaseName("IX_ProjectTeamMembers_UserId");
-
-            builder.HasIndex(ptm => ptm.ProjectId)
-                .HasDatabaseName("IX_ProjectTeamMembers_ProjectId");
-
-            builder.HasIndex(ptm => ptm.Role)
-                .HasDatabaseName("IX_ProjectTeamMembers_Role");
-
-            builder.HasIndex(ptm => ptm.IsActive)
-                .HasDatabaseName("IX_ProjectTeamMembers_IsActive");
-
-            builder.HasIndex(ptm => new { ptm.StartDate, ptm.EndDate })
-                .HasDatabaseName("IX_ProjectTeamMembers_StartDate_EndDate");
-
-            // Query Filters
-            builder.HasQueryFilter(ptm => ptm.IsActive);
-        }
+        builder.HasOne(ptm => ptm.Project)
+            .WithMany(p => p.ProjectTeamMembers)
+            .HasForeignKey(ptm => ptm.ProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
