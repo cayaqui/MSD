@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Domain.Common;
+using Domain.Entities.Cost;
 using Core.Enums.Projects;
 using Core.Enums.Progress;
 
@@ -78,8 +79,10 @@ public class WBSElement : BaseEntity, IAuditable, ISoftDelete, IActivatable
 
         IsActive = true;
         CreatedAt = DateTime.UtcNow;
+        FullPath = name; // Will be updated when parent is set
 
         ValidateCode();
+        ValidateElementType();
     }
 
     // Domain Methods
@@ -95,6 +98,9 @@ public class WBSElement : BaseEntity, IAuditable, ISoftDelete, IActivatable
         if (Children.Any())
             throw new InvalidOperationException("Cannot convert to work package if element has children");
 
+        if (ElementType == WBSElementType.WorkPackage)
+            throw new InvalidOperationException("Element is already a work package");
+
         ElementType = WBSElementType.WorkPackage;
         ControlAccountId = controlAccountId;
 
@@ -108,6 +114,9 @@ public class WBSElement : BaseEntity, IAuditable, ISoftDelete, IActivatable
     {
         if (Children.Any())
             throw new InvalidOperationException("Cannot convert to planning package if element has children");
+
+        if (ElementType == WBSElementType.PlanningPackage)
+            throw new InvalidOperationException("Element is already a planning package");
 
         ElementType = WBSElementType.PlanningPackage;
         ControlAccountId = controlAccountId;
@@ -141,19 +150,43 @@ public class WBSElement : BaseEntity, IAuditable, ISoftDelete, IActivatable
             Id);
 
         Children.Add(child);
-        UpdateFullPath();
+        child.Parent = this;
+        child.UpdateFullPath();
 
         return child;
     }
 
     public void UpdateBasicInfo(string name, string? description)
     {
-        Name = name ?? throw new ArgumentNullException(nameof(name));
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentNullException(nameof(name));
+
+        Name = name;
         Description = description;
+        UpdateFullPath();
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateWBSDictionary(
+    public void UpdateCode(string newCode)
+    {
+        if (string.IsNullOrWhiteSpace(newCode))
+            throw new ArgumentNullException(nameof(newCode));
+
+        Code = newCode;
+        ValidateCode();
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateSequenceNumber(int newSequenceNumber)
+    {
+        if (newSequenceNumber < 1)
+            throw new ArgumentException("Sequence number must be greater than 0");
+
+        SequenceNumber = newSequenceNumber;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateDictionaryInfo(
         string? deliverableDescription,
         string? acceptanceCriteria,
         string? assumptions,
@@ -168,114 +201,199 @@ public class WBSElement : BaseEntity, IAuditable, ISoftDelete, IActivatable
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateFullPath()
+    public void AssignToControlAccount(Guid controlAccountId)
     {
-        var path = new List<string>();
-        var current = this;
+        if (ElementType != WBSElementType.WorkPackage && ElementType != WBSElementType.PlanningPackage)
+            throw new InvalidOperationException("Only work packages and planning packages can be assigned to control accounts");
 
-        while (current != null)
-        {
-            path.Insert(0, current.Name);
-            current = current.Parent;
-        }
-
-        FullPath = string.Join("/", path);
-
-        // Update children paths
-        foreach (var child in Children)
-        {
-            child.UpdateFullPath();
-        }
-    }
-
-    // Calculate rollup values from children
-    public void CalculateRollup()
-    {
-        if (!Children.Any() || IsWorkPackage())
-            return;
-
-        var activeChildren = Children.Where(c => c.IsActive && !c.IsDeleted).ToList();
-        if (!activeChildren.Any())
-            return;
-
-        // Roll up progress (weighted by budget if work packages)
-        var workPackages = GetAllWorkPackages().ToList();
-        if (workPackages.Any())
-        {
-            var totalBudget = workPackages.Sum(wp => wp.WorkPackageDetails?.Budget ?? 0);
-            if (totalBudget > 0)
-            {
-                var weightedProgress = workPackages.Sum(wp =>
-                    (wp.WorkPackageDetails?.ProgressPercentage ?? 0) *
-                    (wp.WorkPackageDetails?.Budget ?? 0));
-
-                // Store rollup progress (might need a property for this)
-                var rollupProgress = weightedProgress / totalBudget;
-            }
-        }
-
+        ControlAccountId = controlAccountId;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    // Helper methods
-    public bool IsLeaf() => !Children.Any();
-
-    public bool CanBeDeleted() => !Children.Any(c => c.IsActive && !c.IsDeleted);
-
-    public int GetDepth()
+    public void RemoveFromControlAccount()
     {
-        if (!Children.Any())
-            return 0;
-
-        return Children.Max(c => c.GetDepth()) + 1;
+        ControlAccountId = null;
+        UpdatedAt = DateTime.UtcNow;
     }
 
-    public IEnumerable<WBSElement> GetAllDescendants()
+    public void Activate()
     {
-        foreach (var child in Children)
+        IsActive = true;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Deactivate()
+    {
+        IsActive = false;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Delete(string deletedBy)
+    {
+        if (string.IsNullOrWhiteSpace(deletedBy))
+            throw new ArgumentNullException(nameof(deletedBy));
+
+        if (Children.Any(c => !c.IsDeleted))
+            throw new InvalidOperationException("Cannot delete WBS element with active children");
+
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
+        DeletedBy = deletedBy;
+        IsActive = false;
+    }
+
+    public void Restore()
+    {
+        IsDeleted = false;
+        DeletedAt = null;
+        DeletedBy = null;
+        IsActive = true;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // CBS Mapping Methods
+    public void AddCBSMapping(Guid cbsId, decimal allocationPercentage, bool isPrimary = false)
+    {
+        // Validate total allocation doesn't exceed 100%
+        var currentTotal = CBSMappings
+            .Where(m => m.IsActive())
+            .Sum(m => m.AllocationPercentage);
+
+        if (currentTotal + allocationPercentage > 100)
+            throw new InvalidOperationException("Total CBS allocation cannot exceed 100%");
+
+        // If setting as primary, remove primary flag from others
+        if (isPrimary)
         {
-            yield return child;
-            foreach (var descendant in child.GetAllDescendants())
+            foreach (var mapping in CBSMappings.Where(m => m.IsPrimary))
             {
-                yield return descendant;
+                mapping.SetAsPrimary();
             }
         }
-    }
 
-    public IEnumerable<WBSElement> GetAllWorkPackages()
-    {
-        return GetAllDescendants().Where(w => w.IsWorkPackage());
-    }
-
-    public IEnumerable<WBSElement> GetAllPlanningPackages()
-    {
-        return GetAllDescendants().Where(w => w.IsPlanningPackage());
-    }
-
-    private void ValidateCode()
-    {
-        if (!System.Text.RegularExpressions.Regex.IsMatch(Code, @"^(\d+\.)*\d+$"))
-            throw new ArgumentException("WBS code must follow the pattern: 1.2.3 format");
-    }
-
-    // Métodos para mapeo CBS
-    public void MapToCBS(Guid cbsId, decimal allocationPercentage)
-    {
-        if (CBSMappings.Any(m => m.CBSId == cbsId))
-            throw new InvalidOperationException("CBS already mapped to this WBS element");
-
-        var mapping = new WBSCBSMapping(Id, cbsId, allocationPercentage);
-        CBSMappings.Add(mapping);
-        UpdatedAt = DateTime.UtcNow;
+        var newMapping = new WBSCBSMapping(Id, cbsId, allocationPercentage, isPrimary);
+        CBSMappings.Add(newMapping);
     }
 
     public void RemoveCBSMapping(Guid cbsId)
     {
-        var mapping = CBSMappings.FirstOrDefault(m => m.CBSId == cbsId);
+        var mapping = CBSMappings.FirstOrDefault(m => m.CBSId == cbsId && m.IsActive());
         if (mapping != null)
         {
-            CBSMappings.Remove(mapping);
-            UpdatedAt = DateTime.UtcNow;
+            mapping.SetEndDate(DateTime.UtcNow);
         }
+    }
+
+    // Private Methods
+    private void UpdateFullPath()
+    {
+        var pathParts = new List<string> { Name };
+        var current = Parent;
+
+        while (current != null)
+        {
+            pathParts.Insert(0, current.Name);
+            current = current.Parent;
+        }
+
+        FullPath = string.Join("/", pathParts);
+    }
+
+    private void ValidateCode()
+    {
+        if (string.IsNullOrWhiteSpace(Code))
+            throw new ArgumentException("WBS code cannot be empty");
+
+        // Validate format (e.g., 1.2.3)
+        var parts = Code.Split('.');
+        foreach (var part in parts)
+        {
+            if (!int.TryParse(part, out _))
+                throw new ArgumentException("WBS code must be in format X.Y.Z (e.g., 1.2.3)");
+        }
+    }
+
+    private void ValidateElementType()
+    {
+        // Root elements cannot be Work Packages or Planning Packages
+        if (!ParentId.HasValue &&
+            (ElementType == WBSElementType.WorkPackage ||
+             ElementType == WBSElementType.PlanningPackage))
+        {
+            throw new InvalidOperationException("Root elements cannot be Work Packages or Planning Packages");
+        }
+    }
+
+    // Helper Methods for Queries
+    public bool HasActiveChildren() => Children.Any(c => !c.IsDeleted && c.IsActive);
+
+    public int GetTotalDescendantsCount()
+    {
+        var count = Children.Count;
+        foreach (var child in Children)
+        {
+            count += child.GetTotalDescendantsCount();
+        }
+        return count;
+    }
+
+    public List<WBSElement> GetAllDescendants()
+    {
+        var descendants = new List<WBSElement>();
+        GetDescendantsRecursive(this, descendants);
+        return descendants;
+    }
+
+    private void GetDescendantsRecursive(WBSElement element, List<WBSElement> descendants)
+    {
+        foreach (var child in element.Children)
+        {
+            descendants.Add(child);
+            GetDescendantsRecursive(child, descendants);
+        }
+    }
+
+    public decimal GetTotalBudget()
+    {
+        decimal total = 0;
+
+        if (WorkPackageDetails != null)
+        {
+            total = WorkPackageDetails.Budget;
+        }
+        else
+        {
+            foreach (var child in Children.Where(c => !c.IsDeleted))
+            {
+                total += child.GetTotalBudget();
+            }
+        }
+
+        return total;
+    }
+
+    public decimal GetWeightedProgress()
+    {
+        if (WorkPackageDetails != null)
+        {
+            return WorkPackageDetails.ProgressPercentage;
+        }
+
+        if (!Children.Any(c => !c.IsDeleted))
+        {
+            return 0;
+        }
+
+        decimal totalWeight = 0;
+        decimal weightedProgress = 0;
+
+        foreach (var child in Children.Where(c => !c.IsDeleted))
+        {
+            var childBudget = child.GetTotalBudget();
+            totalWeight += childBudget;
+            weightedProgress += childBudget * child.GetWeightedProgress();
+        }
+
+        return totalWeight > 0 ? weightedProgress / totalWeight : 0;
     }
 }
