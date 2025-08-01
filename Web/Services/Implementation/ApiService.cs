@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Http.Headers;
 using Web.Models.Responses;
 using Web.Services.Interfaces;
 
@@ -263,6 +264,118 @@ namespace Web.Services.Implementation
             }
 
             return apiResponse;
+        }
+
+
+        // New method implementation for byte array download
+        public async Task<ApiResponse<byte[]>> GetBytesAsync(string endpoint)
+        {
+            return await GetBytesAsync(endpoint, null);
+        }
+
+        public async Task<ApiResponse<byte[]>> GetBytesAsync(string endpoint, Dictionary<string, string>? headers)
+        {
+            try
+            {
+                // Add any custom headers
+                if (headers != null)
+                {
+                    foreach (var header in headers)
+                    {
+                        _httpClient.DefaultRequestHeaders.Add(header.Key, header.Value);
+                    }
+                }
+
+                var response = await _httpClient.GetAsync(endpoint);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var bytes = await response.Content.ReadAsByteArrayAsync();
+                    return ApiResponse<byte[]>.SuccessResponse(bytes);
+                }
+
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Failed to download file from {Endpoint}. Status: {StatusCode}, Error: {Error}",
+                    endpoint, response.StatusCode, error);
+
+                return ApiResponse<byte[]>.ErrorResponse($"Error downloading file: {response.StatusCode}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error downloading file from {Endpoint}", endpoint);
+                return ApiResponse<byte[]>.ErrorResponse($"Error: {ex.Message}");
+            }
+            finally
+            {
+                // Clean up custom headers
+                if (headers != null)
+                {
+                    foreach (var header in headers)
+                    {
+                        _httpClient.DefaultRequestHeaders.Remove(header.Key);
+                    }
+                }
+            }
+        }
+
+        // Optional: Stream implementation for large files
+        public async Task<ApiResponse<Stream>> GetStreamAsync(string endpoint)
+        {
+            try
+            {
+
+                // Use HttpCompletionOption.ResponseHeadersRead for streaming
+                var response = await _httpClient.GetAsync(endpoint, HttpCompletionOption.ResponseHeadersRead);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var stream = await response.Content.ReadAsStreamAsync();
+                    return ApiResponse<Stream>.SuccessResponse(stream);
+                }
+
+                var error = await response.Content.ReadAsStringAsync();
+                return ApiResponse<Stream>.ErrorResponse($"Error: {response.StatusCode}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error streaming from {Endpoint}", endpoint);
+                return ApiResponse<Stream>.ErrorResponse($"Error: {ex.Message}");
+            }
+        }
+
+        private async Task<ApiResponse<T>> ProcessResponseAsync<T>(HttpResponseMessage response)
+        {
+            if (response.IsSuccessStatusCode)
+            {
+                try
+                {
+                    var json = await response.Content.ReadAsStringAsync();
+                    var data = JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    return ApiResponse<T>.SuccessResponse(data!);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Error deserializing response");
+                    return ApiResponse<T>.ErrorResponse("Error processing response data");
+                }
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError("API request failed. Status: {StatusCode}, Error: {Error}",
+                response.StatusCode, errorContent);
+
+            return response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.NotFound => ApiResponse<T>.ErrorResponse("Resource not found"),
+                System.Net.HttpStatusCode.Unauthorized => ApiResponse<T>.ErrorResponse("Unauthorized"),
+                System.Net.HttpStatusCode.Forbidden => ApiResponse<T>.ErrorResponse("Access denied"),
+                System.Net.HttpStatusCode.BadRequest => ApiResponse<T>.ErrorResponse(errorContent ?? "Bad request"),
+                _ => ApiResponse<T>.ErrorResponse($"Error: {response.StatusCode}")
+            };
         }
     }
 

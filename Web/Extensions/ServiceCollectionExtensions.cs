@@ -113,7 +113,7 @@ namespace Web.Extensions
             // Gestión de costos y EVM
             services.AddScoped<ICostService, CostService>();
             //services.AddScoped<IBudgetService, BudgetService>();
-            //services.AddScoped<IEVMService, EVMService>();
+            services.AddScoped<IEVMService, EVMService>();
             //services.AddScoped<ICashFlowService, CashFlowService>();
             //services.AddScoped<IControlAccountService, ControlAccountService>();
 
