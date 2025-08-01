@@ -4,6 +4,8 @@ using Application.Interfaces.Setup;
 using Application.Interfaces.UIUX;
 using Application.Mappings;
 using Application.Services.Auth;
+using Application.Services.Implementation;
+using Application.Services.Interfaces;
 using Application.Services.Setup;
 using FluentValidation;
 
@@ -30,7 +32,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IProjectTeamMemberService, ProjectTeamMemberService>();
-
+        services.AddScoped<ICommitmentService, CommitmentService>();
         // Add additional services as you implement them
         // services.AddScoped<IOperationService, OperationService>();
         // services.AddScoped<IContractorService, ContractorService>();
