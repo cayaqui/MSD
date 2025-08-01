@@ -130,8 +130,8 @@ namespace Domain.Entities.Security
         // Check if user is support/admin based on email domain
         public bool IsSupport()
         {
-            return Email.EndsWith("@mosaicmds.com", StringComparison.OrdinalIgnoreCase) ||
-                   Email.EndsWith("@synapsis-usa.com", StringComparison.OrdinalIgnoreCase);
+            return Email.EndsWith("@koffguerrero.com", StringComparison.OrdinalIgnoreCase) ||
+                   Email.EndsWith("@projectsolutions.cl", StringComparison.OrdinalIgnoreCase);
         }
 
         // Helper methods
