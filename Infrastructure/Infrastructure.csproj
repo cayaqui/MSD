@@ -32,7 +32,6 @@
 
   <ItemGroup>
     <Folder Include="Data\Configurations\Cost\" />
-    <Folder Include="Data\Configurations\Progress\" />
     <Folder Include="Data\Configurations\Setup\" />
     <Folder Include="Data\Seed\" />
     <Folder Include="Security\Authentication\" />

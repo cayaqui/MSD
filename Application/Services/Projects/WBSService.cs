@@ -310,7 +310,7 @@ public class WBSService : BaseService<WBSElement, WBSElementDto, CreateWBSElemen
         }
     }
 
-    public async Task<r> UpdateWBSElementAsync(
+    public async Task<Result> UpdateWBSElementAsync(
         Guid id,
         UpdateWBSElementDto dto,
         string userId,
@@ -342,7 +342,7 @@ public class WBSService : BaseService<WBSElement, WBSElementDto, CreateWBSElemen
         }
     }
 
-    public async Task<r> UpdateWBSDictionaryAsync(
+    public async Task<Result> UpdateWBSDictionaryAsync(
         Guid id,
         UpdateWBSDictionaryDto dto,
         string userId,
@@ -379,7 +379,7 @@ public class WBSService : BaseService<WBSElement, WBSElementDto, CreateWBSElemen
         }
     }
 
-    public async Task<r> ConvertToWorkPackageAsync(
+    public async Task<Result> ConvertToWorkPackageAsync(
         Guid id,
         ConvertToWorkPackageDto dto,
         string userId,
@@ -451,7 +451,7 @@ public class WBSService : BaseService<WBSElement, WBSElementDto, CreateWBSElemen
         }
     }
 
-    public async Task<r> ConvertToPlanningPackageAsync(
+    public async Task<Result> ConvertToPlanningPackageAsync(
         Guid id,
         Guid controlAccountId,
         string userId,
@@ -495,7 +495,7 @@ public class WBSService : BaseService<WBSElement, WBSElementDto, CreateWBSElemen
         }
     }
 
-    public async Task<r> ConvertPlanningPackageToWorkPackageAsync(
+    public async Task<Result> ConvertPlanningPackageToWorkPackageAsync(
         Guid id,
         ConvertPlanningToWorkPackageDto dto,
         string userId,
@@ -557,7 +557,7 @@ public class WBSService : BaseService<WBSElement, WBSElementDto, CreateWBSElemen
         }
     }
 
-    public async Task<r> ReorderWBSElementsAsync(
+    public async Task<Result> ReorderWBSElementsAsync(
         ReorderWBSElementsDto dto,
         string userId,
         CancellationToken cancellationToken = default)
@@ -591,7 +591,7 @@ public class WBSService : BaseService<WBSElement, WBSElementDto, CreateWBSElemen
         }
     }
 
-    public async Task<r> DeleteWBSElementAsync(
+    public async Task<Result> DeleteWBSElementAsync(
         Guid id,
         string userId,
         CancellationToken cancellationToken = default)

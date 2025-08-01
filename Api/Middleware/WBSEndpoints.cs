@@ -1,5 +1,4 @@
-﻿
-using Application.Interfaces.Projects;
+﻿using Application.Interfaces.Projects;
 using Carter;
 using Core.DTOs.Common;
 using Core.DTOs.WBS;
@@ -7,7 +6,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Api.Modules;
+namespace Api.Middleware;
 
 /// <summary>
 /// WBS (Work Breakdown Structure) endpoints

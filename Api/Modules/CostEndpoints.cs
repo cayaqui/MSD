@@ -7,7 +7,7 @@ using Core.Enums.Cost;
 using Microsoft.AspNetCore.Mvc;
 using FluentValidation;
 
-namespace API.Endpoints.Cost;
+namespace Api.Modules;
 
 /// <summary>
 /// Cost management endpoints
