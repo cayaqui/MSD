@@ -1,7 +1,4 @@
-﻿using Core.DTOs.Cost;
-using Domain.Entities.Cost;
-using Domain.Interfaces;
-using System.Linq.Expressions;
+﻿using Domain.Entities.Cost.Commitments;
 
 namespace Application.Specifications;
 

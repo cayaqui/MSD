@@ -1,7 +1,9 @@
 ﻿using Application.Common.Exceptions;
-using Application.Interfaces.Auth;
 using Application.Interfaces.UIUX;
-using Domain.Entities.Projects;
+using Core.Enums.UI;
+using Domain.Entities.UI;
+using Core.DTOs.UI.Notifications;
+using Application.Interfaces.Auth;
 
 namespace Application.Services.UIUX;
 
@@ -27,7 +29,7 @@ public class NotificationService : INotificationService
     public async Task<IEnumerable<NotificationDto>> GetUserNotificationsAsync()
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return Enumerable.Empty<NotificationDto>();
 
         var notifications = await _unitOfWork.Repository<Notification>()
@@ -82,7 +84,7 @@ public class NotificationService : INotificationService
     public async Task<int> GetUnreadCountAsync()
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return 0;
 
         return await _unitOfWork.Repository<Notification>()
@@ -172,7 +174,7 @@ public class NotificationService : INotificationService
         if (dto.UserId == null && dto.UserIds == null)
         {
             var currentUser = await GetCurrentUserAsync();
-            if (currentUser != null)
+            if (currentUser is not null)
                 dto.UserId = currentUser.Id;
         }
 

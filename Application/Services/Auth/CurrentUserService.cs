@@ -1,4 +1,6 @@
 ﻿using Application.Interfaces.Auth;
+using Core.Constants;
+using Domain.Entities.Auth.Security;
 using System.Security.Claims;
 
 namespace Application.Services.Auth;
@@ -6,17 +8,19 @@ namespace Application.Services.Auth;
 public class CurrentUserService : ICurrentUserService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<CurrentUserService> _logger;
 
     // These properties are set by the CurrentUserMiddleware
-    public string? UserId { get; set; }
-    public string? UserName { get; set; }
-    public string? Email { get; set; }
-    public bool IsAuthenticated { get; set; }
-    public ClaimsPrincipal? Principal { get; set; }
+    public string? UserId { get;  set; }
+    public string? UserName { get;  set; }
+    public string? Email { get;  set; }
+    public bool IsAuthenticated { get;  set; }
+    public ClaimsPrincipal? Principal { get;  set; }
 
-    public CurrentUserService(IUnitOfWork unitOfWork)
+    public CurrentUserService(IUnitOfWork unitOfWork, ILogger<CurrentUserService> logger)
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<bool> IsInRoleAsync(string role)
@@ -38,9 +42,30 @@ public class CurrentUserService : ICurrentUserService
 
     public async Task<bool> HasPermissionAsync(string permission)
     {
-        // This is a simplified version - in reality, you'd check against project context
-        // For now, just check if user is authenticated
-        return IsAuthenticated;
+        if (!IsAuthenticated || string.IsNullOrEmpty(UserId))
+            return false;
+
+        var user = await _unitOfWork.Repository<User>()
+            .Query()
+            .Include(u => u.ProjectTeamMembers)
+            .FirstOrDefaultAsync(u => u.EntraId == UserId && !u.IsDeleted);
+
+        if (user == null)
+            return false;
+
+        // Check if user has support role (all permissions)
+        if (user.IsSupport())
+            return true;
+
+        // Check if permission is granted through any project role
+        foreach (var membership in user.ProjectTeamMembers.Where(ptm => ptm.IsActive))
+        {
+            var rolePermissions = Core.Constants.ProjectRoles.GetPermissionsForRole(membership.Role);
+            if (rolePermissions.Contains(permission))
+                return true;
+        }
+
+        return false;
     }
 
     public async Task<bool> HasProjectAccessAsync(Guid projectId, string? requiredRole = null)
@@ -94,20 +119,17 @@ public class CurrentUserService : ICurrentUserService
 
     public async Task<string?> GetProjectRoleAsync(Guid projectId)
     {
-        var userId = UserId;
-        if (string.IsNullOrEmpty(userId))
-        {
+        if (string.IsNullOrEmpty(UserId))
             return null;
-        }
-        var gUserId = Guid.Parse(userId);
+
         var user = await _unitOfWork.Repository<User>()
             .Query()
             .Include(u => u.ProjectTeamMembers)
-            .FirstOrDefaultAsync(u => u.Id == gUserId);
+            .FirstOrDefaultAsync(u => u.EntraId == UserId && !u.IsDeleted);
+            
         if (user == null)
-        {
             return null;
-        }
+            
         return user.ProjectTeamMembers
             .Where(ur => ur.ProjectId == projectId && ur.IsActive)
             .Select(ur => ur.Role)
@@ -116,20 +138,17 @@ public class CurrentUserService : ICurrentUserService
 
     public async Task<List<Guid>> GetUserProjectIdsAsync()
     {
-        var userId = UserId;
-        if (string.IsNullOrEmpty(userId))
-        { 
-            return new List<Guid>(); 
-        }
-        var gUserId = Guid.Parse(userId);   
+        if (string.IsNullOrEmpty(UserId))
+            return new List<Guid>();
+
         var user = await _unitOfWork.Repository<User>()
             .Query()
             .Include(u => u.ProjectTeamMembers)
-            .FirstOrDefaultAsync(u => u.Id == gUserId);
+            .FirstOrDefaultAsync(u => u.EntraId == UserId && !u.IsDeleted);
+            
         if (user == null)
-        {
             return new List<Guid>();
-        }
+            
         return user.ProjectTeamMembers
             .Where(ptm => ptm.IsActive)
             .Select(ptm => ptm.ProjectId)

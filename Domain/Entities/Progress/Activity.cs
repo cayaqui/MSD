@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using Domain.Common;
-using Domain.Entities.Projects;
 using Core.Enums.Progress;
+using Domain.Entities.WBS;
 
 namespace Domain.Entities.Progress;
 

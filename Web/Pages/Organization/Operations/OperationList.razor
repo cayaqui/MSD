@@ -1,0 +1,395 @@
+@page "/operations"
+@using Core.DTOs.Organization.Operation
+@using Core.DTOs.Organization.Company
+@using Core.DTOs.Common
+@using Web.Services.Interfaces.Organization
+@using MudBlazor
+@inject IOperationApiService OperationService
+@inject ICompanyApiService CompanyService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILoggingService Logger
+@attribute [Authorize]
+
+<PageTitle>Gestión de Operaciones | EzPro MSD</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <!-- Header -->
+    <MudGrid AlignItems="Center" Class="mb-4">
+        <MudItem xs="12" sm="6">
+            <MudText Typo="Typo.h4" GutterBottom="false">Operaciones</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Gestiona las operaciones de las compañías
+            </MudText>
+        </MudItem>
+        <MudItem xs="12" sm="6" Class="text-right">
+            <MudButton Variant="Variant.Filled" 
+                       Color="Color.Primary" 
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@(() => Navigation.NavigateTo("/operations/new"))">
+                Nueva Operación
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Filters -->
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" md="3">
+                    <MudTextField T="string" 
+                                  Label="Buscar" 
+                                  Placeholder="Buscar por nombre o código..."
+                                  @bind-Value="_searchString"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Immediate="true"
+                                  DebounceInterval="300"
+                                  OnDebounceIntervalElapsed="@(() => LoadOperations())" />
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSelect T="Guid?" Label="Compañía" @bind-Value="_selectedCompanyId" Dense="true">
+                        <MudSelectItem T="Guid?" Value="@((Guid?)null)">Todas las compañías</MudSelectItem>
+                        @if (_companies != null)
+                        {
+                            @foreach (var company in _companies)
+                            {
+                                <MudSelectItem T="Guid?" Value="@((Guid?)company.Id)">@company.Name</MudSelectItem>
+                            }
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudSelect T="string" Label="Ordenar por" @bind-Value="_sortBy" Dense="true">
+                        <MudSelectItem Value="@("Name")">Nombre</MudSelectItem>
+                        <MudSelectItem Value="@("Code")">Código</MudSelectItem>
+                        <MudSelectItem Value="@("CompanyName")">Compañía</MudSelectItem>
+                        <MudSelectItem Value="@("CreatedAt")">Fecha de Creación</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudSwitch T="bool" @bind-Checked="_showOnlyActive" Label="Solo activas" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12" md="2" Class="d-flex align-end">
+                    <MudButton Variant="Variant.Outlined" 
+                               OnClick="@ResetFilters"
+                               StartIcon="@Icons.Material.Filled.Clear"
+                               Class="mr-2">
+                        Limpiar
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary"
+                               OnClick="@LoadOperations"
+                               StartIcon="@Icons.Material.Filled.Refresh">
+                        Buscar
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    <!-- Operations Table -->
+    @if (_loading)
+    {
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+            <MudText Typo="Typo.body2" Align="Align.Center">Cargando operaciones...</MudText>
+        </MudPaper>
+    }
+    else if (_operations?.Any() == true)
+    {
+        <MudTable Items="@_operations" Hover="true" Elevation="2" @bind-SelectedItem="_selectedOperation">
+            <HeaderContent>
+                <MudTh>
+                    <MudTableSortLabel SortBy="new Func<OperationDto, object>(x => x.Code)">
+                        Código
+                    </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                    <MudTableSortLabel InitialDirection="SortDirection.Ascending" 
+                                       SortBy="new Func<OperationDto, object>(x => x.Name)">
+                        Nombre
+                    </MudTableSortLabel>
+                </MudTh>
+                <MudTh>
+                    <MudTableSortLabel SortBy="new Func<OperationDto, object>(x => x.CompanyName)">
+                        Compañía
+                    </MudTableSortLabel>
+                </MudTh>
+                <MudTh>Ubicación</MudTh>
+                <MudTh>Gerente</MudTh>
+                <MudTh>Estado</MudTh>
+                <MudTh Style="text-align: center;">Acciones</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Código">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">
+                        @context.Code
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Nombre">
+                    <div>
+                        <MudText Typo="Typo.body2">@context.Name</MudText>
+                        @if (!string.IsNullOrEmpty(context.Description))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="text-truncate" Style="max-width: 300px;">
+                                @context.Description
+                            </MudText>
+                        }
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Compañía">
+                    <MudLink Href="@($"/companies/{context.CompanyId}")" Color="Color.Primary">
+                        @context.CompanyName
+                    </MudLink>
+                </MudTd>
+                <MudTd DataLabel="Ubicación">
+                    @if (!string.IsNullOrEmpty(context.Location))
+                    {
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" />
+                            <MudText Typo="Typo.body2">@context.Location</MudText>
+                        </div>
+                        @if (!string.IsNullOrEmpty(context.City) || !string.IsNullOrEmpty(context.Country))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @($"{context.City}{((!string.IsNullOrEmpty(context.City) && !string.IsNullOrEmpty(context.Country)) ? ", " : "")}{context.Country}")
+                            </MudText>
+                        }
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Sin ubicación</MudText>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Gerente">
+                    @if (!string.IsNullOrEmpty(context.ManagerName))
+                    {
+                        <div>
+                            <MudText Typo="Typo.body2">@context.ManagerName</MudText>
+                            @if (!string.IsNullOrEmpty(context.ManagerEmail))
+                            {
+                                <MudLink Href="@($"mailto:{context.ManagerEmail}")" Typo="Typo.caption">
+                                    @context.ManagerEmail
+                                </MudLink>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Sin asignar</MudText>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Estado">
+                    <MudChip T="string" Size="Size.Small" 
+                             Color="@(context.IsActive ? Color.Success : Color.Default)"
+                             Variant="Variant.Text">
+                        @(context.IsActive ? "Activa" : "Inactiva")
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Acciones" Style="text-align: center;">
+                    <MudIconButton Icon="@Icons.Material.Filled.Visibility" 
+                                   Color="Color.Primary" 
+                                   Size="Size.Small"
+                                   OnClick="@(() => ViewOperation(context.Id))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                   Color="Color.Info" 
+                                   Size="Size.Small"
+                                   OnClick="@(() => EditOperation(context.Id))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                   Color="Color.Error" 
+                                   Size="Size.Small"
+                                   OnClick="@(() => DeleteOperationDialog(context))" />
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    }
+    else
+    {
+        <MudPaper Class="pa-8">
+            <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Large" Color="Color.Secondary" />
+                <MudText Typo="Typo.h6" Color="Color.Secondary">No se encontraron operaciones</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @(_searchString?.Length > 0 || _selectedCompanyId.HasValue ? "Intenta con otros criterios de búsqueda" : "Comienza creando una nueva operación")
+                </MudText>
+                @if (string.IsNullOrEmpty(_searchString) && !_selectedCompanyId.HasValue)
+                {
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="@(() => Navigation.NavigateTo("/operations/new"))">
+                        Crear Primera Operación
+                    </MudButton>
+                }
+            </MudStack>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private List<OperationDto>? _operations;
+    private List<CompanyDto>? _companies;
+    private OperationDto? _selectedOperation;
+    private bool _loading = true;
+    private string _searchString = "";
+    private Guid? _selectedCompanyId;
+    private string _sortBy = "Name";
+    private bool _showOnlyActive = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCompanies();
+        await LoadOperations();
+    }
+
+    private async Task LoadCompanies()
+    {
+        try
+        {
+            var result = await CompanyService.GetCompaniesAsync(pageSize: 100);
+            if (result != null)
+            {
+                _companies = result.Items?.ToList() ?? new List<CompanyDto>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading companies for filter");
+        }
+    }
+
+    private async Task LoadOperations()
+    {
+        try
+        {
+            _loading = true;
+            
+            List<OperationDto>? allOperations;
+            
+            if (_selectedCompanyId.HasValue)
+            {
+                allOperations = await OperationService.GetOperationsByCompanyAsync(_selectedCompanyId.Value);
+            }
+            else
+            {
+                var result = await OperationService.GetOperationsAsync(
+                    pageNumber: 1,
+                    pageSize: 100,
+                    sortBy: _sortBy,
+                    isAscending: true
+                );
+                allOperations = result?.Items?.ToList();
+            }
+
+            if (allOperations != null)
+            {
+                _operations = allOperations;
+                
+                // Apply filters
+                if (!string.IsNullOrWhiteSpace(_searchString))
+                {
+                    var searchTerm = _searchString.ToLower();
+                    _operations = _operations.Where(o => 
+                        o.Name.ToLower().Contains(searchTerm) ||
+                        o.Code.ToLower().Contains(searchTerm) ||
+                        (o.Description?.ToLower().Contains(searchTerm) ?? false) ||
+                        (o.ManagerName?.ToLower().Contains(searchTerm) ?? false)
+                    ).ToList();
+                }
+                
+                if (_showOnlyActive)
+                {
+                    _operations = _operations.Where(o => o.IsActive).ToList();
+                }
+                
+                Logger.LogDebug($"Loaded {_operations.Count} operations");
+            }
+            else
+            {
+                _operations = new List<OperationDto>();
+                Snackbar.Add("Error al cargar las operaciones", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading operations");
+            Snackbar.Add("Error al cargar las operaciones", Severity.Error);
+            _operations = new List<OperationDto>();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ResetFilters()
+    {
+        _searchString = "";
+        _selectedCompanyId = null;
+        _sortBy = "Name";
+        _showOnlyActive = true;
+        LoadOperations();
+    }
+
+    private void ViewOperation(Guid id)
+    {
+        Navigation.NavigateTo($"/operations/{id}");
+    }
+
+    private void EditOperation(Guid id)
+    {
+        Navigation.NavigateTo($"/operations/{id}/edit");
+    }
+
+    private async Task DeleteOperationDialog(OperationDto operation)
+    {
+        var parameters = new DialogParameters<SimpleConfirmDialog>
+        {
+            { x => x.ContentText, $"¿Está seguro de que desea eliminar la operación '{operation.Name}'? Esta acción no se puede deshacer." },
+            { x => x.ButtonText, "Eliminar" },
+            { x => x.Color, Color.Error }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<SimpleConfirmDialog>("Eliminar Operación", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await DeleteOperation(operation);
+        }
+    }
+
+    private async Task DeleteOperation(OperationDto operation)
+    {
+        try
+        {
+            var success = await OperationService.DeleteOperationAsync(operation.Id);
+            if (success)
+            {
+                Snackbar.Add($"Operación '{operation.Name}' eliminada correctamente", Severity.Success);
+                await LoadOperations();
+            }
+            else
+            {
+                Snackbar.Add("Error al eliminar la operación", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error deleting operation {operation.Id}");
+            Snackbar.Add("Error al eliminar la operación", Severity.Error);
+        }
+    }
+}

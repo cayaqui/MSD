@@ -1,0 +1,368 @@
+@inherits LayoutComponentBase
+@using MudBlazor
+@using Web.Components.Layout
+@using Microsoft.AspNetCore.Components.Authorization
+@using Web.Services.Implementation
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ILoggingService Logger
+@inject IUserSyncService UserSyncService
+
+<MudThemeProvider IsDarkMode="@_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <EzProSidebar @bind-IsOpen="@_sidebarOpen"
+                  @bind-IsCollapsed="@_sidebarCollapsed"
+                  IsMobile="@_isMobile"
+                  OnToggleClick="@ToggleSidebar"
+                  UserName="@_userName"
+                  UserRole="Gerente de Proyectos" />
+    
+    <EzProHeader OnToggleClick="@ToggleSidebar"
+                 OnThemeToggle="@ToggleTheme"
+                 IsDarkMode="@_isDarkMode"
+                 UserName="@_userName"
+                 UserEmail="@_userEmail"
+                 UserAvatar="@_userAvatar"
+                 NotificationCount="3"
+                 MessageCount="5"
+                 OnSearchChanged="@HandleSearch"
+                 OnNotificationsClick="@HandleNotifications"
+                 OnMessagesClick="@HandleMessages"
+                 OnProfileClick="@HandleProfile"
+                 OnSettingsClick="@HandleSettings"
+                 OnLogoutClick="@HandleLogout"
+                 OnProjectChanged="@HandleProjectChanged" />
+    
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _sidebarOpen = true;
+    private bool _sidebarCollapsed = false;
+    private bool _isDarkMode = false;
+    private bool _isMobile = false;
+    private string _userName = "Juan Pérez";
+    private string _userEmail = "juan.perez@empresa.com";
+    private string _userAvatar = "/images/avatars/default.svg";
+    
+    // Tema personalizado temporalmente deshabilitado por problemas de compatibilidad
+    // TODO: Actualizar a la estructura correcta de MudBlazor 6.x
+    /*private MudTheme _theme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#6366f1",
+            PrimaryContrastText = "#ffffff",
+            Secondary = "#ec4899",
+            SecondaryContrastText = "#ffffff",
+            Tertiary = "#f59e0b",
+            TertiaryContrastText = "#ffffff",
+            Info = "#0ea5e9",
+            InfoContrastText = "#ffffff",
+            Success = "#22c55e",
+            SuccessContrastText = "#ffffff",
+            Warning = "#f59e0b",
+            WarningContrastText = "#ffffff",
+            Error = "#ef4444",
+            ErrorContrastText = "#ffffff",
+            Dark = "#111827",
+            DarkContrastText = "#ffffff",
+            AppbarBackground = "#ffffff",
+            AppbarText = "#111827",
+            Background = "#f3f4f6",
+            BackgroundGray = "#f9fafb",
+            Surface = "#ffffff",
+            DrawerBackground = "#ffffff",
+            DrawerText = "#374151",
+            DrawerIcon = "#6b7280",
+            TextPrimary = "#111827",
+            TextSecondary = "#6b7280",
+            TextDisabled = "#9ca3af",
+            ActionDefault = "#e5e7eb",
+            ActionDisabled = "#d1d5db",
+            ActionDisabledBackground = "#f3f4f6",
+            Divider = "rgba(0,0,0,0.06)",
+            DividerLight = "rgba(0,0,0,0.03)",
+            TableLines = "#e5e7eb",
+            TableStriped = "#f9fafb",
+            TableHover = "#f3f4f6",
+            LinesDefault = "#e5e7eb",
+            LinesInputs = "#d1d5db"
+        },
+        PaletteDark = new PaletteDark()
+        {
+            Primary = "#6366f1",
+            PrimaryContrastText = "#ffffff",
+            Secondary = "#ec4899",
+            SecondaryContrastText = "#ffffff",
+            Tertiary = "#f59e0b",
+            TertiaryContrastText = "#ffffff",
+            Info = "#0ea5e9",
+            InfoContrastText = "#ffffff",
+            Success = "#22c55e",
+            SuccessContrastText = "#ffffff",
+            Warning = "#f59e0b",
+            WarningContrastText = "#ffffff",
+            Error = "#ef4444",
+            ErrorContrastText = "#ffffff",
+            Dark = "#f9fafb",
+            DarkContrastText = "#111827",
+            AppbarBackground = "#1e293b",
+            AppbarText = "#e5e7eb",
+            Background = "#0f172a",
+            BackgroundGray = "#1e293b",
+            Surface = "#1e293b",
+            DrawerBackground = "#1e293b",
+            DrawerText = "#e5e7eb",
+            DrawerIcon = "#94a3b8",
+            TextPrimary = "#e5e7eb",
+            TextSecondary = "#94a3b8",
+            TextDisabled = "#64748b",
+            ActionDefault = "#334155",
+            ActionDisabled = "#475569",
+            ActionDisabledBackground = "#1e293b",
+            Divider = "rgba(255,255,255,0.1)",
+            DividerLight = "rgba(255,255,255,0.06)",
+            TableLines = "#334155",
+            TableStriped = "#1e293b",
+            TableHover = "#334155",
+            LinesDefault = "#334155",
+            LinesInputs = "#475569"
+        },
+        LayoutProperties = new LayoutProperties()
+        {
+            DrawerWidthLeft = "260px",
+            DrawerWidthRight = "300px",
+            AppbarHeight = "70px",
+            DefaultBorderRadius = "8px"
+        },
+        Typography = new Typography()
+        {
+            Default = new DefaultTypography()
+            {
+                FontFamily = new[] { "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif" },
+                FontSize = "0.875rem",
+                LineHeight = "1.5",
+                LetterSpacing = "0"
+            }
+        },
+        Shadows = new Shadow()
+        {
+            Elevation = new string[]
+            {
+                "none",
+                "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+                "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+                "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+            }
+        }
+    };*/
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Logger.LogInfo("MainLayout inicializándose...");
+            
+            // Obtener información del usuario autenticado
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                // Obtener nombre del usuario
+                _userName = user.FindFirst("name")?.Value 
+                    ?? user.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+                    ?? user.Identity.Name 
+                    ?? "Usuario";
+                    
+                // Obtener email del usuario
+                _userEmail = user.FindFirst("email")?.Value 
+                    ?? user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+                    ?? user.FindFirst("preferred_username")?.Value
+                    ?? user.FindFirst("upn")?.Value
+                    ?? "usuario@empresa.com";
+                
+                Logger.LogInfo($"Usuario autenticado: {_userName} ({_userEmail})");
+                
+                // Log todos los claims para debugging
+                foreach (var claim in user.Claims)
+                {
+                    Logger.LogDebug($"Claim: {claim.Type} = {claim.Value}");
+                }
+                
+                // Sincronizar información del usuario con Entra ID
+                try
+                {
+                    var syncResult = await UserSyncService.SyncUserAsync();
+                    if (syncResult.Success && syncResult.UserInfo != null)
+                    {
+                        Logger.LogInfo("Sincronización con Entra ID exitosa");
+                        
+                        // Actualizar información del usuario si está disponible
+                        if (!string.IsNullOrEmpty(syncResult.UserInfo.DisplayName))
+                            _userName = syncResult.UserInfo.DisplayName;
+                            
+                        if (!string.IsNullOrEmpty(syncResult.UserInfo.Email))
+                            _userEmail = syncResult.UserInfo.Email;
+                            
+                        if (!string.IsNullOrEmpty(syncResult.UserInfo.PhotoBase64))
+                        {
+                            _userAvatar = syncResult.UserInfo.PhotoBase64;
+                            Logger.LogInfo("Foto del usuario cargada desde Entra ID");
+                        }
+                        
+                        // Actualizar UI
+                        StateHasChanged();
+                    }
+                    else
+                    {
+                        Logger.LogWarning($"No se pudo sincronizar con Entra ID: {syncResult.Message}");
+                    }
+                }
+                catch (Exception syncEx)
+                {
+                    Logger.LogError(syncEx, "Error durante la sincronización con Entra ID");
+                }
+            }
+            else
+            {
+                Logger.LogWarning("Usuario no autenticado en MainLayout");
+                _userName = "Usuario";
+                _userEmail = "";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error al inicializar MainLayout");
+            _userName = "Usuario";
+            _userEmail = "";
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Check if mobile
+            _isMobile = await JS.InvokeAsync<bool>("eval", "window.innerWidth < 992");
+            
+            // Initialize theme from localStorage
+            var savedTheme = await JS.InvokeAsync<string>("localStorage.getItem", "theme");
+            if (savedTheme == "dark")
+            {
+                _isDarkMode = true;
+            }
+            
+            // Initialize sidebar state from localStorage (desktop only)
+            if (!_isMobile)
+            {
+                var savedSidebarState = await JS.InvokeAsync<string>("localStorage.getItem", "sidebarCollapsed");
+                if (savedSidebarState == "true")
+                {
+                    _sidebarCollapsed = true;
+                }
+                _sidebarOpen = true;
+            }
+            else
+            {
+                _sidebarOpen = false;
+            }
+            
+            // Listen for window resize
+            await JS.InvokeVoidAsync("eval", @"
+                window.addEventListener('resize', () => {
+                    DotNet.invokeMethodAsync('Web', 'OnWindowResize', window.innerWidth);
+                });
+            ");
+            
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleSidebar()
+    {
+        if (_isMobile)
+        {
+            // Mobile behavior - toggle open/close
+            _sidebarOpen = !_sidebarOpen;
+        }
+        else
+        {
+            // Desktop behavior - toggle collapsed state
+            _sidebarCollapsed = !_sidebarCollapsed;
+            await JS.InvokeVoidAsync("localStorage.setItem", "sidebarCollapsed", _sidebarCollapsed.ToString().ToLower());
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        _isDarkMode = !_isDarkMode;
+        await JS.InvokeVoidAsync("localStorage.setItem", "theme", _isDarkMode ? "dark" : "light");
+    }
+
+    [JSInvokable]
+    public static Task OnWindowResize(int width)
+    {
+        // This would need to be handled with a more complex pattern for instance methods
+        // For now, we'll handle resize in the component itself
+        return Task.CompletedTask;
+    }
+
+    private void HandleSearch(string searchText)
+    {
+        // Handle search functionality
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            Logger.LogDebug($"Search requested: {searchText}");
+            // TODO: Implement actual search functionality
+        }
+    }
+
+    private void HandleNotifications()
+    {
+        Navigation.NavigateTo("/notifications");
+    }
+
+    private void HandleMessages()
+    {
+        Navigation.NavigateTo("/messages");
+    }
+
+    private void HandleProfile()
+    {
+        Navigation.NavigateTo("/profile");
+    }
+
+    private void HandleSettings()
+    {
+        Navigation.NavigateTo("/settings");
+    }
+
+    private void HandleLogout()
+    {
+        Logger.LogInfo("Usuario solicitó cerrar sesión");
+        Navigation.NavigateTo("authentication/logout");
+    }
+
+    private void HandleProjectChanged(Guid projectId)
+    {
+        Logger.LogInfo($"Project changed to: {projectId}");
+        // TODO: Implement project-specific logic here
+        // For example, refresh data based on the selected project
+        // Or navigate to project-specific dashboard
+        StateHasChanged();
+    }
+}

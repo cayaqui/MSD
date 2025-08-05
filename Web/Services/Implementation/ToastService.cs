@@ -1,49 +1,34 @@
-﻿using Web.Models.Responses;
+using Web.Models;
 using Web.Services.Interfaces;
 
-namespace Web.Services.Implementation
+namespace Web.Services.Implementation;
+
+public class ToastService : IToastService
 {
-    public class ToastService : IToastService
+    public event Action<ToastMessage>? OnShow;
+    
+    public void ShowSuccess(string message, string title = "Success")
     {
-        public event Action<ToastMessage>? OnShow;
-
-        public void ShowSuccess(string message) => Show(message, ToastType.Success);
-        public void ShowError(string message) => Show(message, ToastType.Error);
-        public void ShowWarning(string message) => Show(message, ToastType.Warning);
-        public void ShowInfo(string message) => Show(message, ToastType.Info);
-
-        public Task ShowSuccessAsync(string message)
-        {
-            ShowSuccess(message);
-            return Task.CompletedTask;
-        }
-
-        public Task ShowErrorAsync(string message)
-        {
-            ShowError(message);
-            return Task.CompletedTask;
-        }
-
-        public Task ShowWarningAsync(string message)
-        {
-            ShowWarning(message);
-            return Task.CompletedTask;
-        }
-
-        public Task ShowInfoAsync(string message)
-        {
-            ShowInfo(message);
-            return Task.CompletedTask;
-        }
-
-        private void Show(string message, ToastType type)
-        {
-            OnShow?.Invoke(new ToastMessage
-            {
-                Message = message,
-                Type = type,
-                Timestamp = DateTime.Now
-            });
-        }
+        Show(new ToastMessage { Title = title, Message = message, Type = ToastType.Success });
+    }
+    
+    public void ShowError(string message, string title = "Error")
+    {
+        Show(new ToastMessage { Title = title, Message = message, Type = ToastType.Error });
+    }
+    
+    public void ShowWarning(string message, string title = "Warning")
+    {
+        Show(new ToastMessage { Title = title, Message = message, Type = ToastType.Warning });
+    }
+    
+    public void ShowInfo(string message, string title = "Information")
+    {
+        Show(new ToastMessage { Title = title, Message = message, Type = ToastType.Info });
+    }
+    
+    private void Show(ToastMessage toast)
+    {
+        OnShow?.Invoke(toast);
     }
 }

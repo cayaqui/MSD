@@ -1,5 +1,6 @@
-﻿using Core.Enums.Progress;
-using Domain.Entities.Projects;
+﻿using Domain.Common;
+using Domain.Entities.Organization.Core;
+using Core.Enums.Projects;
 
 namespace Domain.Entities.Progress;
 

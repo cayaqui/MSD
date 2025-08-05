@@ -1,0 +1,279 @@
+@page "/companies"
+@using Core.DTOs.Organization.Company
+@using Core.DTOs.Common
+@using Web.Services.Interfaces.Organization
+@using MudBlazor
+@inject ICompanyApiService CompanyService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILoggingService Logger
+@attribute [Authorize]
+
+<PageTitle>Gestión de Compañías | EzPro MSD</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <!-- Header -->
+    <MudGrid alignitems="Center" Class="mb-4">
+        <MudItem xs="12" sm="6">
+            <MudText Typo="Typo.h4" GutterBottom="false">Compañías</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Gestiona las compañías registradas en el sistema
+            </MudText>
+        </MudItem>
+        <MudItem xs="12" sm="6" Class="text-right">
+            <MudButton Variant="Variant.Filled" 
+                       Color="Color.Primary" 
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@(() => Navigation.NavigateTo("/companies/new"))">
+                Nueva Compañía
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Filters -->
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudTextField T="string" 
+                                  Label="Buscar" 
+                                  Placeholder="Buscar por nombre o código..."
+                                  @bind-Value="_searchString"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Immediate="true"
+                                  DebounceInterval="300"
+                                  OnDebounceIntervalElapsed="@(() => LoadCompanies())" />
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSelect T="string" Label="Ordenar por" @bind-Value="_sortBy" Dense="true">
+                        <MudSelectItem Value="@("Name")">Nombre</MudSelectItem>
+                        <MudSelectItem Value="@("Code")">Código</MudSelectItem>
+                        <MudSelectItem Value="@("CreatedAt")">Fecha de Creación</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudSwitch T="bool" @bind-checked="_isAscending" Label="Ascendente" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12" md="3" Class="d-flex align-end">
+                    <MudButton Variant="Variant.Outlined" 
+                               OnClick="@ResetFilters"
+                               StartIcon="@Icons.Material.Filled.Clear"
+                               Class="mr-2">
+                        Limpiar
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary"
+                               OnClick="@LoadCompanies"
+                               StartIcon="@Icons.Material.Filled.Refresh">
+                        Actualizar
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    <!-- Company List -->
+    @if (_loading)
+    {
+        <MudGrid>
+            @for (int i = 0; i < 6; i++)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard>
+                        <MudCardContent>
+                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="30px" Width="80%" Class="mb-2" />
+                            <MudSkeleton SkeletonType="SkeletonType.Text" />
+                            <MudSkeleton SkeletonType="SkeletonType.Text" />
+                            <MudSkeleton SkeletonType="SkeletonType.Text" Width="60%" />
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="36px" Width="80px" />
+                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="36px" Width="80px" Class="ml-2" />
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else if (_companies?.Any() == true)
+    {
+        <MudGrid>
+            @foreach (var company in _companies)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <CompanyCard Company="company" 
+                                 OnView="@(() => ViewCompany(company.Id))"
+                                 OnEdit="@(() => EditCompany(company.Id))"
+                                 OnDelete="@(() => DeleteCompanyDialog(company))" />
+                </MudItem>
+            }
+        </MudGrid>
+
+        <!-- Pagination -->
+        <MudPaper Class="mt-4 pa-2" Elevation="0">
+            <MudGrid AlignItems="Center">
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Mostrando @(_companies.Count) de @_totalItems compañías
+                    </MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" Class="d-flex justify-end">
+                    <MudPagination Color="Color.Primary" 
+                                   Count="@_totalPages" 
+                                   Selected="@_currentPage"
+                                   SelectedChanged="@OnPageChanged" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-8">
+            <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Large" Color="Color.Secondary" />
+                <MudText Typo="Typo.h6" Color="Color.Secondary">No se encontraron compañías</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @(_searchString?.Length > 0 ? "Intenta con otros criterios de búsqueda" : "Comienza creando una nueva compañía")
+                </MudText>
+                @if (string.IsNullOrEmpty(_searchString))
+                {
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="@(() => Navigation.NavigateTo("/companies/new"))">
+                        Crear Primera Compañía
+                    </MudButton>
+                }
+            </MudStack>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private List<CompanyDto>? _companies;
+    private bool _loading = true;
+    private string _searchString = "";
+    private string _sortBy = "Name";
+    private bool _isAscending = true;
+    private int _currentPage = 1;
+    private int _pageSize = 12;
+    private int _totalItems = 0;
+    private int _totalPages => (int)Math.Ceiling((double)_totalItems / _pageSize);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCompanies();
+    }
+
+    private async Task LoadCompanies()
+    {
+        try
+        {
+            _loading = true;
+            
+            var result = await CompanyService.GetCompaniesAsync(
+                pageNumber: _currentPage,
+                pageSize: _pageSize,
+                sortBy: _sortBy,
+                isAscending: _isAscending
+            );
+
+            if (result != null)
+            {
+                _companies = result.Items?.ToList() ?? new List<CompanyDto>();
+                _totalItems = result.TotalCount;
+                Logger.LogDebug($"Loaded {_companies.Count} companies");
+            }
+            else
+            {
+                _companies = new List<CompanyDto>();
+                _totalItems = 0;
+                Snackbar.Add("Error al cargar las compañías", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading companies");
+            Snackbar.Add("Error al cargar las compañías", Severity.Error);
+            _companies = new List<CompanyDto>();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _currentPage = page;
+        await LoadCompanies();
+    }
+
+    private void ResetFilters()
+    {
+        _searchString = "";
+        _sortBy = "Name";
+        _isAscending = true;
+        _currentPage = 1;
+        LoadCompanies();
+    }
+
+    private void ViewCompany(Guid id)
+    {
+        Navigation.NavigateTo($"/companies/{id}");
+    }
+
+    private void EditCompany(Guid id)
+    {
+        Navigation.NavigateTo($"/companies/{id}/edit");
+    }
+
+    private async Task DeleteCompanyDialog(CompanyDto company)
+    {
+        var parameters = new DialogParameters<SimpleConfirmDialog>
+        {
+            { x => x.ContentText, $"¿Está seguro de que desea eliminar la compañía '{company.Name}'? Esta acción no se puede deshacer." },
+            { x => x.ButtonText, "Eliminar" },
+            { x => x.Color, Color.Error }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<SimpleConfirmDialog>("Eliminar Compañía", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await DeleteCompany(company);
+        }
+    }
+
+    private async Task DeleteCompany(CompanyDto company)
+    {
+        try
+        {
+            var success = await CompanyService.DeleteCompanyAsync(company.Id);
+            if (success)
+            {
+                Snackbar.Add($"Compañía '{company.Name}' eliminada correctamente", Severity.Success);
+                await LoadCompanies();
+            }
+            else
+            {
+                Snackbar.Add("Error al eliminar la compañía", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error deleting company {company.Id}");
+            Snackbar.Add("Error al eliminar la compañía", Severity.Error);
+        }
+    }
+}

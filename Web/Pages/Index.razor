@@ -1,156 +1,204 @@
-﻿@page "/"
-@using Web.Components.Common
-@attribute [Authorize]
+@page "/"
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ILoggingService Logger
 
-<PageTitle>Dashboard - EzPro</PageTitle>
+<PageTitle>EzPro MSD - Sistema de Control de Proyectos</PageTitle>
 
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="fa-light fa-home me-2"></i>Dashboard Principal
-    </h1>
-    <p class="page-subtitle">Bienvenido al Sistema de Control de Proyectos EzPro</p>
-</div>
-
-<div class="row">
-    <div class="col-xl-3 col-lg-6 col-md-6">
-        <EzCard>
-            <Body>
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <EzAvatar Variant="EzAvatar.AvatarVariant.Primary" Size="EzAvatar.AvatarSize.Large">
-                            <i class="fa-light fa-project-diagram"></i>
-                        </EzAvatar>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1">Proyectos Activos</h6>
-                        <h3 class="mb-0">12</h3>
-                    </div>
-                </div>
-            </Body>
-        </EzCard>
+@if (_isChecking)
+{
+    <div class="loading-container">
+        <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
     </div>
-    
-    <div class="col-xl-3 col-lg-6 col-md-6">
-        <EzCard>
-            <Body>
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <EzAvatar Variant="EzAvatar.AvatarVariant.Success" Size="EzAvatar.AvatarSize.Large">
-                            <i class="fa-light fa-dollar-sign"></i>
-                        </EzAvatar>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1">Presupuesto Total</h6>
-                        <h3 class="mb-0">$2.5M</h3>
-                    </div>
-                </div>
-            </Body>
-        </EzCard>
-    </div>
-    
-    <div class="col-xl-3 col-lg-6 col-md-6">
-        <EzCard>
-            <Body>
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <EzAvatar Variant="EzAvatar.AvatarVariant.Warning" Size="EzAvatar.AvatarSize.Large">
-                            <i class="fa-light fa-file-contract"></i>
-                        </EzAvatar>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1">Contratos</h6>
-                        <h3 class="mb-0">24</h3>
-                    </div>
-                </div>
-            </Body>
-        </EzCard>
-    </div>
-    
-    <div class="col-xl-3 col-lg-6 col-md-6">
-        <EzCard>
-            <Body>
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <EzAvatar Variant="EzAvatar.AvatarVariant.Info" Size="EzAvatar.AvatarSize.Large">
-                            <i class="fa-light fa-users"></i>
-                        </EzAvatar>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1">Usuarios Activos</h6>
-                        <h3 class="mb-0">156</h3>
-                    </div>
-                </div>
-            </Body>
-        </EzCard>
-    </div>
-</div>
-
-<div class="row mt-4">
-    <div class="col-lg-8">
-        <EzCard>
-            <Header>
-                <h5 class="card-title mb-0">Proyectos Recientes</h5>
-            </Header>
-            <Body>
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Proyecto</th>
-                                <th>Estado</th>
-                                <th>Progreso</th>
-                                <th>Responsable</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>
-                                    <EzTooltip Text="Planta de Procesamiento de Minerales - Fase 2">
-                                        <div class="text-truncate" style="max-width: 200px;">
-                                            Planta de Procesamiento de Minerales - Fase 2
-                                        </div>
-                                    </EzTooltip>
-                                </td>
-                                <td>
-                                    <EzBadge Text="En Progreso" Variant="EzBadge.BadgeVariant.Success" />
-                                </td>
-                                <td>
-                                    <div class="progress" style="height: 5px;">
-                                        <div class="progress-bar" role="progressbar" style="width: 65%"></div>
-                                    </div>
-                                    <small class="text-muted">65%</small>
-                                </td>
-                                <td>
-                                    <EzAvatar Text="Juan Pérez" Size="EzAvatar.AvatarSize.Small" />
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </Body>
-        </EzCard>
-    </div>
-    
-    <div class="col-lg-4">
-        <EzCard>
-            <Header>
-                <h5 class="card-title mb-0">Actividad Reciente</h5>
-            </Header>
-            <Body>
-                <div class="timeline">
-                    <div class="timeline-item">
-                        <EzBadge IsDot="true" Variant="EzBadge.BadgeVariant.Primary" />
-                        <div class="timeline-content">
-                            <small class="text-muted">Hace 2 horas</small>
-                            <p class="mb-0">Nuevo contrato agregado</p>
+}
+else if (_isAuthenticated)
+{
+    // Si está autenticado, redirigir a home
+    @code {
+        protected override void OnAfterRender(bool firstRender)
+        {
+            if (firstRender && _isAuthenticated)
+            {
+                Navigation.NavigateTo("/home");
+            }
+        }
+    }
+}
+else
+{
+    <div class="landing-container">
+        <div class="landing-content">
+            <MudContainer MaxWidth="MaxWidth.Large">
+                <MudGrid>
+                    <MudItem xs="12" md="6" Class="d-flex align-center">
+                        <div>
+                            <MudText Typo="Typo.h1" Class="landing-title mb-4">
+                                Sistema de Control de Proyectos
+                            </MudText>
+                            <MudText Typo="Typo.h5" Class="landing-subtitle mb-6" Color="Color.Default">
+                                Gestiona tus proyectos de ingeniería y construcción con la plataforma más completa del mercado
+                            </MudText>
+                            <div class="landing-features mb-6">
+                                <div class="feature-item">
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" Class="me-2" />
+                                    <span>Control de costos y presupuestos</span>
+                                </div>
+                                <div class="feature-item">
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" Class="me-2" />
+                                    <span>Gestión de cronogramas y recursos</span>
+                                </div>
+                                <div class="feature-item">
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" Class="me-2" />
+                                    <span>Análisis de valor ganado (EVM)</span>
+                                </div>
+                                <div class="feature-item">
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" Class="me-2" />
+                                    <span>Reportes y dashboards en tiempo real</span>
+                                </div>
+                            </div>
+                            <MudButton Variant="Variant.Filled" 
+                                       Color="Color.Primary" 
+                                       Size="Size.Large"
+                                       StartIcon="@Icons.Custom.Brands.Microsoft"
+                                       OnClick="Login"
+                                       Class="px-8 py-3">
+                                Iniciar Sesión con Microsoft
+                            </MudButton>
                         </div>
-                    </div>
-                </div>
-            </Body>
-        </EzCard>
+                    </MudItem>
+                    <MudItem xs="12" md="6" Class="d-flex align-center justify-center">
+                        <div class="landing-illustration">
+                            <MudIcon Icon="@Icons.Material.Filled.Engineering" 
+                                     Style="font-size: 300px; color: var(--ynex-primary); opacity: 0.1;" />
+                        </div>
+                    </MudItem>
+                </MudGrid>
+            </MudContainer>
+        </div>
+        
+        <div class="landing-footer">
+            <MudContainer>
+                <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Default">
+                    © @DateTime.Now.Year EzPro MSD. Todos los derechos reservados.
+                </MudText>
+            </MudContainer>
+        </div>
     </div>
-</div>
+}
+
+<style>
+    .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+    
+    .landing-container {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+    
+    .landing-content {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        padding: 2rem 0;
+    }
+    
+    .landing-title {
+        font-weight: 800;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .landing-subtitle {
+        color: var(--ynex-gray-700);
+        line-height: 1.6;
+    }
+    
+    .landing-features {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .feature-item {
+        display: flex;
+        align-items: center;
+        font-size: 1.1rem;
+        color: var(--ynex-gray-700);
+    }
+    
+    .landing-illustration {
+        position: relative;
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    @@keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+        100% { transform: translateY(0px); }
+    }
+    
+    .landing-footer {
+        padding: 2rem 0;
+        background-color: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+    }
+    
+    @@media (max-width: 960px) {
+        .landing-title {
+            font-size: 2.5rem;
+        }
+        
+        .landing-illustration {
+            display: none;
+        }
+    }
+</style>
 
 @code {
-    // Aquí irá la lógica para cargar datos del dashboard
+    private bool _isAuthenticated = false;
+    private bool _isChecking = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Logger.LogInfo("Verificando estado de autenticación en landing page...");
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            _isAuthenticated = authState.User?.Identity?.IsAuthenticated == true;
+            
+            if (_isAuthenticated)
+            {
+                Logger.LogInfo("Usuario autenticado detectado - redirigiendo a home");
+                Navigation.NavigateTo("/home");
+            }
+            else
+            {
+                Logger.LogInfo("Usuario no autenticado - mostrando landing page");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error al verificar autenticación en landing page");
+        }
+        finally
+        {
+            _isChecking = false;
+        }
+    }
+
+    private void Login()
+    {
+        Logger.LogInfo("Usuario inició proceso de login desde landing page");
+        Navigation.NavigateTo("authentication/login");
+    }
 }

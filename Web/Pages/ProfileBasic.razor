@@ -1,0 +1,64 @@
+@page "/profile-basic"
+@using MudBlazor
+@inject IJSRuntime JS
+
+<PageTitle>Profile Basic Test</PageTitle>
+
+<MudContainer>
+    <MudCard>
+        <MudCardContent>
+            <MudText Typo="Typo.h5">Profile Basic - Sin Autenticación</MudText>
+            
+            <MudAlert Severity="Severity.Success" Class="mt-4">
+                ✅ Esta página se renderizó correctamente
+            </MudAlert>
+            
+            <MudText Class="mt-4">
+                Tiempo de renderizado: @_renderTime
+            </MudText>
+            
+            <MudText Class="mt-2">
+                Contador: @_counter
+            </MudText>
+            
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="IncrementCounter" Class="mt-4">
+                Incrementar Contador
+            </MudButton>
+            
+            <MudDivider Class="my-4" />
+            
+            <MudText Typo="Typo.h6">Enlaces de prueba:</MudText>
+            <MudStack Row="true" Spacing="2" Class="mt-2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/profile">
+                    Ir a /profile (problemático)
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/profile-simple">
+                    Ir a /profile-simple
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Info" Href="/profile-diagnostic">
+                    Ir a /profile-diagnostic
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Success" Href="/auth-debug">
+                    Ir a /auth-debug
+                </MudButton>
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private string _renderTime = "";
+    private int _counter = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _renderTime = DateTime.Now.ToString("HH:mm:ss.fff");
+        await JS.InvokeVoidAsync("console.log", "[ProfileBasic] ✅ Página inicializada correctamente");
+    }
+
+    private void IncrementCounter()
+    {
+        _counter++;
+        _ = JS.InvokeVoidAsync("console.log", $"[ProfileBasic] Contador: {_counter}");
+    }
+}

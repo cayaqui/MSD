@@ -1,171 +1,188 @@
-﻿using Domain.Entities.Cost;
+using Domain.Entities.Cost.Commitments;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Infrastructure.Data.Configurations.Cost;
-
-/// <summary>
-/// Entity configuration for CommitmentItem
-/// </summary>
-public class CommitmentItemConfiguration : IEntityTypeConfiguration<CommitmentItem>
+namespace Infrastructure.Data.Configurations.Cost
 {
-    public void Configure(EntityTypeBuilder<CommitmentItem> builder)
+    public class CommitmentItemConfiguration : IEntityTypeConfiguration<CommitmentItem>
     {
-        // Table name and schema with check constraints
-        builder.ToTable("CommitmentItems", "Cost", t =>
+        public void Configure(EntityTypeBuilder<CommitmentItem> builder)
         {
-            t.HasCheckConstraint("CK_CommitmentItems_ItemNumber",
-                "[ItemNumber] > 0");
-            t.HasCheckConstraint("CK_CommitmentItems_Quantity",
-                "[Quantity] > 0");
-            t.HasCheckConstraint("CK_CommitmentItems_UnitPrice",
-                "[UnitPrice] >= 0");
-            t.HasCheckConstraint("CK_CommitmentItems_TotalPrice",
-                "[TotalPrice] >= 0");
-            t.HasCheckConstraint("CK_CommitmentItems_NetAmount",
-                "[NetAmount] >= 0");
-            t.HasCheckConstraint("CK_CommitmentItems_LineTotal",
-                "[LineTotal] >= 0");
-            t.HasCheckConstraint("CK_CommitmentItems_DiscountPercentage",
-                "[DiscountPercentage] IS NULL OR ([DiscountPercentage] >= 0 AND [DiscountPercentage] <= 100)");
-            t.HasCheckConstraint("CK_CommitmentItems_DiscountAmount",
-                "[DiscountAmount] IS NULL OR [DiscountAmount] >= 0");
-            t.HasCheckConstraint("CK_CommitmentItems_TaxRate",
-                "[TaxRate] IS NULL OR ([TaxRate] >= 0 AND [TaxRate] <= 100)");
-            t.HasCheckConstraint("CK_CommitmentItems_TaxAmount",
-                "[TaxAmount] IS NULL OR [TaxAmount] >= 0");
-            t.HasCheckConstraint("CK_CommitmentItems_DeliveredQuantity",
-                "[DeliveredQuantity] >= 0 AND [DeliveredQuantity] <= [Quantity]");
-            t.HasCheckConstraint("CK_CommitmentItems_InvoicedQuantity",
-                "[InvoicedQuantity] >= 0 AND [InvoicedQuantity] <= [Quantity]");
-            t.HasCheckConstraint("CK_CommitmentItems_InvoicedAmount",
-                "[InvoicedAmount] >= 0");
-            t.HasCheckConstraint("CK_CommitmentItems_PaidAmount",
-                "[PaidAmount] >= 0 AND [PaidAmount] <= [InvoicedAmount]");
-            t.HasCheckConstraint("CK_CommitmentItems_DeliveryDates",
-                "[PromisedDate] IS NULL OR [RequiredDate] IS NULL OR [PromisedDate] >= [RequiredDate]");
-        });
+            // Table name and schema
+            builder.ToTable("CommitmentItems", "Cost");
 
-        // Primary Key
-        builder.HasKey(e => e.Id);
+            // Primary key
+            builder.HasKey(ci => ci.Id);
 
-        // Properties
-        builder.Property(e => e.Id)
-            .ValueGeneratedOnAdd();
+            // Indexes
+            builder.HasIndex(ci => ci.CommitmentId);
+            builder.HasIndex(ci => ci.BudgetItemId);
+            builder.HasIndex(ci => ci.ItemNumber);
+            builder.HasIndex(ci => ci.ItemCode);
+            builder.HasIndex(ci => ci.Status);
+            builder.HasIndex(ci => ci.IsDeleted);
+            builder.HasIndex(ci => new { ci.CommitmentId, ci.ItemNumber }).IsUnique();
+            builder.HasIndex(ci => new { ci.CommitmentId, ci.Status });
 
-        builder.Property(e => e.ItemCode)
-            .IsRequired()
-            .HasMaxLength(50);
+            // Item Information
+            builder.Property(ci => ci.ItemNumber)
+                .IsRequired();
 
-        builder.Property(e => e.Description)
-            .IsRequired()
-            .HasMaxLength(500);
+            builder.Property(ci => ci.ItemCode)
+                .IsRequired()
+                .HasMaxLength(50);
 
-        builder.Property(e => e.DetailedDescription)
-            .HasMaxLength(2000);
+            builder.Property(ci => ci.Description)
+                .IsRequired()
+                .HasMaxLength(500);
 
-        builder.Property(e => e.Specifications)
-            .HasMaxLength(4000);
+            builder.Property(ci => ci.DetailedDescription)
+                .HasMaxLength(2000);
 
-        builder.Property(e => e.UnitOfMeasure)
-            .IsRequired()
-            .HasMaxLength(20);
+            builder.Property(ci => ci.Specifications)
+                .HasMaxLength(2000);
 
-        builder.Property(e => e.Currency)
-            .IsRequired()
-            .HasMaxLength(3)
-            .IsFixedLength();
+            // Quantity and Unit
+            builder.Property(ci => ci.Quantity)
+                .IsRequired()
+                .HasPrecision(18, 4);
 
-        builder.Property(e => e.Quantity)
-            .HasPrecision(18, 4);
+            builder.Property(ci => ci.UnitOfMeasure)
+                .IsRequired()
+                .HasMaxLength(50);
 
-        builder.Property(e => e.UnitPrice)
-            .HasPrecision(18, 4);
+            builder.Property(ci => ci.UnitPrice)
+                .IsRequired()
+                .HasPrecision(18, 4);
 
-        builder.Property(e => e.TotalPrice)
-            .HasPrecision(18, 2);
+            builder.Property(ci => ci.Currency)
+                .IsRequired()
+                .HasMaxLength(3);
 
-        builder.Property(e => e.DiscountPercentage)
-            .HasPrecision(5, 2);
+            // Financial Information
+            builder.Property(ci => ci.TotalPrice)
+                .IsRequired()
+                .HasPrecision(18, 2);
 
-        builder.Property(e => e.DiscountAmount)
-            .HasPrecision(18, 2);
+            builder.Property(ci => ci.DiscountPercentage)
+                .HasPrecision(5, 2);
 
-        builder.Property(e => e.NetAmount)
-            .HasPrecision(18, 2);
+            builder.Property(ci => ci.DiscountAmount)
+                .HasPrecision(18, 2);
 
-        builder.Property(e => e.TaxRate)
-            .HasPrecision(5, 2);
+            builder.Property(ci => ci.NetAmount)
+                .IsRequired()
+                .HasPrecision(18, 2);
 
-        builder.Property(e => e.TaxAmount)
-            .HasPrecision(18, 2);
+            builder.Property(ci => ci.TaxRate)
+                .HasPrecision(5, 2);
 
-        builder.Property(e => e.LineTotal)
-            .HasPrecision(18, 2);
+            builder.Property(ci => ci.TaxAmount)
+                .HasPrecision(18, 2);
 
-        builder.Property(e => e.DeliveredQuantity)
-            .HasPrecision(18, 4);
+            builder.Property(ci => ci.LineTotal)
+                .IsRequired()
+                .HasPrecision(18, 2);
 
-        builder.Property(e => e.InvoicedQuantity)
-            .HasPrecision(18, 4);
+            // Delivery Information
+            builder.Property(ci => ci.DeliveryLocation)
+                .HasMaxLength(500);
 
-        builder.Property(e => e.InvoicedAmount)
-            .HasPrecision(18, 2);
+            builder.Property(ci => ci.DeliveryInstructions)
+                .HasMaxLength(2000);
 
-        builder.Property(e => e.PaidAmount)
-            .HasPrecision(18, 2);
+            // Status and Progress
+            builder.Property(ci => ci.Status)
+                .IsRequired()
+                .HasMaxLength(50);
 
-        builder.Property(e => e.DeliveryLocation)
-            .HasMaxLength(200);
+            builder.Property(ci => ci.DeliveredQuantity)
+                .IsRequired()
+                .HasPrecision(18, 4)
+                .HasDefaultValue(0);
 
-        builder.Property(e => e.DeliveryInstructions)
-            .HasMaxLength(1000);
+            builder.Property(ci => ci.InvoicedQuantity)
+                .IsRequired()
+                .HasPrecision(18, 4)
+                .HasDefaultValue(0);
 
-        builder.Property(e => e.DrawingNumber)
-            .HasMaxLength(50);
+            builder.Property(ci => ci.InvoicedAmount)
+                .IsRequired()
+                .HasPrecision(18, 2)
+                .HasDefaultValue(0);
 
-        builder.Property(e => e.SpecificationReference)
-            .HasMaxLength(100);
+            builder.Property(ci => ci.PaidAmount)
+                .IsRequired()
+                .HasPrecision(18, 2)
+                .HasDefaultValue(0);
 
-        builder.Property(e => e.MaterialCode)
-            .HasMaxLength(50);
+            // References
+            builder.Property(ci => ci.DrawingNumber)
+                .HasMaxLength(100);
 
-        builder.Property(e => e.VendorItemCode)
-            .HasMaxLength(50);
+            builder.Property(ci => ci.SpecificationReference)
+                .HasMaxLength(100);
 
-        builder.Property(e => e.Status)
-            .IsRequired()
-            .HasConversion<int>();
+            builder.Property(ci => ci.MaterialCode)
+                .HasMaxLength(50);
 
-        // Indexes
-        builder.HasIndex(e => new { e.CommitmentId, e.ItemNumber })
-            .IsUnique()
-            .HasDatabaseName("IX_CommitmentItems_CommitmentId_ItemNumber");
+            builder.Property(ci => ci.VendorItemCode)
+                .HasMaxLength(100);
 
-        builder.HasIndex(e => e.ItemCode)
-            .HasDatabaseName("IX_CommitmentItems_ItemCode");
+            // Soft Delete
+            builder.Property(ci => ci.IsDeleted)
+                .IsRequired()
+                .HasDefaultValue(false);
 
-        builder.HasIndex(e => e.MaterialCode)
-            .HasDatabaseName("IX_CommitmentItems_MaterialCode");
+            builder.Property(ci => ci.DeletedBy)
+                .HasMaxLength(256);
 
-        builder.HasIndex(e => e.Status)
-            .HasDatabaseName("IX_CommitmentItems_Status");
+            // Audit properties
+            builder.Property(ci => ci.CreatedAt)
+                .IsRequired();
 
-        builder.HasIndex(e => new { e.IsDeleted, e.Status })
-            .HasDatabaseName("IX_CommitmentItems_IsDeleted_Status");
+            builder.Property(ci => ci.CreatedBy)
+                .HasMaxLength(256);
 
-        // Relationships
-        builder.HasOne(e => e.Commitment)
-            .WithMany(c => c.Items)
-            .HasForeignKey(e => e.CommitmentId)
-            .OnDelete(DeleteBehavior.Cascade);
+            builder.Property(ci => ci.UpdatedAt);
 
-        builder.HasOne(e => e.BudgetItem)
-            .WithMany()
-            .HasForeignKey(e => e.BudgetItemId)
-            .OnDelete(DeleteBehavior.Restrict);
+            builder.Property(ci => ci.UpdatedBy)
+                .HasMaxLength(256);
 
-        // Global Query Filter
-        builder.HasQueryFilter(e => !e.IsDeleted);
+            // Relationships
+            builder.HasOne(ci => ci.Commitment)
+                .WithMany(c => c.Items)
+                .HasForeignKey(ci => ci.CommitmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasOne(ci => ci.BudgetItem)
+                .WithMany()
+                .HasForeignKey(ci => ci.BudgetItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasMany(ci => ci.InvoiceItems)
+                .WithOne(ii => ii.CommitmentItem)
+                .HasForeignKey(ii => ii.CommitmentItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Check constraints
+            builder.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_CommitmentItems_Quantity", "[Quantity] > 0");
+                t.HasCheckConstraint("CK_CommitmentItems_UnitPrice", "[UnitPrice] >= 0");
+                t.HasCheckConstraint("CK_CommitmentItems_Amounts", 
+                    "[TotalPrice] >= 0 AND [NetAmount] >= 0 AND [LineTotal] >= 0");
+                t.HasCheckConstraint("CK_CommitmentItems_Progress", 
+                    "[DeliveredQuantity] >= 0 AND [InvoicedQuantity] >= 0 AND " +
+                    "[InvoicedAmount] >= 0 AND [PaidAmount] >= 0");
+                t.HasCheckConstraint("CK_CommitmentItems_Percentages", 
+                    "[DiscountPercentage] IS NULL OR ([DiscountPercentage] >= 0 AND [DiscountPercentage] <= 100)");
+                t.HasCheckConstraint("CK_CommitmentItems_TaxRate", 
+                    "[TaxRate] IS NULL OR ([TaxRate] >= 0 AND [TaxRate] <= 100)");
+            });
+
+            // Global query filter for soft delete
+            builder.HasQueryFilter(ci => !ci.IsDeleted);
+        }
     }
 }

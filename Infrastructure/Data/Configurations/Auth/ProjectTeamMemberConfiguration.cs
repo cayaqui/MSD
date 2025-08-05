@@ -1,8 +1,8 @@
-﻿using Domain.Entities.Projects;
+﻿using Domain.Entities.Auth.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Infrastructure.Data.Configurations.Projects;
+namespace Infrastructure.Data.Configurations.Auth;
 
 /// <summary>
 /// Entity configuration for ProjectTeamMember
@@ -12,12 +12,12 @@ public class ProjectTeamMemberConfiguration : IEntityTypeConfiguration<ProjectTe
     public void Configure(EntityTypeBuilder<ProjectTeamMember> builder)
     {
         // Table name and schema
-        builder.ToTable("ProjectTeamMembers", "Projects", t =>
+        builder.ToTable("ProjectTeamMembers", "Security", t =>
         {
             t.HasCheckConstraint("CK_ProjectTeamMembers_Dates",
             "[EndDate] IS NULL OR [EndDate] > [StartDate]");
             t.HasCheckConstraint("CK_ProjectTeamMembers_Role",
-            "[Role] IN ('PROJECT_MANAGER', 'PROJECT_ENGINEER', 'COST_CONTROLLER', 'PLANNER', 'QA_QC', 'DOCUMENT_CONTROLLER', 'TEAM_MEMBER', 'OBSERVER')")
+            "[Role] IN ('PROJECT_MANAGER', 'PROJECT_ENGINEER', 'COST_CONTROLLER', 'PLANNER', 'QA_QC', 'DOCUMENT_CONTROLLER', 'TEAM_MEMBER', 'OBSERVER')");
         });
 
         // Primary key
@@ -39,6 +39,9 @@ public class ProjectTeamMemberConfiguration : IEntityTypeConfiguration<ProjectTe
             .IsRequired();
 
         builder.Property(ptm => ptm.EndDate);
+
+        builder.Property(ptm => ptm.AllocationPercentage)
+            .HasPrecision(5, 2);
         // Audit properties
         builder.Property(ptm => ptm.CreatedAt)
             .IsRequired();
@@ -55,7 +58,7 @@ public class ProjectTeamMemberConfiguration : IEntityTypeConfiguration<ProjectTe
         builder.HasOne(ptm => ptm.User)
             .WithMany(u => u.ProjectTeamMembers)
             .HasForeignKey(ptm => ptm.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(ptm => ptm.Project)
             .WithMany(p => p.ProjectTeamMembers)

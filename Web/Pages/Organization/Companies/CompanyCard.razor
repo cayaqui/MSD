@@ -1,0 +1,151 @@
+@using Core.DTOs.Organization.Company
+@using MudBlazor
+
+<MudCard Elevation="2" Class="h-100 company-card">
+    <MudCardHeader>
+        <CardHeaderAvatar>
+            @if (Company.HasLogo)
+            {
+                <MudAvatar Size="Size.Large">
+                    <!-- TODO: Add company logo URL -->
+                    <MudImage Src="@($"/api/companies/{Company.Id}/logo")" />
+                </MudAvatar>
+            }
+            else
+            {
+                <MudAvatar Size="Size.Large" Color="Color.Primary" Variant="Variant.Filled">
+                    @Company.Name[0]
+                </MudAvatar>
+            }
+        </CardHeaderAvatar>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6" Class="mb-0">@Company.Name</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@Company.Code</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Color="Color.Default" Dense="true">
+                <MudMenuItem Icon="@Icons.Material.Filled.Visibility" OnClick="@(() => OnView.InvokeAsync())">
+                    Ver Detalles
+                </MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => OnEdit.InvokeAsync())">
+                    Editar
+                </MudMenuItem>
+                <MudDivider />
+                <MudMenuItem Icon="@Icons.Material.Filled.Delete" 
+                             OnClick="@(() => OnDelete.InvokeAsync())"
+                             Class="text-error">
+                    Eliminar
+                </MudMenuItem>
+            </MudMenu>
+        </CardHeaderActions>
+    </MudCardHeader>
+    
+    <MudCardContent>
+        <MudGrid>
+            @if (!string.IsNullOrEmpty(Company.Description))
+            {
+                <MudItem xs="12">
+                    <MudText Typo="Typo.body2" Class="text-truncate-2">
+                        @Company.Description
+                    </MudText>
+                </MudItem>
+            }
+            
+            <MudItem xs="12">
+                <div class="d-flex align-center mb-1">
+                    <MudIcon Icon="@Icons.Material.Filled.Badge" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                    <MudText Typo="Typo.caption">RFC: @Company.TaxId</MudText>
+                </div>
+            </MudItem>
+            
+            @if (!string.IsNullOrEmpty(Company.Email))
+            {
+                <MudItem xs="12">
+                    <div class="d-flex align-center mb-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                        <MudText Typo="Typo.caption" Class="text-truncate">@Company.Email</MudText>
+                    </div>
+                </MudItem>
+            }
+            
+            @if (!string.IsNullOrEmpty(Company.Phone))
+            {
+                <MudItem xs="12">
+                    <div class="d-flex align-center mb-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Phone" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                        <MudText Typo="Typo.caption">@Company.Phone</MudText>
+                    </div>
+                </MudItem>
+            }
+            
+            @if (!string.IsNullOrEmpty(Company.City) || !string.IsNullOrEmpty(Company.Country))
+            {
+                <MudItem xs="12">
+                    <div class="d-flex align-center mb-1">
+                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                        <MudText Typo="Typo.caption" Class="text-truncate">
+                            @if (!string.IsNullOrEmpty(Company.City) && !string.IsNullOrEmpty(Company.Country))
+                            {
+                                @($"{Company.City}, {Company.Country}")
+                            }
+                            else
+                            {
+                                @(Company.City ?? Company.Country)
+                            }
+                        </MudText>
+                    </div>
+                </MudItem>
+            }
+        </MudGrid>
+        
+        <MudDivider Class="my-3" />
+        
+        <div class="d-flex justify-space-between align-center">
+            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">
+                @Company.DefaultCurrency
+            </MudChip>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Creado @Company.CreatedAt.ToString("dd/MM/yyyy")
+            </MudText>
+        </div>
+    </MudCardContent>
+    
+    <MudCardActions>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Text"
+                   OnClick="@(() => OnView.InvokeAsync())">
+            Ver Detalles
+        </MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Text"
+                   OnClick="@(() => OnEdit.InvokeAsync())">
+            Editar
+        </MudButton>
+    </MudCardActions>
+</MudCard>
+
+<style>
+    .company-card {
+        transition: all 0.3s ease;
+    }
+    
+    .company-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 20px 0 rgba(0,0,0,0.12);
+    }
+    
+    .text-truncate-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+
+@code {
+    [Parameter] public CompanyDto Company { get; set; } = null!;
+    [Parameter] public EventCallback OnView { get; set; }
+    [Parameter] public EventCallback OnEdit { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+}

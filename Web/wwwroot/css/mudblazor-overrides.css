@@ -1,0 +1,154 @@
+/* MudBlazor Component Overrides */
+
+/* Force White Background for All Components */
+* {
+    --mud-palette-background: rgba(255, 255, 255, 1) !important;
+    --mud-palette-surface: rgba(255, 255, 255, 1) !important;
+}
+
+/* Cards */
+.mud-card {
+    background-color: rgba(255, 255, 255, 1) !important;
+    backdrop-filter: blur(10px);
+}
+
+.mud-card-content {
+    background-color: transparent;
+}
+
+/* Dropdowns / Menus */
+.mud-popover,
+.mud-menu,
+.mud-select-popover-class,
+.mud-autocomplete-popover-class {
+    background-color: rgba(255, 255, 255, 1) !important;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Menu Items */
+.mud-list-item,
+.mud-menu-item {
+    background-color: transparent;
+}
+
+.mud-list-item:hover,
+.mud-menu-item:hover {
+    background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Select y Autocomplete */
+.mud-select .mud-input-control,
+.mud-autocomplete .mud-input-control {
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* Paper (usado en varios componentes) */
+.mud-paper {
+    background-color: rgba(255, 255, 255, 1) !important;
+}
+
+/* Dialog */
+.mud-dialog {
+    background-color: rgba(255, 255, 255, 1) !important;
+}
+
+/* Tooltip */
+.mud-tooltip {
+    background-color: rgba(33, 33, 33, 0.95) !important;
+    backdrop-filter: blur(10px);
+}
+
+/* DataGrid */
+.mud-table {
+    background-color: rgba(255, 255, 255, 1) !important;
+}
+
+.mud-table-container {
+    background-color: transparent;
+}
+
+/* Expansion Panels */
+.mud-expansion-panels,
+.mud-expansion-panel {
+    background-color: rgba(255, 255, 255, 1) !important;
+}
+
+/* Tabs */
+.mud-tabs-panels {
+    background-color: rgba(255, 255, 255, 1) !important;
+}
+
+/* Drawer */
+.mud-drawer .mud-drawer-content {
+    background-color: rgba(255, 255, 255, 1) !important;
+}
+
+/* Chip */
+.mud-chip {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Alert */
+.mud-alert {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Asegurar que los stat-cards tengan fondo blanco */
+.stat-card {
+    background-color: rgba(255, 255, 255, 1) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+    transform: translateY(-2px);
+}
+
+/* Fix para tablas sin bordes */
+.table-borderless {
+    background-color: transparent !important;
+}
+
+.table-borderless tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Popover y Menu específicos */
+.mud-popover-anchor-top-center,
+.mud-popover-anchor-bottom-center,
+.mud-popover-open {
+    background-color: rgba(255, 255, 255, 1) !important;
+}
+
+/* Select Dropdown específico */
+.mud-select-input .mud-popover {
+    background-color: rgba(255, 255, 255, 1) !important;
+}
+
+/* Menu desplegable */
+.mud-menu-popover,
+.mud-menu-content {
+    background-color: rgba(255, 255, 255, 1) !important;
+}
+
+/* List Items en menus */
+.mud-menu-list {
+    background-color: rgba(255, 255, 255, 1) !important;
+}
+
+/* Asegurar que los íconos del dropdown mantengan su color */
+.mud-select-input .mud-icon-button {
+    background-color: transparent !important;
+}
+
+/* Fondo blanco para el header */
+.ezpro-header {
+    background-color: rgba(255, 255, 255, 1) !important;
+}
+
+/* Fondo blanco para el sidebar */
+.ezpro-sidebar {
+    background-color: rgba(255, 255, 255, 1) !important;
+}

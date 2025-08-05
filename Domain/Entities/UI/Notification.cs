@@ -1,7 +1,8 @@
-﻿using Core.Enums.UI;
-using Domain.Entities.Projects;
-using Domain.Entities.Security;
-
+﻿using Domain.Common;
+using Domain.Entities.Auth.Security;
+using Domain.Entities.Organization.Core;
+using Core.Enums.UI;
+using System;
 
 namespace Domain.Entities.UI;
 

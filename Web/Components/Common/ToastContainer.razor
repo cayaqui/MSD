@@ -1,0 +1,70 @@
+@using Web.Models
+@using Web.Services.Interfaces
+@inject IToastService ToastService
+@implements IDisposable
+
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+    @foreach (var toast in toasts)
+    {
+        <div class="toast show" role="alert">
+            <div class="toast-header bg-@GetToastColor(toast.Type) text-white">
+                <i class="fa-light fa-@GetToastIcon(toast.Type) me-2"></i>
+                <strong class="me-auto">@toast.Title</strong>
+                <button type="button" class="btn-close btn-close-white" @onclick="() => RemoveToast(toast)"></button>
+            </div>
+            <div class="toast-body">
+                @toast.Message
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ToastMessage> toasts = new();
+    
+    protected override void OnInitialized()
+    {
+        ToastService.OnShow += ShowToast;
+    }
+    
+    private void ShowToast(ToastMessage toast)
+    {
+        toasts.Add(toast);
+        InvokeAsync(StateHasChanged);
+        
+        // Auto remove after 5 seconds
+        Task.Delay(5000).ContinueWith((_) =>
+        {
+            RemoveToast(toast);
+        });
+    }
+    
+    private void RemoveToast(ToastMessage toast)
+    {
+        toasts.Remove(toast);
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private string GetToastColor(ToastType type) => type switch
+    {
+        ToastType.Success => "success",
+        ToastType.Error => "danger",
+        ToastType.Warning => "warning",
+        ToastType.Info => "info",
+        _ => "primary"
+    };
+    
+    private string GetToastIcon(ToastType type) => type switch
+    {
+        ToastType.Success => "check-circle",
+        ToastType.Error => "circle-xmark",
+        ToastType.Warning => "triangle-exclamation",
+        ToastType.Info => "circle-info",
+        _ => "circle-info"
+    };
+    
+    public void Dispose()
+    {
+        ToastService.OnShow -= ShowToast;
+    }
+}

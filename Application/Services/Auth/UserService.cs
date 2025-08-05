@@ -1,5 +1,9 @@
 ﻿using Application.Common.Exceptions;
 using Application.Interfaces.Auth;
+using Core.DTOs.Auth.ProjectTeamMembers;
+using Core.DTOs.Auth.Users;
+using Domain.Common;
+using Domain.Entities.Auth.Security;
 
 namespace Application.Services.Auth;
 
@@ -9,17 +13,20 @@ public class UserService : IUserService
     private readonly IMapper _mapper;
     private readonly ILogger<UserService> _logger;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IGraphApiService? _graphApiService;
 
     public UserService(
         IUnitOfWork unitOfWork,
         IMapper mapper,
         ILogger<UserService> logger,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IGraphApiService? graphApiService = null)
     {
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _logger = logger;
         _currentUserService = currentUserService;
+        _graphApiService = graphApiService;
     }
 
     public async Task<PagedResult<UserDto>> GetPagedAsync(int pageNumber, int pageSize)
@@ -280,8 +287,9 @@ public class UserService : IUserService
             throw new BadRequestException("User cannot be deleted due to active assignments or dependencies");
         }
 
-        user.Delete(deletedBy ?? _currentUserService.UserId);
-
+        user.DeletedBy = deletedBy ?? _currentUserService.UserId;
+        user.DeletedAt = DateTime.UtcNow;
+        user.IsDeleted = true;
         await _unitOfWork.SaveChangesAsync();
 
         _logger.LogInformation("Deleted user {UserId} by {DeletedBy}", id, deletedBy ?? _currentUserService.UserId);
@@ -296,9 +304,69 @@ public class UserService : IUserService
         if (user == null)
             return null;
 
-        // In a real implementation, this would call Microsoft Graph API
-        // For now, we'll just return the existing user
-        _logger.LogWarning("Azure AD sync not implemented. Returning existing user data.");
+        if (_graphApiService != null)
+        {
+            try
+            {
+                // Get user data from Graph API
+                var graphUser = await _graphApiService.GetUserByObjectIdAsync(user.EntraId);
+                if (graphUser != null)
+                {
+                    // Update user with Graph data
+                    user.UpdateProfile(graphUser.DisplayName, graphUser.GivenName, graphUser.Surname);
+                    
+                    // Update additional properties
+                    if (!string.IsNullOrEmpty(graphUser.JobTitle))
+                        user.JobTitle = graphUser.JobTitle;
+                        
+                    if (!string.IsNullOrEmpty(graphUser.Department))
+                        user.Department = graphUser.Department;
+                        
+                    if (!string.IsNullOrEmpty(graphUser.OfficeLocation))
+                        user.OfficeLocation = graphUser.OfficeLocation;
+                        
+                    if (!string.IsNullOrEmpty(graphUser.MobilePhone))
+                        user.MobilePhone = graphUser.MobilePhone;
+                        
+                    if (!string.IsNullOrEmpty(graphUser.BusinessPhone))
+                        user.BusinessPhone = graphUser.BusinessPhone;
+                    
+                    // Try to get and save user photo
+                    var photoUrl = await _graphApiService.GetUserPhotoAsDataUrlAsync(user.EntraId);
+                    if (!string.IsNullOrEmpty(photoUrl))
+                    {
+                        // Store as data URL for easy display
+                        user.PhotoUrl = photoUrl;
+                    }
+                    
+                    // Update status based on Azure AD
+                    if (graphUser.AccountEnabled && !user.IsActive)
+                    {
+                        user.Activate();
+                    }
+                    else if (!graphUser.AccountEnabled && user.IsActive)
+                    {
+                        user.Deactivate();
+                    }
+                    
+                    user.UpdatedBy = _currentUserService.UserId;
+                    user.UpdatedAt = DateTime.UtcNow;
+                    
+                    await _unitOfWork.SaveChangesAsync();
+                    
+                    _logger.LogInformation("Synced user {UserId} with Azure AD", id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error syncing user {UserId} with Azure AD", id);
+                // Continue without sync
+            }
+        }
+        else
+        {
+            _logger.LogWarning("GraphApiService not available. Cannot sync with Azure AD.");
+        }
 
         return _mapper.Map<UserDto>(user);
     }

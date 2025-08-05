@@ -14,6 +14,7 @@ public class AzureAdUser
     public string? JobTitle { get; set; }
     public string? Department { get; set; }
     public string? OfficeLocation { get; set; }
+    public string? BusinessPhone { get; set; }
     public string? MobilePhone { get; set; }
     public string? PreferredLanguage { get; set; }
     public bool AccountEnabled { get; set; }

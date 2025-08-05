@@ -1,5 +1,6 @@
-﻿using Core.DTOs.Notifications;
+﻿using Core.DTOs.UI.Notifications;
 using Core.Enums.UI;
+using Domain.Entities.Auth.Security;
 
 namespace Application.Interfaces.UIUX;
 

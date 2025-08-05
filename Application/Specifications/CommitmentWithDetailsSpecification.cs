@@ -1,4 +1,4 @@
-﻿using Domain.Entities.Cost;
+﻿using Domain.Entities.Cost.Commitments;
 
 namespace Application.Specifications;
 

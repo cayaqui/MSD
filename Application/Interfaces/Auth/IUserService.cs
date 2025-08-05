@@ -1,5 +1,7 @@
-﻿using Core.DTOs.Auth;
+﻿using Core.DTOs.Auth.ProjectTeamMembers;
+using Core.DTOs.Auth.Users;
 using Core.DTOs.Common;
+using Domain.Common;
 
 namespace Application.Interfaces.Auth;
 

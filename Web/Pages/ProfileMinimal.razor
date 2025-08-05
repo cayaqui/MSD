@@ -1,0 +1,56 @@
+@page "/profile-minimal"
+@using MudBlazor
+@using Microsoft.AspNetCore.Authorization
+@using Core.DTOs.Auth.Users
+@attribute [Authorize]
+@inject IAuthService AuthService
+@inject ILoggingService Logger
+
+<PageTitle>Mi Perfil - Minimal</PageTitle>
+
+<MudContainer>
+    <MudText Typo="Typo.h4">Mi Perfil (Versión Mínima)</MudText>
+    
+    @if (_isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (_currentUser != null)
+    {
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.h6">@_currentUser.DisplayName</MudText>
+                <MudText>@_currentUser.Email</MudText>
+                <MudText>@_currentUser.JobTitle</MudText>
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Warning">No se pudo cargar la información del usuario</MudAlert>
+    }
+</MudContainer>
+
+@code {
+    private UserDto? _currentUser;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Console.WriteLine("[ProfileMinimal] Loading user...");
+            _currentUser = await AuthService.GetCurrentUserAsync();
+            Console.WriteLine($"[ProfileMinimal] User loaded: {_currentUser?.DisplayName ?? "null"}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ProfileMinimal] Error: {ex.Message}");
+            Logger.LogError(ex, "Error loading user profile");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

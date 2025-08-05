@@ -1,0 +1,532 @@
+@page "/profile"
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using Core.DTOs.Auth.Users
+@inject IAuthService AuthService
+@inject IApiService ApiService
+@inject ILoggingService Logger
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Mi Perfil - EzPro MSD</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <div class="fade-in">
+    <!-- Page Header -->
+    <MudGrid Class="mb-4">
+        <MudItem xs="12">
+            <MudText Typo="Typo.h4" Class="mb-1" Style="font-weight: 700; color: var(--ynex-gray-900);">
+                Mi Perfil
+            </MudText>
+            <MudBreadcrumbs Items="_breadcrumbs" Class="pa-0">
+                <SeparatorTemplate>
+                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+                </SeparatorTemplate>
+            </MudBreadcrumbs>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid>
+        <!-- Profile Card -->
+        <MudItem xs="12" md="4">
+            <MudCard>
+                <MudCardContent Class="text-center pa-6">
+                    <!-- Avatar -->
+                    <MudAvatar Size="Size.Large" Style="width: 120px; height: 120px; margin: 0 auto 1rem;">
+                        @if (!string.IsNullOrEmpty(_userPhoto))
+                        {
+                            <MudImage Src="@_userPhoto" />
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Large" />
+                        }
+                    </MudAvatar>
+                    
+                    <!-- User Name -->
+                    <MudText Typo="Typo.h5" Class="mb-1" Style="font-weight: 600;">
+                        @_userName
+                    </MudText>
+                    
+                    <!-- User Role -->
+                    <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+                        @_userRole
+                    </MudText>
+                    
+                    <!-- User Email -->
+                    <MudChip T="string" Icon="@Icons.Material.Filled.Email" Color="Color.Primary" Variant="Variant.Text">
+                        @_userEmail
+                    </MudChip>
+                    
+                    @if (_lastSyncTime != null)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Default" Class="mt-2">
+                            <MudIcon Icon="@Icons.Material.Filled.CloudDone" Size="Size.Small" Class="me-1" />
+                            Última sincronización: @_lastSyncTime.Value.ToString("dd/MM/yyyy HH:mm")
+                        </MudText>
+                    }
+                    
+                    <MudDivider Class="my-4" />
+                    
+                    <!-- Quick Stats -->
+                    <MudGrid>
+                        <MudItem xs="4" Class="text-center">
+                            <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: 700;">12</MudText>
+                            <MudText Typo="Typo.caption">Proyectos</MudText>
+                        </MudItem>
+                        <MudItem xs="4" Class="text-center">
+                            <MudText Typo="Typo.h6" Color="Color.Success" Style="font-weight: 700;">8</MudText>
+                            <MudText Typo="Typo.caption">Completados</MudText>
+                        </MudItem>
+                        <MudItem xs="4" Class="text-center">
+                            <MudText Typo="Typo.h6" Color="Color.Warning" Style="font-weight: 700;">4</MudText>
+                            <MudText Typo="Typo.caption">En Curso</MudText>
+                        </MudItem>
+                    </MudGrid>
+                    
+                    <MudDivider Class="my-4" />
+                    
+                    <!-- Actions -->
+                    <MudStack Spacing="2">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Sync" FullWidth="true" OnClick="SyncWithEntraId" Disabled="@_isSyncing">
+                            @if (_isSyncing)
+                            {
+                                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                <span class="ms-2">Sincronizando...</span>
+                            }
+                            else
+                            {
+                                <span>Sincronizar con Entra ID</span>
+                            }
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" FullWidth="true">
+                            Editar Perfil
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Camera" FullWidth="true">
+                            Cambiar Foto
+                        </MudButton>
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Profile Information -->
+        <MudItem xs="12" md="8">
+            <MudCard>
+                <MudCardContent>
+                    <div class="d-flex justify-space-between align-center mb-4">
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                            Información Personal
+                        </MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" />
+                    </div>
+
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <div class="profile-field mb-4">
+                                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-1">
+                                    Nombre Completo
+                                </MudText>
+                                <MudText Typo="Typo.body1">
+                                    @_userName
+                                </MudText>
+                            </div>
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <div class="profile-field mb-4">
+                                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-1">
+                                    Correo Electrónico
+                                </MudText>
+                                <MudText Typo="Typo.body1">
+                                    @_userEmail
+                                </MudText>
+                            </div>
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <div class="profile-field mb-4">
+                                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-1">
+                                    Cargo
+                                </MudText>
+                                <MudText Typo="Typo.body1">
+                                    @_userRole
+                                </MudText>
+                            </div>
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <div class="profile-field mb-4">
+                                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-1">
+                                    Departamento
+                                </MudText>
+                                <MudText Typo="Typo.body1">
+                                    @_department
+                                </MudText>
+                            </div>
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <div class="profile-field mb-4">
+                                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-1">
+                                    Teléfono
+                                </MudText>
+                                <MudText Typo="Typo.body1">
+                                    @(_phone ?? "No especificado")
+                                </MudText>
+                            </div>
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <div class="profile-field mb-4">
+                                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-1">
+                                    Ubicación
+                                </MudText>
+                                <MudText Typo="Typo.body1">
+                                    @(_location ?? "No especificado")
+                                </MudText>
+                            </div>
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <div class="profile-field mb-4">
+                                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-1">
+                                    Fecha de Ingreso
+                                </MudText>
+                                <MudText Typo="Typo.body1">
+                                    @_joinDate.ToString("dd MMMM yyyy", new System.Globalization.CultureInfo("es-ES"))
+                                </MudText>
+                            </div>
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <div class="profile-field mb-4">
+                                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-1">
+                                    Estado
+                                </MudText>
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle">
+                                    Activo
+                                </MudChip>
+                            </div>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+
+            <!-- Preferences Card -->
+            <MudCard Class="mt-4">
+                <MudCardContent>
+                    <div class="d-flex justify-space-between align-center mb-4">
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                            Preferencias
+                        </MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.Settings" Color="Color.Primary" Size="Size.Small" />
+                    </div>
+
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <div class="preference-item mb-3">
+                                <div class="d-flex justify-space-between align-center">
+                                    <div>
+                                        <MudText Typo="Typo.body1">Notificaciones por Email</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Default">
+                                            Recibir actualizaciones de proyectos
+                                        </MudText>
+                                    </div>
+                                    <MudSwitch @bind-Value="_emailNotifications" Color="Color.Primary" />
+                                </div>
+                            </div>
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <div class="preference-item mb-3">
+                                <div class="d-flex justify-space-between align-center">
+                                    <div>
+                                        <MudText Typo="Typo.body1">Modo Oscuro</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Default">
+                                            Cambiar apariencia de la interfaz
+                                        </MudText>
+                                    </div>
+                                    <MudSwitch @bind-Value="_darkMode" Color="Color.Primary" />
+                                </div>
+                            </div>
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <div class="preference-item mb-3">
+                                <MudText Typo="Typo.body1" Class="mb-2">Idioma</MudText>
+                                <MudSelect T="string" @bind-Value="_language" Variant="Variant.Outlined" Dense="true">
+                                    <MudSelectItem Value="@("es")">Español</MudSelectItem>
+                                    <MudSelectItem Value="@("en")">English</MudSelectItem>
+                                    <MudSelectItem Value="@("pt")">Português</MudSelectItem>
+                                </MudSelect>
+                            </div>
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <div class="preference-item mb-3">
+                                <MudText Typo="Typo.body1" Class="mb-2">Zona Horaria</MudText>
+                                <MudSelect T="string" @bind-Value="_timezone" Variant="Variant.Outlined" Dense="true">
+                                    <MudSelectItem Value="@("UTC-6")">Ciudad de México (UTC-6)</MudSelectItem>
+                                    <MudSelectItem Value="@("UTC-5")">Bogotá (UTC-5)</MudSelectItem>
+                                    <MudSelectItem Value="@("UTC-3")">Buenos Aires (UTC-3)</MudSelectItem>
+                                </MudSelect>
+                            </div>
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudDivider Class="my-4" />
+                    
+                    <div class="d-flex justify-end">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save">
+                            Guardar Cambios
+                        </MudButton>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+
+            <!-- Security Card -->
+            <MudCard Class="mt-4">
+                <MudCardContent>
+                    <div class="d-flex justify-space-between align-center mb-4">
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                            Seguridad
+                        </MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.Security" Color="Color.Primary" Size="Size.Small" />
+                    </div>
+
+                    <MudStack Spacing="3">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Key" FullWidth="true" Class="justify-start">
+                            Cambiar Contraseña
+                        </MudButton>
+                        
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PhoneAndroid" FullWidth="true" Class="justify-start">
+                            Configurar Autenticación de Dos Factores
+                        </MudButton>
+                        
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Devices" FullWidth="true" Class="justify-start">
+                            Gestionar Dispositivos
+                        </MudButton>
+                        
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Logout" FullWidth="true" Class="justify-start" OnClick="Logout">
+                            Cerrar Sesión
+                        </MudButton>
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</div>
+    </Authorized>
+    <NotAuthorized>
+        <MudContainer>
+            <MudAlert Severity="Severity.Warning">
+                No estás autenticado. Por favor inicia sesión.
+                <MudButton Color="Color.Primary" Href="authentication/login" Class="ml-2">
+                    Iniciar Sesión
+                </MudButton>
+            </MudAlert>
+        </MudContainer>
+    </NotAuthorized>
+    <Authorizing>
+        <MudContainer>
+            <MudCard>
+                <MudCardContent Class="text-center pa-8">
+                    <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" Class="mb-4" />
+                    <MudText Typo="Typo.h6">Verificando autenticación...</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudContainer>
+    </Authorizing>
+</AuthorizeView>
+
+<style>
+    .profile-field {
+        padding: 0.5rem 0;
+    }
+    
+    .preference-item {
+        padding: 0.75rem;
+        background-color: var(--ynex-gray-50);
+        border-radius: var(--ynex-border-radius);
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+@code {
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem("Inicio", href: "/home", icon: Icons.Material.Filled.Home),
+        new BreadcrumbItem("Mi Perfil", href: null, disabled: true)
+    };
+
+    // User Information
+    private UserDto? _currentUser;
+    private string _userName = "Usuario";
+    private string _userEmail = "usuario@empresa.com";
+    private string _userRole = "Gerente de Proyectos";
+    private string _department = "Ingeniería y Construcción";
+    private string? _phone = "+52 555 123 4567";
+    private string? _location = "Ciudad de México, México";
+    private DateTime _joinDate = DateTime.Now.AddYears(-2);
+    private string? _userPhoto = null;
+    private bool _isSyncing = false;
+    private DateTime? _lastSyncTime = null;
+
+    // Preferences
+    private bool _emailNotifications = true;
+    private bool _darkMode = false;
+    private string _language = "es";
+    private string _timezone = "UTC-6";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("console.log", "[Profile] OnInitializedAsync started");
+            Logger.LogInfo("Cargando página de perfil de usuario...");
+            
+            // La autorización se maneja con AuthorizeView, así que solo cargamos el perfil
+            await LoadUserProfile();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "[Profile] Error in OnInitializedAsync:", ex.Message);
+            Logger.LogError(ex, "Error al cargar el perfil de usuario");
+        }
+    }
+
+    private async Task LoadUserProfile()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("console.log", "[Profile] LoadUserProfile started");
+            _currentUser = await AuthService.GetCurrentUserAsync();
+            
+            if (_currentUser != null)
+            {
+                await JS.InvokeVoidAsync("console.log", "[Profile] User loaded:", _currentUser.DisplayName);
+                Logger.LogInfo($"Perfil cargado para usuario: {_currentUser.DisplayName}");
+                
+                // Actualizar información del usuario
+                _userName = _currentUser.DisplayName;
+                _userEmail = _currentUser.Email;
+                _userRole = !string.IsNullOrEmpty(_currentUser.JobTitle) 
+                    ? _currentUser.JobTitle 
+                    : "Gerente de Proyectos";
+                _department = !string.IsNullOrEmpty(_currentUser.Department) 
+                    ? _currentUser.Department 
+                    : "Ingeniería y Construcción";
+                _location = _currentUser.OfficeLocation;
+                _phone = _currentUser.MobilePhone ?? _currentUser.PhoneNumber;
+                _joinDate = DateTime.Now.AddYears(-2); // Default value since UserDto doesn't have CreatedDate
+                
+                // Si el usuario ha iniciado sesión recientemente, podríamos inferir una sincronización
+                if (_currentUser.LastLoginAt != null)
+                {
+                    _lastSyncTime = _currentUser.LastLoginAt;
+                }
+                
+                // Cargar foto del usuario si está disponible
+                if (!string.IsNullOrEmpty(_currentUser.PhotoUrl))
+                {
+                    _userPhoto = _currentUser.PhotoUrl;
+                }
+                
+                StateHasChanged();
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("console.log", "[Profile] No user data returned");
+                Logger.LogWarning("No se pudo obtener la información del usuario");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "[Profile] Error loading profile:", ex.Message);
+            Logger.LogError(ex, "Error al cargar el perfil del usuario");
+        }
+    }
+
+    private async Task SyncWithEntraId()
+    {
+        try
+        {
+            _isSyncing = true;
+            StateHasChanged();
+            
+            await JS.InvokeVoidAsync("console.log", "[Profile] Starting sync with Entra ID");
+            Logger.LogInfo("Iniciando sincronización con Entra ID...");
+            
+            // Llamar al endpoint de sincronización en el API
+            var syncedUser = await ApiService.PostAsync<object, UserDto>("api/auth/sync", new { });
+            
+            if (syncedUser != null)
+            {
+                await JS.InvokeVoidAsync("console.log", "[Profile] Sync successful:", syncedUser.DisplayName);
+                _currentUser = syncedUser;
+                
+                // Actualizar la información mostrada
+                _userName = syncedUser.DisplayName;
+                _userEmail = syncedUser.Email;
+                _userRole = !string.IsNullOrEmpty(syncedUser.JobTitle) 
+                    ? syncedUser.JobTitle 
+                    : _userRole;
+                _department = !string.IsNullOrEmpty(syncedUser.Department) 
+                    ? syncedUser.Department 
+                    : _department;
+                _location = syncedUser.OfficeLocation ?? _location;
+                _phone = syncedUser.MobilePhone ?? syncedUser.PhoneNumber ?? _phone;
+                
+                // Actualizar foto si está disponible
+                if (!string.IsNullOrEmpty(syncedUser.PhotoUrl))
+                {
+                    _userPhoto = syncedUser.PhotoUrl;
+                }
+                
+                // Actualizar tiempo de última sincronización
+                _lastSyncTime = DateTime.Now;
+                
+                // TODO: Mostrar notificación de éxito
+                Logger.LogInfo("Perfil sincronizado exitosamente con Entra ID");
+                Logger.LogInfo("Sincronización completada exitosamente");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("console.log", "[Profile] Sync returned no data");
+                Logger.LogWarning("La sincronización no devolvió datos");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "[Profile] Sync error:", ex.Message);
+            Logger.LogError(ex, "Error durante la sincronización con Entra ID");
+        }
+        finally
+        {
+            _isSyncing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Logout()
+    {
+        Logger.LogInfo("Usuario solicitó cerrar sesión desde la página de perfil");
+        await AuthService.LogoutAsync();
+    }
+}

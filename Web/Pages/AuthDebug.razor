@@ -1,0 +1,120 @@
+@page "/auth-debug"
+@using Microsoft.AspNetCore.Components.Authorization
+@using MudBlazor
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+
+<PageTitle>Auth Debug</PageTitle>
+
+<MudContainer>
+    <MudCard>
+        <MudCardContent>
+            <MudText Typo="Typo.h4">Estado de Autenticación</MudText>
+            
+            @if (_authState == null)
+            {
+                <MudProgressCircular Indeterminate="true" />
+                <MudText>Cargando estado de autenticación...</MudText>
+            }
+            else
+            {
+                <MudSimpleTable Class="mt-4">
+                    <tbody>
+                        <tr>
+                            <td><strong>Autenticado:</strong></td>
+                            <td>
+                                @if (_authState.User.Identity?.IsAuthenticated == true)
+                                {
+                                    <MudChip T="string" Color="Color.Success" Icon="@Icons.Material.Filled.Check">Sí</MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Color="Color.Error" Icon="@Icons.Material.Filled.Close">No</MudChip>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Nombre:</strong></td>
+                            <td>@(_authState.User.Identity?.Name ?? "N/A")</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tipo de Autenticación:</strong></td>
+                            <td>@(_authState.User.Identity?.AuthenticationType ?? "N/A")</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Claims:</strong></td>
+                            <td>@_authState.User.Claims.Count()</td>
+                        </tr>
+                    </tbody>
+                </MudSimpleTable>
+                
+                @if (_authState.User.Claims.Any())
+                {
+                    <MudText Typo="Typo.h6" Class="mt-4">Claims del Usuario:</MudText>
+                    <MudSimpleTable Dense="true" Hover="true" Bordered="true" Class="mt-2">
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var claim in _authState.User.Claims.OrderBy(c => c.Type))
+                            {
+                                <tr>
+                                    <td>@claim.Type</td>
+                                    <td>@claim.Value</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+            }
+            
+            <MudDivider Class="my-4" />
+            
+            <MudText Typo="Typo.h6">Enlaces de Prueba:</MudText>
+            <MudStack Row="true" Spacing="2" Class="mt-2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/profile">
+                    Ir a Profile (con auth)
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/profile-noauth">
+                    Ir a Profile (sin auth)
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Info" Href="/home">
+                    Ir a Home
+                </MudButton>
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private AuthenticationState? _authState;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await JS.InvokeVoidAsync("console.log", "[AuthDebug] Iniciando verificación de autenticación...");
+        
+        try
+        {
+            _authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            await JS.InvokeVoidAsync("console.log", "[AuthDebug] Estado de autenticación obtenido:", 
+                _authState.User.Identity?.IsAuthenticated ?? false);
+            
+            if (_authState.User.Identity?.IsAuthenticated == true)
+            {
+                await JS.InvokeVoidAsync("console.log", "[AuthDebug] Usuario autenticado:", 
+                    _authState.User.Identity.Name);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("console.log", "[AuthDebug] Usuario NO autenticado");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "[AuthDebug] Error obteniendo estado de autenticación:", ex.Message);
+        }
+    }
+}

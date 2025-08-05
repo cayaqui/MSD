@@ -1,0 +1,80 @@
+::deep .ezpro-header {
+    background-color: var(--mud-palette-surface);
+    border-bottom: 1px solid var(--mud-palette-divider);
+    padding: 0 24px;
+    height: 64px;
+    min-height: 64px;
+}
+
+.header-content {
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.header-left,
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.search-box {
+    min-width: 300px;
+}
+
+::deep .search-input {
+    background-color: var(--mud-palette-background);
+}
+
+::deep .search-input .mud-input-outlined {
+    height: 40px;
+}
+
+::deep .search-input .mud-input-outlined .mud-input-root {
+    font-size: 14px;
+}
+
+::deep .user-menu-button {
+    text-transform: none;
+    font-weight: normal;
+}
+
+.user-name {
+    font-size: 14px;
+    font-weight: 500;
+    margin-left: 8px;
+}
+
+::deep .project-selector-button {
+    text-transform: none;
+    font-weight: normal;
+    max-width: 250px;
+    padding: 6px 12px;
+    margin-right: 8px;
+}
+
+::deep .project-selector-button .project-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 180px;
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0 8px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    ::deep .ezpro-header {
+        padding: 0 16px;
+    }
+}
+
+/* Badge styling */
+::deep .mud-badge-overlap .mud-badge-badge {
+    font-size: 10px;
+    height: 18px;
+    min-width: 18px;
+}

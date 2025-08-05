@@ -8,7 +8,10 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.14.2" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.25.0" />
     <PackageReference Include="Azure.Storage.Queues" Version="12.23.0" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.12.2" />
+    <PackageReference Include="itext" Version="9.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.7" />
     <PackageReference Include="Microsoft.AspNetCore.Authorization.Policy" Version="2.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
@@ -25,16 +28,10 @@
     <PackageReference Include="Microsoft.Graph" Version="5.87.0" />
     <PackageReference Include="Microsoft.Identity.Web" Version="3.11.0" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Application\Application.csproj" />
   </ItemGroup>
-
   <ItemGroup>
-    <Folder Include="Data\Configurations\Setup\" />
-    <Folder Include="Data\Seed\" />
-    <Folder Include="Security\Authentication\" />
-    <Folder Include="Security\Configuration\" />
+    <Folder Include="Services\Reports\" />
   </ItemGroup>
-
 </Project>

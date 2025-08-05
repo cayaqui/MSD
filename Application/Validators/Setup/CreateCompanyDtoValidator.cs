@@ -1,4 +1,4 @@
-﻿using Core.DTOs.Companies;
+﻿using Core.DTOs.Organization.Company;
 using FluentValidation;
 
 namespace Application.Validators.Setup;

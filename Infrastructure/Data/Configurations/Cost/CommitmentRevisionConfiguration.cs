@@ -1,93 +1,85 @@
-﻿using Domain.Entities.Cost;
+using Domain.Common;
+using Domain.Entities.Cost.Commitments;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Infrastructure.Data.Configurations.Cost;
-
-/// <summary>
-/// Entity configuration for CommitmentRevision
-/// </summary>
-public class CommitmentRevisionConfiguration : IEntityTypeConfiguration<CommitmentRevision>
+namespace Infrastructure.Data.Configurations.Cost
 {
-    public void Configure(EntityTypeBuilder<CommitmentRevision> builder)
+    public class CommitmentRevisionConfiguration : IEntityTypeConfiguration<CommitmentRevision>
     {
-        // Table name and schema with check constraints
-        builder.ToTable("CommitmentRevisions", "Cost", t =>
+        public void Configure(EntityTypeBuilder<CommitmentRevision> builder)
         {
-            t.HasCheckConstraint("CK_CommitmentRevisions_RevisionNumber",
-                "[RevisionNumber] > 0");
-            t.HasCheckConstraint("CK_CommitmentRevisions_PreviousAmount",
-                "[PreviousAmount] >= 0");
-            t.HasCheckConstraint("CK_CommitmentRevisions_RevisedAmount",
-                "[RevisedAmount] >= 0");
-            t.HasCheckConstraint("CK_CommitmentRevisions_RevisionDate",
-                "[RevisionDate] <= GETUTCDATE()");
-            t.HasCheckConstraint("CK_CommitmentRevisions_Approval",
-                "([ApprovalDate] IS NULL AND [ApprovedBy] IS NULL) OR " +
-                "([ApprovalDate] IS NOT NULL AND [ApprovedBy] IS NOT NULL)");
-            t.HasCheckConstraint("CK_CommitmentRevisions_ApprovalDate",
-                "[ApprovalDate] IS NULL OR [ApprovalDate] >= [RevisionDate]");
-        });
+            // Table name and schema
+            builder.ToTable("CommitmentRevisions", "Cost");
 
-        // Primary key
-        builder.HasKey(cr => cr.Id);
+            // Primary key
+            builder.HasKey(c => c.Id);
 
-        // Indexes
-        builder.HasIndex(cr => new { cr.CommitmentId, cr.RevisionNumber }).IsUnique();
-        builder.HasIndex(cr => cr.CommitmentId);
-        builder.HasIndex(cr => cr.RevisionNumber);
-        builder.HasIndex(cr => cr.RevisionDate);
-        builder.HasIndex(cr => cr.ApprovalDate);
-        builder.HasIndex(cr => cr.ApprovedBy);
-        builder.HasIndex(cr => cr.ChangeOrderReference);
-        builder.HasIndex(cr => new { cr.ChangeAmount, cr.ChangePercentage }); // For filtering by impact
+            // Indexes
+            builder.HasIndex(c => c.CommitmentId);
+            builder.HasIndex(c => c.RevisionNumber);
+            builder.HasIndex(c => c.RevisionDate);
+            builder.HasIndex(c => new { c.CommitmentId, c.RevisionNumber });
 
-        // Properties
-        builder.Property(cr => cr.RevisionNumber)
-            .IsRequired();
+            // Revision Information
+            builder.Property(c => c.RevisionNumber)
+                .IsRequired();
 
-        builder.Property(cr => cr.RevisionDate)
-            .IsRequired();
+            builder.Property(c => c.RevisionDate)
+                .IsRequired();
 
-        builder.Property(cr => cr.PreviousAmount)
-            .HasPrecision(18, 2)
-            .IsRequired();
+            // Financial Changes
+            builder.Property(c => c.PreviousAmount)
+                .IsRequired()
+                .HasPrecision(18, 2);
 
-        builder.Property(cr => cr.RevisedAmount)
-            .HasPrecision(18, 2)
-            .IsRequired();
+            builder.Property(c => c.RevisedAmount)
+                .IsRequired()
+                .HasPrecision(18, 2);
 
-        // Note: ChangeAmount and ChangePercentage are calculated in the entity constructor
-        // They are not computed columns as they need to be set during entity creation
-        builder.Property(cr => cr.ChangeAmount)
-            .HasPrecision(18, 2)
-            .IsRequired();
+            builder.Property(c => c.ChangeAmount)
+                .IsRequired()
+                .HasPrecision(18, 2);
 
-        builder.Property(cr => cr.ChangePercentage)
-            .HasPrecision(8, 4)
-            .IsRequired();
+            builder.Property(c => c.ChangePercentage)
+                .IsRequired()
+                .HasPrecision(5, 2);
 
-        // Justification
-        builder.Property(cr => cr.Reason)
-            .IsRequired()
-            .HasMaxLength(1000);
+            // Justification
+            builder.Property(c => c.Reason)
+                .IsRequired()
+                .HasMaxLength(1000);
 
-        builder.Property(cr => cr.ChangeOrderReference)
-            .HasMaxLength(100);
+            builder.Property(c => c.ChangeOrderReference)
+                .HasMaxLength(100);
 
-        builder.Property(cr => cr.ApprovedBy)
-            .HasMaxLength(256);
+            builder.Property(c => c.ApprovedBy)
+                .HasMaxLength(256);
 
-        builder.Property(cr => cr.ApprovalDate);
+            // Audit properties
+            builder.Property(c => c.CreatedAt)
+                .IsRequired();
 
-        // Audit properties (inherited from BaseEntity)
-        builder.Property(cr => cr.CreatedAt)
-            .IsRequired();
+            builder.Property(c => c.CreatedBy)
+                .HasMaxLength(256);
 
-        // Foreign key relationships
-        builder.HasOne(cr => cr.Commitment)
-            .WithMany(c => c.Revisions)
-            .HasForeignKey(cr => cr.CommitmentId)
-            .OnDelete(DeleteBehavior.Cascade);
+            builder.Property(c => c.UpdatedAt);
+
+            builder.Property(c => c.UpdatedBy)
+                .HasMaxLength(256);
+
+            // Relationships
+            builder.HasOne(c => c.Commitment)
+                .WithMany(com => com.Revisions)
+                .HasForeignKey(c => c.CommitmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Check constraints
+            builder.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_CommitmentRevisions_RevisionNumber", "[RevisionNumber] >= 0");
+                t.HasCheckConstraint("CK_CommitmentRevisions_Amounts", "[PreviousAmount] >= 0 AND [RevisedAmount] >= 0");
+            });
+        }
     }
 }

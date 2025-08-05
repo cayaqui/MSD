@@ -1,0 +1,99 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using MudBlazor
+@inject ILoggingService Logger
+
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated != true)
+                    {
+                        <RedirectToLogin />
+                    }
+                    else
+                    {
+                        <MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-items-center justify-content-center" Style="height: 100vh;">
+                            <MudCard Elevation="3">
+                                <MudCardContent>
+                                    <MudAlert Severity="Severity.Warning" Class="mb-4">
+                                        <MudText Typo="Typo.h6">Access Denied</MudText>
+                                    </MudAlert>
+                                    <MudText Typo="Typo.body1" Class="mb-3">
+                                        You are not authorized to view this page.
+                                    </MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        Please contact your administrator if you believe you should have access.
+                                    </MudText>
+                                </MudCardContent>
+                                <MudCardActions>
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/" FullWidth="true">
+                                        Return to Home
+                                    </MudButton>
+                                </MudCardActions>
+                            </MudCard>
+                        </MudContainer>
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-items-center justify-content-center" Style="height: 100vh;">
+                        <MudCard Elevation="3">
+                            <MudCardContent Class="text-center">
+                                <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" Class="mb-4" />
+                                <MudText Typo="Typo.h5" GutterBottom="true">Authenticating</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    Please wait while we verify your credentials...
+                                </MudText>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudContainer>
+                </Authorizing>
+            </AuthorizeRouteView>
+        </Found>
+        <NotFound>
+            <CascadingAuthenticationState>
+                <LayoutView Layout="@typeof(MainLayout)">
+                    <MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-items-center justify-content-center" Style="height: 100vh;">
+                        <MudCard Elevation="3">
+                            <MudCardContent Class="text-center">
+                                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Warning" Class="mb-4" Style="font-size: 5rem;" />
+                                <MudText Typo="Typo.h3" GutterBottom="true">404</MudText>
+                                <MudText Typo="Typo.h5" GutterBottom="true">Page Not Found</MudText>
+                                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">
+                                    The page you are looking for doesn't exist.
+                                </MudText>
+                            </MudCardContent>
+                            <MudCardActions>
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/" FullWidth="true">
+                                    <MudIcon Icon="@Icons.Material.Filled.Home" Class="me-2" />
+                                    Back to Dashboard
+                                </MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudContainer>
+                </LayoutView>
+            </CascadingAuthenticationState>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
+
+@code {
+    protected override void OnInitialized()
+    {
+        try
+        {
+            Logger.LogInfo("=== App.razor Initialization Started ===");
+            Logger.LogInfo($"Base URI: {Navigation.BaseUri}");
+            Logger.LogInfo($"Current URI: {Navigation.Uri}");
+            Logger.LogInfo("App.razor initialized successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error in App.razor initialization");
+        }
+    }
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+}

@@ -1,0 +1,565 @@
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Web
+@using Core.DTOs.Organization.Project
+@using Web.Services.Interfaces
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject IProjectService ProjectService
+@inject ILoggingService Logger
+@implements IDisposable
+
+<MudAppBar Elevation="0" Fixed="true" Class="ezpro-header">
+    <div class="header-content">
+        <div class="header-left">
+            <!-- Menu Toggle Button -->
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" 
+                           Color="Color.Inherit" 
+                           Edge="Edge.Start" 
+                           OnClick="@OnToggleClick"
+                           Class="menu-toggle" />
+            
+            <!-- Search Box -->
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <div class="search-box">
+                    <MudTextField T="string"
+                                  @bind-Value="SearchText"
+                                  Placeholder="Buscar proyectos, tareas o miembros del equipo..."
+                                  Variant="Variant.Outlined"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Class="search-input"
+                                  Immediate="false"
+                                  Margin="Margin.Dense" />
+                </div>
+            </MudHidden>
+        </div>
+
+        <MudSpacer />
+
+        <div class="header-right">
+            <!-- Mobile Search -->
+            <MudHidden Breakpoint="Breakpoint.MdAndUp">
+                <MudIconButton Icon="@Icons.Material.Filled.Search"
+                               Color="Color.Inherit"
+                               OnClick="@ToggleMobileSearch" />
+            </MudHidden>
+
+            <!-- Project Selector -->
+            <MudTooltip Text="Proyecto Actual">
+                <MudMenu AnchorOrigin="Origin.BottomCenter"
+                         TransformOrigin="Origin.TopCenter"
+                         Dense="true"
+                         MaxHeight="400">
+                    <ActivatorContent>
+                        <MudButton Variant="Variant.Text" 
+                                   Color="Color.Inherit" 
+                                   StartIcon="@Icons.Material.Filled.Business"
+                                   EndIcon="@Icons.Material.Filled.KeyboardArrowDown"
+                                   Class="project-selector-button">
+                            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                                <span class="project-name">@(_selectedProjectName)</span>
+                            </MudHidden>
+                        </MudButton>
+                    </ActivatorContent>
+                    <ChildContent>
+                        <div class="pa-3" style="min-width: 300px;">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Seleccionar Proyecto</MudText>
+                        @if (_projects != null && _projects.Any())
+                        {
+                            <MudTextField T="string" 
+                                          @bind-Value="_projectSearchText"
+                                          Placeholder="Buscar proyecto..."
+                                          Variant="Variant.Outlined"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Search"
+                                          Margin="Margin.Dense"
+                                          Class="mb-2" />
+                            <MudDivider Class="mb-2" />
+                            <div style="max-height: 300px; overflow-y: auto;">
+                                @foreach (var project in FilteredProjects)
+                                {
+                                    <MudMenuItem OnClick="@(() => SelectProject(project))" 
+                                                 Icon="@(project.Id == _selectedProjectId ? Icons.Material.Filled.Check : Icons.Material.Filled.FolderOpen)"
+                                                 IconColor="@(project.Id == _selectedProjectId ? Color.Primary : Color.Default)">
+                                        <div>
+                                            <MudText Typo="Typo.body2">@project.Name</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@project.Code</MudText>
+                                        </div>
+                                    </MudMenuItem>
+                                }
+                            </div>
+                        }
+                        else if (_loadingProjects)
+                        {
+                            <div class="d-flex justify-center pa-3">
+                                <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
+                            </div>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-3 text-center">
+                                No hay proyectos disponibles
+                            </MudText>
+                        }
+                    </div>
+                    </ChildContent>
+                </MudMenu>
+            </MudTooltip>
+
+            <!-- Theme Toggle -->
+            <MudTooltip Text="@(IsDarkMode ? "Modo Claro" : "Modo Oscuro")">
+                <MudIconButton Icon="@(IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                               Color="Color.Inherit"
+                               OnClick="@OnThemeToggle" />
+            </MudTooltip>
+
+            <!-- Notifications -->
+            <MudTooltip Text="Notificaciones">
+                <MudBadge Content="@NotificationCount" 
+                          Color="Color.Error" 
+                          Overlap="true" 
+                          Visible="@(NotificationCount > 0)"
+                          Max="9"
+                          Class="mx-1">
+                    <MudIconButton Icon="@Icons.Material.Filled.Notifications"
+                                   Color="Color.Inherit"
+                                   OnClick="@OnNotificationsClick" />
+                </MudBadge>
+            </MudTooltip>
+
+            <!-- Messages -->
+            <MudTooltip Text="Mensajes">
+                <MudBadge Content="@MessageCount" 
+                          Color="Color.Primary" 
+                          Overlap="true" 
+                          Visible="@(MessageCount > 0)"
+                          Max="9"
+                          Class="mx-1">
+                    <MudIconButton Icon="@Icons.Material.Filled.Email"
+                                   Color="Color.Inherit"
+                                   OnClick="@OnMessagesClick" />
+                </MudBadge>
+            </MudTooltip>
+
+            <!-- Quick Actions -->
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <MudTooltip Text="Acciones Rápidas">
+                    <MudMenu Icon="@Icons.Material.Filled.Apps" 
+                             Color="Color.Inherit"
+                             AnchorOrigin="Origin.BottomCenter"
+                             TransformOrigin="Origin.TopCenter"
+                             Class="mx-1">
+                        <div class="quick-actions-grid pa-3">
+                            <MudButton Variant="Variant.Text" Color="Color.Default" Class="quick-action-item" OnClick="@(() => NavigateTo("/projects/new"))">
+                                <div class="d-flex flex-column align-center gap-1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Add" Color="Color.Primary" Size="Size.Large" />
+                                    <MudText Typo="Typo.caption">Nuevo Proyecto</MudText>
+                                </div>
+                            </MudButton>
+                            <MudButton Variant="Variant.Text" Color="Color.Default" Class="quick-action-item" OnClick="@(() => NavigateTo("/budgets/new"))">
+                                <div class="d-flex flex-column align-center gap-1">
+                                    <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Color="Color.Success" Size="Size.Large" />
+                                    <MudText Typo="Typo.caption">Presupuesto</MudText>
+                                </div>
+                            </MudButton>
+                            <MudButton Variant="Variant.Text" Color="Color.Default" Class="quick-action-item" OnClick="@(() => NavigateTo("/team"))">
+                                <div class="d-flex flex-column align-center gap-1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Groups" Color="Color.Info" Size="Size.Large" />
+                                    <MudText Typo="Typo.caption">Equipo</MudText>
+                                </div>
+                            </MudButton>
+                            <MudButton Variant="Variant.Text" Color="Color.Default" Class="quick-action-item" OnClick="@(() => NavigateTo("/reports"))">
+                                <div class="d-flex flex-column align-center gap-1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Assessment" Color="Color.Warning" Size="Size.Large" />
+                                    <MudText Typo="Typo.caption">Reportes</MudText>
+                                </div>
+                            </MudButton>
+                            <MudButton Variant="Variant.Text" Color="Color.Default" Class="quick-action-item" OnClick="@(() => NavigateTo("/schedule"))">
+                                <div class="d-flex flex-column align-center gap-1">
+                                    <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Color="Color.Secondary" Size="Size.Large" />
+                                    <MudText Typo="Typo.caption">Cronograma</MudText>
+                                </div>
+                            </MudButton>
+                            <MudButton Variant="Variant.Text" Color="Color.Default" Class="quick-action-item" OnClick="@(() => NavigateTo("/documents"))">
+                                <div class="d-flex flex-column align-center gap-1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Dark" Size="Size.Large" />
+                                    <MudText Typo="Typo.caption">Documentos</MudText>
+                                </div>
+                            </MudButton>
+                        </div>
+                    </MudMenu>
+                </MudTooltip>
+            </MudHidden>
+
+            <!-- Full Screen Toggle -->
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <MudTooltip Text="@(_isFullScreen ? "Salir de Pantalla Completa" : "Pantalla Completa")">
+                    <MudIconButton Icon="@(_isFullScreen ? Icons.Material.Filled.FullscreenExit : Icons.Material.Filled.Fullscreen)"
+                                   Color="Color.Inherit"
+                                   OnClick="@ToggleFullScreen" />
+                </MudTooltip>
+            </MudHidden>
+
+            <!-- User Menu -->
+            <MudMenu AnchorOrigin="Origin.BottomRight" 
+                     TransformOrigin="Origin.TopRight"
+                     MaxHeight="400"
+                     Class="user-menu">
+                <ActivatorContent>
+                    <MudButton Variant="Variant.Text" 
+                               Color="Color.Inherit" 
+                               StartIcon="@(string.IsNullOrEmpty(UserAvatar) ? Icons.Material.Filled.AccountCircle : null)"
+                               EndIcon="@Icons.Material.Filled.KeyboardArrowDown"
+                               Class="user-menu-button">
+                        @if (!string.IsNullOrEmpty(UserAvatar))
+                        {
+                            <MudAvatar Size="Size.Small" Class="me-2">
+                                <MudImage Src="@UserAvatar" />
+                            </MudAvatar>
+                        }
+                        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                            <span class="user-name">@UserName</span>
+                        </MudHidden>
+                    </MudButton>
+                </ActivatorContent>
+                <ChildContent>
+                    <div class="user-menu-header pa-4">
+                        <div class="d-flex align-center gap-3">
+                            <MudAvatar Size="Size.Large" Color="Color.Primary">
+                                @if (!string.IsNullOrEmpty(UserAvatar))
+                                {
+                                    <MudImage Src="@UserAvatar" />
+                                }
+                                else
+                                {
+                                    @(GetUserInitials())
+                                }
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.h6">@UserName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Default">@UserEmail</MudText>
+                            </div>
+                        </div>
+                    </div>
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Filled.Person" OnClick="@OnProfileClick">
+                        Mi Perfil
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Dashboard" OnClick="@(() => NavigateTo("/home"))">
+                        Tablero
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Settings" OnClick="@OnSettingsClick">
+                        Configuración
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Notifications" OnClick="@(() => NavigateTo("/settings/notifications"))">
+                        Preferencias de Notificación
+                    </MudMenuItem>
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Filled.HelpOutline" OnClick="@(() => NavigateTo("/help"))">
+                        Ayuda y Soporte
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Info" OnClick="@(() => NavigateTo("/about"))">
+                        Acerca de
+                    </MudMenuItem>
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Filled.Logout" OnClick="@OnLogoutClick" Class="text-error">
+                        Cerrar Sesión
+                    </MudMenuItem>
+                </ChildContent>
+            </MudMenu>
+        </div>
+    </div>
+    
+    <!-- Mobile Search Bar -->
+    <MudCollapse Expanded="_showMobileSearch">
+        <div class="mobile-search-bar pa-3">
+            <MudTextField T="string"
+                          @bind-Value="SearchText"
+                          Placeholder="Buscar..."
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          FullWidth="true"
+                          Immediate="false"
+                          Margin="Margin.Dense"
+                          OnKeyUp="@HandleMobileSearchKeyUp" />
+        </div>
+    </MudCollapse>
+</MudAppBar>
+
+<style>
+    .quick-actions-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        min-width: 300px;
+    }
+    
+    .quick-action-item {
+        padding: 12px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    
+    .quick-action-item:hover {
+        background-color: var(--ynex-gray-100);
+    }
+    
+    .user-menu-header {
+        background-color: var(--ynex-gray-50);
+    }
+    
+    .mobile-search-bar {
+        background-color: var(--ynex-header-bg);
+        border-top: 1px solid var(--ynex-border-color);
+    }
+    
+    /* Dark mode adjustments */
+    [data-theme="dark"] .quick-action-item:hover {
+        background-color: var(--ynex-gray-800);
+    }
+    
+    [data-theme="dark"] .user-menu-header {
+        background-color: var(--ynex-gray-800);
+    }
+    
+    [data-theme="dark"] .mobile-search-bar {
+        background-color: var(--ynex-header-bg);
+    }
+    
+    .project-selector-button {
+        max-width: 250px;
+    }
+    
+    .project-selector-button .project-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 200px;
+        display: inline-block;
+    }
+</style>
+
+@code {
+    [Parameter] public EventCallback OnToggleClick { get; set; }
+    [Parameter] public EventCallback OnThemeToggle { get; set; }
+    [Parameter] public bool IsDarkMode { get; set; }
+    [Parameter] public string UserName { get; set; } = "Juan Pérez";
+    [Parameter] public string UserEmail { get; set; } = "juan.perez@empresa.com";
+    [Parameter] public string UserAvatar { get; set; } = "";
+    [Parameter] public int NotificationCount { get; set; } = 3;
+    [Parameter] public int MessageCount { get; set; } = 5;
+    [Parameter] public EventCallback<string> OnSearchChanged { get; set; }
+    [Parameter] public EventCallback OnNotificationsClick { get; set; }
+    [Parameter] public EventCallback OnMessagesClick { get; set; }
+    [Parameter] public EventCallback OnProfileClick { get; set; }
+    [Parameter] public EventCallback OnSettingsClick { get; set; }
+    [Parameter] public EventCallback OnLogoutClick { get; set; }
+    [Parameter] public EventCallback<Guid> OnProjectChanged { get; set; }
+    
+    private string _searchText = "";
+    private System.Timers.Timer? _debounceTimer;
+    private bool _showMobileSearch = false;
+    private bool _isFullScreen = false;
+    
+    // Project selector fields
+    private List<ProjectListDto>? _projects;
+    private bool _loadingProjects = false;
+    private Guid? _selectedProjectId;
+    private string _selectedProjectName = "Sin proyecto";
+    private string _projectSearchText = "";
+    
+    private string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (_searchText != value)
+            {
+                _searchText = value;
+                DebounceSearch();
+            }
+        }
+    }
+
+    private void ToggleMobileSearch()
+    {
+        _showMobileSearch = !_showMobileSearch;
+    }
+
+    private void HandleMobileSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            _showMobileSearch = false;
+            _searchText = "";
+        }
+    }
+
+    private async Task ToggleFullScreen()
+    {
+        _isFullScreen = !_isFullScreen;
+        await JS.InvokeVoidAsync("eval", @"
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error('Error attempting to enable fullscreen:', err);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        ");
+    }
+    
+    private IEnumerable<ProjectListDto> FilteredProjects
+    {
+        get
+        {
+            if (_projects == null) return Enumerable.Empty<ProjectListDto>();
+            
+            if (string.IsNullOrWhiteSpace(_projectSearchText))
+                return _projects;
+            
+            var searchTerm = _projectSearchText.ToLower();
+            return _projects.Where(p => 
+                p.Name.ToLower().Contains(searchTerm) || 
+                p.Code.ToLower().Contains(searchTerm));
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProjects();
+    }
+
+    private async Task LoadProjects()
+    {
+        try
+        {
+            _loadingProjects = true;
+            var result = await ProjectService.GetProjectsAsync();
+            if (result != null && result.Items != null)
+            {
+                _projects = result.Items.ToList();
+                Logger.LogDebug($"Loaded {_projects.Count} projects");
+                
+                // Select first project if available
+                if (_projects.Any() && !_selectedProjectId.HasValue)
+                {
+                    var firstProject = _projects.First();
+                    await SelectProject(firstProject);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading projects");
+        }
+        finally
+        {
+            _loadingProjects = false;
+        }
+    }
+
+    private async Task SelectProject(ProjectListDto project)
+    {
+        _selectedProjectId = project.Id;
+        _selectedProjectName = project.Name;
+        
+        // Store selected project in local storage
+        await JS.InvokeVoidAsync("localStorage.setItem", "selectedProjectId", project.Id.ToString());
+        await JS.InvokeVoidAsync("localStorage.setItem", "selectedProjectName", project.Name);
+        
+        Logger.LogInfo($"Selected project: {project.Name} ({project.Id})");
+        
+        // Notify parent component about project change
+        if (OnProjectChanged.HasDelegate)
+        {
+            await OnProjectChanged.InvokeAsync(project.Id);
+        }
+        
+        StateHasChanged();
+    }
+    
+    private void NavigateTo(string url)
+    {
+        Navigation.NavigateTo(url);
+    }
+    
+    private string GetUserInitials()
+    {
+        if (string.IsNullOrEmpty(UserName))
+            return "U";
+        
+        var parts = UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        
+        return UserName.Substring(0, Math.Min(2, UserName.Length)).ToUpper();
+    }
+    
+    private void DebounceSearch()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Dispose();
+        
+        _debounceTimer = new System.Timers.Timer(300); // 300ms debounce
+        _debounceTimer.Elapsed += async (sender, e) =>
+        {
+            _debounceTimer?.Dispose();
+            if (OnSearchChanged.HasDelegate && !string.IsNullOrWhiteSpace(_searchText))
+            {
+                await InvokeAsync(async () =>
+                {
+                    await OnSearchChanged.InvokeAsync(_searchText);
+                });
+            }
+        };
+        _debounceTimer.AutoReset = false;
+        _debounceTimer.Start();
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Load saved project from local storage
+            try
+            {
+                var savedProjectId = await JS.InvokeAsync<string>("localStorage.getItem", "selectedProjectId");
+                var savedProjectName = await JS.InvokeAsync<string>("localStorage.getItem", "selectedProjectName");
+                
+                if (!string.IsNullOrEmpty(savedProjectId) && Guid.TryParse(savedProjectId, out var projectId))
+                {
+                    _selectedProjectId = projectId;
+                    _selectedProjectName = savedProjectName ?? "Sin proyecto";
+                    StateHasChanged();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading saved project from local storage");
+            }
+            
+            // Listen for fullscreen changes
+            await JS.InvokeVoidAsync("eval", @"
+                document.addEventListener('fullscreenchange', () => {
+                    DotNet.invokeMethodAsync('Web', 'OnFullScreenChange', !!document.fullscreenElement);
+                });
+            ");
+        }
+    }
+    
+    [JSInvokable]
+    public static Task OnFullScreenChange(bool isFullScreen)
+    {
+        // This would need to be handled with a more complex pattern for instance methods
+        return Task.CompletedTask;
+    }
+    
+    public void Dispose()
+    {
+        _debounceTimer?.Dispose();
+    }
+}

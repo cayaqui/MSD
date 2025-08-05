@@ -1,7 +1,8 @@
 ﻿using Application.Common.Exceptions;
-using Application.Interfaces.Auth;
-using Domain.Entities.Projects;
+using Core.Constants;
 using InvalidOperationException = Application.Common.Exceptions.InvalidOperationException;
+using Core.DTOs.Auth.ProjectTeamMembers;
+using Application.Interfaces.Auth;
 
 namespace Application.Services.Auth;
 
@@ -133,7 +134,7 @@ public class ProjectTeamMemberService : IProjectTeamMemberService
             existingMember.IsActive = true;
             existingMember.Role = dto.Role;
             existingMember.AllocationPercentage = dto.AllocationPercentage;
-            existingMember.StartDate = dto.StartDate ?? DateTime.UtcNow;
+            existingMember.StartDate = dto.StartDate;
             existingMember.EndDate = dto.EndDate;
             existingMember.UpdatedAt = DateTime.UtcNow;
             existingMember.UpdatedBy = _currentUserService.UserId;
@@ -146,13 +147,10 @@ public class ProjectTeamMemberService : IProjectTeamMemberService
         }
 
         // Validate allocation
-        if (dto.AllocationPercentage.HasValue)
+        var currentAllocation = await GetUserTotalAllocationAsync(dto.UserId, dto.StartDate);
+        if (currentAllocation + dto.AllocationPercentage > 100)
         {
-            var currentAllocation = await GetUserTotalAllocationAsync(dto.UserId, dto.StartDate ?? DateTime.UtcNow);
-            if (currentAllocation + dto.AllocationPercentage.Value > 100)
-            {
-                throw new BadRequestException($"User allocation would exceed 100%. Current allocation: {currentAllocation}%");
-            }
+            throw new BadRequestException($"User allocation would exceed 100%. Current allocation: {currentAllocation}%");
         }
 
         // Create new member
@@ -160,7 +158,7 @@ public class ProjectTeamMemberService : IProjectTeamMemberService
             projectId,
             dto.UserId,
             dto.Role,
-            dto.StartDate ?? DateTime.UtcNow)
+            dto.StartDate)
         {
             AllocationPercentage = dto.AllocationPercentage,
             EndDate = dto.EndDate,
@@ -294,26 +292,18 @@ public class ProjectTeamMemberService : IProjectTeamMemberService
 
         var assignedCount = 0;
 
-        foreach (var userDto in dto.Users)
+        foreach (var assignment in dto.Assignments)
         {
             try
             {
-                var assignDto = new AssignProjectTeamMemberDto
-                {
-                    UserId = userDto.UserId,
-                    Role = userDto.Role,
-                    AllocationPercentage = userDto.AllocationPercentage,
-                    StartDate = userDto.StartDate,
-                    EndDate = userDto.EndDate
-                };
-
-                await CreateAsync(dto.ProjectId, assignDto);
+                assignment.ProjectId = dto.ProjectId; // Ensure project ID is set
+                await CreateAsync(dto.ProjectId, assignment);
                 assignedCount++;
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to assign user {UserId} to project {ProjectId}",
-                    userDto.UserId, dto.ProjectId);
+                    assignment.UserId, dto.ProjectId);
             }
         }
 

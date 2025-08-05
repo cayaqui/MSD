@@ -7,12 +7,23 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="DTOs\Docs\" />
-    <Folder Include="DTOs\Reports\Nine\" />
-    <Folder Include="DTOs\Risk\" />
-    <Folder Include="Enums\Docs\" />
-    <Folder Include="Enums\Reports\" />
-    <Folder Include="Enums\Setup\" />
+    <Compile Remove="DTOs\Auth\ProjectTeamMember\**" />
+    <Compile Remove="DTOs\Auth\UserProjectPermission\**" />
+    <Compile Remove="DTOs\Auth\User\**" />
+    <Compile Remove="DTOs\Security\Roles\**" />
+    <EmbeddedResource Remove="DTOs\Auth\ProjectTeamMember\**" />
+    <EmbeddedResource Remove="DTOs\Auth\UserProjectPermission\**" />
+    <EmbeddedResource Remove="DTOs\Auth\User\**" />
+    <EmbeddedResource Remove="DTOs\Security\Roles\**" />
+    <None Remove="DTOs\Auth\ProjectTeamMember\**" />
+    <None Remove="DTOs\Auth\UserProjectPermission\**" />
+    <None Remove="DTOs\Auth\User\**" />
+    <None Remove="DTOs\Security\Roles\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="DTOs\Auth\Permissions\" />
+    <Folder Include="DTOs\Companies\" />
   </ItemGroup>
 
 </Project>

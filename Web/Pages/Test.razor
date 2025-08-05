@@ -1,0 +1,53 @@
+@page "/test"
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
+@inject ILoggingService Logger
+
+<PageTitle>Test Page</PageTitle>
+
+<div class="container mt-5">
+    <h1>Test Page</h1>
+    <p>If you can see this page, Blazor is working correctly!</p>
+    
+    <div class="mt-4">
+        <h3>Current Time: @currentTime</h3>
+        <button class="btn btn-primary" @onclick="UpdateTime">Update Time</button>
+    </div>
+    
+    <div class="mt-4">
+        <h3>Logs:</h3>
+        <button class="btn btn-info" @onclick="LogInfo">Log Info</button>
+        <button class="btn btn-warning" @onclick="LogWarning">Log Warning</button>
+        <button class="btn btn-danger" @onclick="LogError">Log Error</button>
+    </div>
+</div>
+
+@code {
+    private string currentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+    protected override void OnInitialized()
+    {
+        Logger.LogInfo("Test page initialized");
+    }
+
+    private void UpdateTime()
+    {
+        currentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        Logger.LogDebug("Time updated to: {0}", currentTime);
+    }
+
+    private void LogInfo()
+    {
+        Logger.LogInfo("Info button clicked at {0}", DateTime.Now);
+    }
+
+    private void LogWarning()
+    {
+        Logger.LogWarning("Warning button clicked at {0}", DateTime.Now);
+    }
+
+    private void LogError()
+    {
+        Logger.LogError("Error button clicked at {0}", DateTime.Now);
+    }
+}

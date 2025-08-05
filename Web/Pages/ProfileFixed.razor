@@ -1,0 +1,297 @@
+@page "/profile-fixed"
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using Core.DTOs.Auth.Users
+@inject IApiService ApiService
+@inject ILoggingService Logger
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Mi Perfil - EzPro MSD</PageTitle>
+
+<CascadingValue Value="this">
+    <div class="fade-in">
+        @if (_isLoading)
+        {
+            <MudContainer>
+                <MudCard>
+                    <MudCardContent Class="text-center pa-8">
+                        <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" Class="mb-4" />
+                        <MudText Typo="Typo.h6">Cargando perfil...</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudContainer>
+        }
+        else if (!_isAuthenticated)
+        {
+            <MudContainer>
+                <MudAlert Severity="Severity.Warning">
+                    No estás autenticado. Por favor inicia sesión.
+                    <MudButton Color="Color.Primary" Href="authentication/login" Class="ml-2">
+                        Iniciar Sesión
+                    </MudButton>
+                </MudAlert>
+            </MudContainer>
+        }
+        else
+        {
+            <!-- Page Header -->
+            <MudGrid Class="mb-4">
+                <MudItem xs="12">
+                    <MudText Typo="Typo.h4" Class="mb-1" Style="font-weight: 700;">
+                        Mi Perfil
+                    </MudText>
+                </MudItem>
+            </MudGrid>
+
+            <MudGrid>
+                <!-- Profile Card -->
+                <MudItem xs="12" md="4">
+                    <MudCard>
+                        <MudCardContent Class="text-center pa-6">
+                            <!-- Avatar -->
+                            <MudAvatar Size="Size.Large" Style="width: 120px; height: 120px; margin: 0 auto 1rem;">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Large" />
+                            </MudAvatar>
+                            
+                            <!-- User Name -->
+                            <MudText Typo="Typo.h5" Class="mb-1" Style="font-weight: 600;">
+                                @_userName
+                            </MudText>
+                            
+                            <!-- User Email -->
+                            <MudChip T="string" Icon="@Icons.Material.Filled.Email" Color="Color.Primary" Variant="Variant.Text">
+                                @_userEmail
+                            </MudChip>
+                            
+                            @if (_lastSyncTime != null)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Default" Class="mt-2">
+                                    <MudIcon Icon="@Icons.Material.Filled.CloudDone" Size="Size.Small" Class="me-1" />
+                                    Última sincronización: @_lastSyncTime.Value.ToString("dd/MM/yyyy HH:mm")
+                                </MudText>
+                            }
+                            
+                            <MudDivider Class="my-4" />
+                            
+                            <!-- Actions -->
+                            <MudStack Spacing="2">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Sync" 
+                                          FullWidth="true" OnClick="SyncWithEntraId" Disabled="@_isSyncing">
+                                    @if (_isSyncing)
+                                    {
+                                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                        <span class="ms-2">Sincronizando...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Sincronizar con Entra ID</span>
+                                    }
+                                </MudButton>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+
+                <!-- Profile Information -->
+                <MudItem xs="12" md="8">
+                    <MudCard>
+                        <MudCardContent>
+                            <MudText Typo="Typo.h6" Style="font-weight: 600;" Class="mb-4">
+                                Información Personal
+                            </MudText>
+
+                            <MudGrid>
+                                <MudItem xs="12" sm="6">
+                                    <div class="profile-field mb-4">
+                                        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-1">
+                                            Nombre Completo
+                                        </MudText>
+                                        <MudText Typo="Typo.body1">
+                                            @_userName
+                                        </MudText>
+                                    </div>
+                                </MudItem>
+                                
+                                <MudItem xs="12" sm="6">
+                                    <div class="profile-field mb-4">
+                                        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-1">
+                                            Correo Electrónico
+                                        </MudText>
+                                        <MudText Typo="Typo.body1">
+                                            @_userEmail
+                                        </MudText>
+                                    </div>
+                                </MudItem>
+                                
+                                <MudItem xs="12" sm="6">
+                                    <div class="profile-field mb-4">
+                                        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-1">
+                                            Cargo
+                                        </MudText>
+                                        <MudText Typo="Typo.body1">
+                                            @(_userRole ?? "No especificado")
+                                        </MudText>
+                                    </div>
+                                </MudItem>
+                                
+                                <MudItem xs="12" sm="6">
+                                    <div class="profile-field mb-4">
+                                        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-1">
+                                            Departamento
+                                        </MudText>
+                                        <MudText Typo="Typo.body1">
+                                            @(_department ?? "No especificado")
+                                        </MudText>
+                                    </div>
+                                </MudItem>
+                            </MudGrid>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            </MudGrid>
+        }
+    </div>
+</CascadingValue>
+
+<style>
+    .profile-field {
+        padding: 0.5rem 0;
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+@code {
+    private bool _isLoading = true;
+    private bool _isAuthenticated = false;
+    private UserDto? _currentUser;
+    private string _userName = "Usuario";
+    private string _userEmail = "usuario@empresa.com";
+    private string? _userRole;
+    private string? _department;
+    private bool _isSyncing = false;
+    private DateTime? _lastSyncTime = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await JS.InvokeVoidAsync("console.log", "[ProfileFixed] OnInitializedAsync started");
+        
+        try
+        {
+            // Obtener el estado de autenticación una sola vez
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            _isAuthenticated = authState.User?.Identity?.IsAuthenticated == true;
+            
+            await JS.InvokeVoidAsync("console.log", "[ProfileFixed] IsAuthenticated:", _isAuthenticated);
+            
+            if (_isAuthenticated)
+            {
+                _userName = authState.User.Identity?.Name ?? "Usuario";
+                
+                // Obtener el email del claim
+                var emailClaim = authState.User.FindFirst(c => c.Type.Contains("email") || c.Type == "preferred_username");
+                _userEmail = emailClaim?.Value ?? "usuario@empresa.com";
+                
+                // Intentar cargar información adicional del usuario
+                await LoadUserFromApi();
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "[ProfileFixed] Error:", ex.Message);
+            Logger.LogError(ex, "Error al inicializar el perfil");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadUserFromApi()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("console.log", "[ProfileFixed] Loading user from API...");
+            _currentUser = await ApiService.GetAsync<UserDto>("api/auth/me");
+            
+            if (_currentUser != null)
+            {
+                await JS.InvokeVoidAsync("console.log", "[ProfileFixed] User loaded:", _currentUser.DisplayName);
+                
+                // Actualizar información del usuario
+                _userName = _currentUser.DisplayName;
+                _userEmail = _currentUser.Email;
+                _userRole = _currentUser.JobTitle;
+                _department = _currentUser.Department;
+                
+                if (_currentUser.LastLoginAt != null)
+                {
+                    _lastSyncTime = _currentUser.LastLoginAt;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "[ProfileFixed] Error loading user:", ex.Message);
+            // No es crítico si falla la carga del API
+        }
+    }
+
+    private async Task SyncWithEntraId()
+    {
+        try
+        {
+            _isSyncing = true;
+            StateHasChanged();
+            
+            await JS.InvokeVoidAsync("console.log", "[ProfileFixed] Starting sync with Entra ID");
+            
+            var syncedUser = await ApiService.PostAsync<object, UserDto>("api/auth/sync", new { });
+            
+            if (syncedUser != null)
+            {
+                await JS.InvokeVoidAsync("console.log", "[ProfileFixed] Sync successful:", syncedUser.DisplayName);
+                _currentUser = syncedUser;
+                
+                // Actualizar la información mostrada
+                _userName = syncedUser.DisplayName;
+                _userEmail = syncedUser.Email;
+                _userRole = syncedUser.JobTitle;
+                _department = syncedUser.Department;
+                _lastSyncTime = DateTime.Now;
+                
+                Logger.LogInfo("Perfil sincronizado exitosamente con Entra ID");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("console.log", "[ProfileFixed] Sync returned no data");
+                Logger.LogWarning("La sincronización no devolvió datos");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "[ProfileFixed] Sync error:", ex.Message);
+            Logger.LogError(ex, "Error durante la sincronización con Entra ID");
+        }
+        finally
+        {
+            _isSyncing = false;
+            StateHasChanged();
+        }
+    }
+}

@@ -1,4 +1,4 @@
-﻿using Core.DTOs.WBS;
+﻿using Core.DTOs.Projects.WBSElement;
 using Core.Enums.Projects;
 using FluentValidation;
 

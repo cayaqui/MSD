@@ -1,0 +1,622 @@
+/* YNEX Theme Styles for EzPro MSD */
+
+:root {
+    /* Primary Colors */
+    --ynex-primary: #6366f1;
+    --ynex-primary-rgb: 99, 102, 241;
+    --ynex-primary-hover: #4f46e5;
+    --ynex-primary-light: rgba(99, 102, 241, 0.1);
+    
+    /* Secondary Colors */
+    --ynex-secondary: #ec4899;
+    --ynex-info: #0ea5e9;
+    --ynex-success: #22c55e;
+    --ynex-warning: #f59e0b;
+    --ynex-danger: #ef4444;
+    
+    /* Neutral Colors */
+    --ynex-dark: #0f172a;
+    --ynex-gray-900: #111827;
+    --ynex-gray-800: #1f2937;
+    --ynex-gray-700: #374151;
+    --ynex-gray-600: #4b5563;
+    --ynex-gray-500: #6b7280;
+    --ynex-gray-400: #9ca3af;
+    --ynex-gray-300: #d1d5db;
+    --ynex-gray-200: #e5e7eb;
+    --ynex-gray-100: #f3f4f6;
+    --ynex-gray-50: #f9fafb;
+    --ynex-white: #ffffff;
+    
+    /* Backgrounds */
+    --ynex-body-bg: #f3f4f6;
+    --ynex-card-bg: #ffffff;
+    --ynex-sidebar-bg: #ffffff;
+    --ynex-header-bg: #ffffff;
+    
+    /* Borders */
+    --ynex-border-color: rgba(0, 0, 0, 0.06);
+    --ynex-border-radius: 0.5rem;
+    --ynex-border-radius-lg: 0.75rem;
+    
+    /* Shadows */
+    --ynex-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --ynex-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --ynex-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --ynex-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    
+    /* Typography */
+    --ynex-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    --ynex-font-size-base: 0.875rem;
+    --ynex-line-height: 1.5;
+    
+    /* Transitions */
+    --ynex-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --ynex-transition-fast: all 0.15s ease-in-out;
+}
+
+/* Dark Theme Variables */
+[data-theme="dark"] {
+    --ynex-body-bg: #0f172a;
+    --ynex-card-bg: #1e293b;
+    --ynex-sidebar-bg: #1e293b;
+    --ynex-header-bg: #1e293b;
+    --ynex-border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Global Styles */
+body {
+    font-family: var(--ynex-font-family);
+    font-size: var(--ynex-font-size-base);
+    line-height: var(--ynex-line-height);
+    color: var(--ynex-gray-700);
+    background-color: var(--ynex-body-bg);
+}
+
+/* MudBlazor Overrides */
+.mud-drawer {
+    border: none !important;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05) !important;
+}
+
+.mud-drawer-content {
+    background-color: var(--ynex-sidebar-bg) !important;
+}
+
+.mud-appbar {
+    background-color: var(--ynex-header-bg) !important;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05) !important;
+    border-bottom: 1px solid var(--ynex-border-color);
+}
+
+/* Sidebar Styles */
+.ezpro-sidebar {
+    background-color: var(--ynex-sidebar-bg);
+}
+
+.sidebar-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--ynex-border-color);
+}
+
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ynex-primary);
+    text-decoration: none;
+}
+
+.sidebar-logo svg {
+    width: 32px;
+    height: 32px;
+    margin-right: 0.75rem;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+    padding: 1rem 0;
+}
+
+.nav-section {
+    margin-bottom: 1.5rem;
+}
+
+.nav-section-title {
+    padding: 0.5rem 1.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ynex-gray-500);
+}
+
+.nav-item {
+    margin-bottom: 0.25rem;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    color: var(--ynex-gray-700);
+    text-decoration: none;
+    transition: var(--ynex-transition-fast);
+    position: relative;
+}
+
+.nav-link:hover {
+    background-color: var(--ynex-primary-light);
+    color: var(--ynex-primary);
+}
+
+.nav-link.active {
+    background-color: var(--ynex-primary-light);
+    color: var(--ynex-primary);
+    font-weight: 600;
+}
+
+.nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: var(--ynex-primary);
+}
+
+.nav-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+}
+
+.nav-badge {
+    margin-left: auto;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: var(--ynex-danger);
+    color: white;
+    border-radius: 9999px;
+}
+
+/* Header Styles */
+.ezpro-header .header-content {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0 1.5rem;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Search Box */
+.search-box {
+    max-width: 400px;
+    width: 100%;
+    margin-left: 1rem;
+}
+
+.search-box .mud-input-root {
+    background-color: var(--ynex-gray-100);
+    border: 1px solid transparent;
+    border-radius: var(--ynex-border-radius);
+    transition: var(--ynex-transition-fast);
+}
+
+.search-box .mud-input-root:hover {
+    background-color: var(--ynex-gray-200);
+}
+
+.search-box .mud-input-root.mud-focused {
+    background-color: white;
+    border-color: var(--ynex-primary);
+    box-shadow: 0 0 0 3px var(--ynex-primary-light);
+}
+
+/* Card Styles */
+.mud-card {
+    border-radius: var(--ynex-border-radius-lg) !important;
+    border: 1px solid var(--ynex-border-color) !important;
+    box-shadow: var(--ynex-shadow) !important;
+    transition: var(--ynex-transition);
+}
+
+.mud-card:hover {
+    box-shadow: var(--ynex-shadow-lg) !important;
+}
+
+.stat-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, var(--ynex-primary-light) 0%, transparent 70%);
+    opacity: 0.3;
+}
+
+/* Button Styles */
+.mud-button {
+    border-radius: var(--ynex-border-radius) !important;
+    font-weight: 600 !important;
+    text-transform: none !important;
+    transition: var(--ynex-transition-fast) !important;
+}
+
+.mud-button-filled-primary {
+    background-color: var(--ynex-primary) !important;
+}
+
+.mud-button-filled-primary:hover {
+    background-color: var(--ynex-primary-hover) !important;
+    transform: translateY(-1px);
+    box-shadow: var(--ynex-shadow-md) !important;
+}
+
+/* User Menu */
+.user-menu-button {
+    border-radius: var(--ynex-border-radius) !important;
+    padding: 0.5rem 1rem !important;
+    background-color: var(--ynex-gray-100) !important;
+    color: var(--ynex-gray-700) !important;
+    transition: var(--ynex-transition-fast) !important;
+}
+
+.user-menu-button:hover {
+    background-color: var(--ynex-gray-200) !important;
+}
+
+.user-name {
+    font-weight: 600;
+    color: var(--ynex-gray-900);
+}
+
+/* Icon Buttons */
+.mud-icon-button {
+    transition: var(--ynex-transition-fast) !important;
+}
+
+.mud-icon-button:hover {
+    background-color: var(--ynex-gray-100) !important;
+    transform: scale(1.1);
+}
+
+/* Badges */
+.mud-badge-dot {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Table Styles */
+.mud-table {
+    border-radius: var(--ynex-border-radius-lg) !important;
+    overflow: hidden;
+}
+
+.mud-table-head {
+    background-color: var(--ynex-gray-50) !important;
+}
+
+.mud-table-head th {
+    font-weight: 600 !important;
+    color: var(--ynex-gray-700) !important;
+    border-bottom: 2px solid var(--ynex-border-color) !important;
+}
+
+.mud-table-row:hover {
+    background-color: var(--ynex-gray-50) !important;
+}
+
+/* Progress Bar */
+.mud-progress-linear {
+    height: 6px !important;
+    border-radius: 3px !important;
+    background-color: var(--ynex-gray-200) !important;
+}
+
+.mud-progress-linear .mud-progress-linear-bars {
+    border-radius: 3px !important;
+}
+
+/* Chip Styles */
+.mud-chip {
+    font-weight: 600 !important;
+    border-radius: var(--ynex-border-radius) !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--ynex-gray-100);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--ynex-gray-400);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--ynex-gray-500);
+}
+
+/* Animations */
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Additional MudBlazor Overrides for YNEX Style */
+.mud-main-content {
+    background-color: #f4f6f9 !important;
+    min-height: 100vh;
+}
+
+/* Table Borderless */
+.table-borderless.mud-simple-table thead tr th {
+    border: none !important;
+}
+
+.table-borderless.mud-simple-table tbody tr td {
+    border: none !important;
+}
+
+/* Logo Styles */
+.logo-text {
+    font-weight: 700;
+    font-size: 1.125rem;
+    margin-left: 0.75rem;
+    color: var(--ynex-primary);
+}
+
+/* Section Initial for Collapsed Sidebar */
+.section-initial {
+    font-weight: 600;
+    color: var(--ynex-gray-500);
+}
+
+/* Nav Link Styles */
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    color: var(--ynex-gray-700);
+    text-decoration: none;
+    transition: var(--ynex-transition-fast);
+    position: relative;
+    border-radius: var(--ynex-border-radius);
+    margin: 0 1rem 0.25rem 1rem;
+    cursor: pointer;
+}
+
+.mud-nav-link.nav-link {
+    border-radius: var(--ynex-border-radius);
+    margin: 0 1rem 0.25rem 1rem;
+    transition: var(--ynex-transition-fast);
+}
+
+.nav-link:hover,
+.mud-nav-link.nav-link:hover {
+    background-color: var(--ynex-primary-light) !important;
+    color: var(--ynex-primary);
+}
+
+.nav-link.active,
+.mud-nav-link.nav-link.active {
+    background-color: var(--ynex-primary-light) !important;
+    color: var(--ynex-primary);
+    font-weight: 600;
+    position: relative;
+}
+
+.nav-link.active::before,
+.mud-nav-link.nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 70%;
+    background-color: var(--ynex-primary);
+    border-radius: 0 3px 3px 0;
+}
+
+/* Expandable Menu Styles */
+.nav-link.expanded {
+    background-color: var(--ynex-gray-100);
+}
+
+.nav-sublink {
+    display: flex;
+    align-items: center;
+    padding: 0.625rem 1.5rem;
+    padding-left: 3.5rem;
+    color: var(--ynex-gray-600);
+    text-decoration: none;
+    transition: var(--ynex-transition-fast);
+    font-size: 0.875rem;
+}
+
+.nav-sublink:hover {
+    color: var(--ynex-primary);
+    background-color: var(--ynex-gray-50);
+}
+
+.nav-sublink.active {
+    color: var(--ynex-primary);
+    font-weight: 600;
+    background-color: var(--ynex-primary-light);
+}
+
+/* Icon Button Hover Effects */
+.mud-icon-button-label {
+    transition: var(--ynex-transition-fast) !important;
+}
+
+/* Search Input Styling */
+.search-input .mud-input-root {
+    font-size: 0.875rem !important;
+}
+
+.search-input .mud-input-root input {
+    padding: 0.5rem 0 !important;
+}
+
+/* Font Awesome Icon Styles */
+.nav-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: var(--ynex-gray-600);
+}
+
+.nav-link:hover .nav-icon,
+.nav-link.active .nav-icon {
+    color: var(--ynex-primary);
+}
+
+/* Dark Mode Adjustments */
+[data-theme="dark"] .nav-link {
+    color: var(--ynex-gray-300);
+}
+
+[data-theme="dark"] .nav-link:hover {
+    background-color: rgba(99, 102, 241, 0.1) !important;
+    color: var(--ynex-primary);
+}
+
+[data-theme="dark"] .nav-link.active {
+    background-color: rgba(99, 102, 241, 0.15) !important;
+}
+
+[data-theme="dark"] .nav-link.expanded {
+    background-color: var(--ynex-gray-800);
+}
+
+[data-theme="dark"] .nav-sublink {
+    color: var(--ynex-gray-400);
+}
+
+[data-theme="dark"] .nav-sublink:hover {
+    color: var(--ynex-primary);
+    background-color: var(--ynex-gray-800);
+}
+
+[data-theme="dark"] .nav-icon {
+    color: var(--ynex-gray-400);
+}
+
+[data-theme="dark"] .nav-link:hover .nav-icon,
+[data-theme="dark"] .nav-link.active .nav-icon {
+    color: var(--ynex-primary);
+}
+
+/* Sidebar Wrapper */
+.sidebar-wrapper {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem 0;
+    padding-bottom: 5rem; /* Space for footer */
+}
+
+/* Collapsed Sidebar Adjustments */
+.ezpro-sidebar.mud-drawer-persistent.mud-drawer-closed {
+    width: 70px !important;
+}
+
+.ezpro-sidebar.mud-drawer-persistent.mud-drawer-closed .nav-text,
+.ezpro-sidebar.mud-drawer-persistent.mud-drawer-closed .nav-section-title:not(.collapsed),
+.ezpro-sidebar.mud-drawer-persistent.mud-drawer-closed .nav-arrow,
+.ezpro-sidebar.mud-drawer-persistent.mud-drawer-closed .nav-badge,
+.ezpro-sidebar.mud-drawer-persistent.mud-drawer-closed .sidebar-footer {
+    display: none;
+}
+
+.ezpro-sidebar.mud-drawer-persistent.mud-drawer-closed .nav-link {
+    justify-content: center;
+    padding: 0.75rem;
+}
+
+.ezpro-sidebar.mud-drawer-persistent.mud-drawer-closed .nav-icon {
+    margin-right: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .search-box {
+        display: none;
+    }
+    
+    .header-content {
+        padding: 0 1rem;
+    }
+    
+    .stat-card .mud-card-content {
+        padding: 1rem !important;
+    }
+    
+    .sidebar-footer {
+        position: relative;
+    }
+}

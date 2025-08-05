@@ -1,157 +1,173 @@
-﻿using Domain.Entities.Cost;
+using Domain.Entities.Cost.Budget;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Infrastructure.Data.Configurations.Cost;
-
-/// <summary>
-/// Entity configuration for Budget
-/// </summary>
-public class BudgetConfiguration : IEntityTypeConfiguration<Budget>
+namespace Infrastructure.Data.Configurations.Cost
 {
-    public void Configure(EntityTypeBuilder<Budget> builder)
+    public class BudgetConfiguration : IEntityTypeConfiguration<Budget>
     {
-        // Table name and schema with check constraints
-        builder.ToTable("Budgets", "Cost", t =>
+        public void Configure(EntityTypeBuilder<Budget> builder)
         {
-            t.HasCheckConstraint("CK_Budgets_TotalAmount",
-                "[TotalAmount] >= 0");
-            t.HasCheckConstraint("CK_Budgets_ContingencyAmount",
-                "[ContingencyAmount] >= 0");
-            t.HasCheckConstraint("CK_Budgets_ManagementReserve",
-                "[ManagementReserve] >= 0");
-            t.HasCheckConstraint("CK_Budgets_ExchangeRate",
-                "[ExchangeRate] > 0");
-            t.HasCheckConstraint("CK_Budgets_BaselineDate",
-                "([IsBaseline] = 0 AND [BaselineDate] IS NULL) OR ([IsBaseline] = 1 AND [BaselineDate] IS NOT NULL)");
-            t.HasCheckConstraint("CK_Budgets_Approval",
-                "([Status] != 'Approved' AND [ApprovalDate] IS NULL AND [ApprovedBy] IS NULL) OR " +
-                "([Status] = 'Approved' AND [ApprovalDate] IS NOT NULL AND [ApprovedBy] IS NOT NULL)");
-        });
+            // Table name and schema
+            builder.ToTable("Budgets", "Cost");
 
-        // Primary key
-        builder.HasKey(b => b.Id);
+            // Primary key
+            builder.HasKey(b => b.Id);
 
-        // Indexes
-        builder.HasIndex(b => new { b.ProjectId, b.Version }).IsUnique();
-        builder.HasIndex(b => b.ProjectId);
-        builder.HasIndex(b => b.Status);
-        builder.HasIndex(b => b.Type);
-        builder.HasIndex(b => b.IsDeleted);
-        builder.HasIndex(b => new { b.IsBaseline, b.BaselineDate });
-        builder.HasIndex(b => b.SubmittedDate);
-        builder.HasIndex(b => b.ApprovalDate);
+            // Indexes
+            builder.HasIndex(b => b.ProjectId);
+            builder.HasIndex(b => b.Version);
+            builder.HasIndex(b => b.Status);
+            builder.HasIndex(b => b.Type);
+            builder.HasIndex(b => b.IsBaseline);
+            builder.HasIndex(b => b.IsDeleted);
+            builder.HasIndex(b => b.ParentBudgetId);
+            builder.HasIndex(b => new { b.ProjectId, b.Version }).IsUnique();
+            builder.HasIndex(b => new { b.ProjectId, b.Status });
+            builder.HasIndex(b => new { b.ProjectId, b.IsBaseline });
 
-        // Properties
-        builder.Property(b => b.Version)
-            .IsRequired()
-            .HasMaxLength(20);
+            // Basic Information
+            builder.Property(b => b.Version)
+                .IsRequired()
+                .HasMaxLength(20);
 
-        builder.Property(b => b.Name)
-            .IsRequired()
-            .HasMaxLength(256);
+            builder.Property(b => b.Name)
+                .IsRequired()
+                .HasMaxLength(200);
 
-        builder.Property(b => b.Description)
-            .HasMaxLength(1000);
+            builder.Property(b => b.Description)
+                .HasMaxLength(1000);
 
-        builder.Property(b => b.Status)
-            .IsRequired()
-            .HasConversion<string>()
-            .HasMaxLength(20);
+            // Status and Type
+            builder.Property(b => b.Status)
+                .IsRequired();
 
-        builder.Property(b => b.Type)
-            .IsRequired()
-            .HasConversion<string>()
-            .HasMaxLength(50);
+            builder.Property(b => b.Type)
+                .IsRequired();
 
-        builder.Property(b => b.IsBaseline)
-            .IsRequired()
-            .HasDefaultValue(false);
+            builder.Property(b => b.IsBaseline)
+                .IsRequired()
+                .HasDefaultValue(false);
 
-        builder.Property(b => b.BaselineDate);
+            builder.Property(b => b.IsLocked)
+                .IsRequired()
+                .HasDefaultValue(false);
 
-        builder.Property(b => b.Currency)
-            .IsRequired()
-            .HasMaxLength(3)
-            .HasDefaultValue("USD");
+            builder.Property(b => b.LockedBy)
+                .HasMaxLength(256);
 
-        builder.Property(b => b.ExchangeRate)
-            .HasPrecision(10, 6)
-            .IsRequired()
-            .HasDefaultValue(1.0m);
+            // Financial Information
+            builder.Property(b => b.Currency)
+                .IsRequired()
+                .HasMaxLength(3)
+                .HasDefaultValue("USD");
 
-        builder.Property(b => b.TotalAmount)
-            .HasPrecision(18, 2)
-            .IsRequired();
+            builder.Property(b => b.ExchangeRate)
+                .IsRequired()
+                .HasPrecision(18, 6)
+                .HasDefaultValue(1.0m);
 
-        builder.Property(b => b.ContingencyAmount)
-            .HasPrecision(18, 2)
-            .IsRequired()
-            .HasDefaultValue(0);
+            builder.Property(b => b.TotalAmount)
+                .IsRequired()
+                .HasPrecision(18, 2);
 
-        builder.Property(b => b.ManagementReserve)
-            .HasPrecision(18, 2)
-            .IsRequired()
-            .HasDefaultValue(0);
+            builder.Property(b => b.ContingencyAmount)
+                .IsRequired()
+                .HasPrecision(18, 2)
+                .HasDefaultValue(0);
 
-        // Computed columns for calculated fields
-        builder.Property(b => b.TotalBudget)
-            .HasComputedColumnSql("[TotalAmount] + [ContingencyAmount] + [ManagementReserve]", stored: false);
+            builder.Property(b => b.ContingencyPercentage)
+                .IsRequired()
+                .HasPrecision(5, 2)
+                .HasDefaultValue(0);
 
-        // Note: AllocatedAmount and UnallocatedAmount are calculated in code from BudgetItems
-        // These cannot be computed columns as they depend on related entities
+            builder.Property(b => b.ManagementReserve)
+                .IsRequired()
+                .HasPrecision(18, 2)
+                .HasDefaultValue(0);
 
-        // Submission Information
-        builder.Property(b => b.SubmittedDate);
+            builder.Property(b => b.ManagementReservePercentage)
+                .IsRequired()
+                .HasPrecision(5, 2)
+                .HasDefaultValue(0);
 
-        builder.Property(b => b.SubmittedBy)
-            .HasMaxLength(256);
+            // Approval Information
+            builder.Property(b => b.SubmittedBy)
+                .HasMaxLength(256);
 
-        // Approval Information
-        builder.Property(b => b.ApprovalDate);
+            builder.Property(b => b.ApprovedBy)
+                .HasMaxLength(256);
 
-        builder.Property(b => b.ApprovedBy)
-            .HasMaxLength(256);
+            builder.Property(b => b.ApprovalComments)
+                .HasMaxLength(2000);
 
-        builder.Property(b => b.ApprovalComments)
-            .HasMaxLength(2000);
+            // Revision Information
+            builder.Property(b => b.RevisionCount)
+                .IsRequired()
+                .HasDefaultValue(0);
 
-        // Audit properties
-        builder.Property(b => b.CreatedAt)
-            .IsRequired();
+            // Soft Delete
+            builder.Property(b => b.IsDeleted)
+                .IsRequired()
+                .HasDefaultValue(false);
 
-        builder.Property(b => b.CreatedBy)
-            .HasMaxLength(256);
+            builder.Property(b => b.DeletedBy)
+                .HasMaxLength(256);
 
-        builder.Property(b => b.UpdatedAt);
+            // Audit properties
+            builder.Property(b => b.CreatedAt)
+                .IsRequired();
 
-        builder.Property(b => b.UpdatedBy)
-            .HasMaxLength(256);
+            builder.Property(b => b.CreatedBy)
+                .HasMaxLength(256);
 
-        // Soft delete properties
-        builder.Property(b => b.DeletedAt);
+            builder.Property(b => b.UpdatedAt);
 
-        builder.Property(b => b.DeletedBy)
-            .HasMaxLength(256);
+            builder.Property(b => b.UpdatedBy)
+                .HasMaxLength(256);
 
-        // Foreign key relationships
-        builder.HasOne(b => b.Project)
-            .WithMany(p => p.Budgets)
-            .HasForeignKey(b => b.ProjectId)
-            .OnDelete(DeleteBehavior.Cascade);
+            // Relationships
+            builder.HasOne(b => b.Project)
+                .WithMany(p => p.Budgets)
+                .HasForeignKey(b => b.ProjectId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-        // Navigation properties
-        builder.HasMany(b => b.BudgetItems)
-            .WithOne(bi => bi.Budget)
-            .HasForeignKey(bi => bi.BudgetId)
-            .OnDelete(DeleteBehavior.Cascade);
+            builder.HasOne(b => b.ParentBudget)
+                .WithMany(pb => pb.ChildBudgets)
+                .HasForeignKey(b => b.ParentBudgetId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasMany(b => b.Revisions)
-            .WithOne(br => br.Budget)
-            .HasForeignKey(br => br.BudgetId)
-            .OnDelete(DeleteBehavior.Cascade);
+            builder.HasMany(b => b.BudgetItems)
+                .WithOne(bi => bi.Budget)
+                .HasForeignKey(bi => bi.BudgetId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-        // Global query filter for soft delete
-        builder.HasQueryFilter(b => !b.IsDeleted);
+            builder.HasMany(b => b.Revisions)
+                .WithOne(r => r.Budget)
+                .HasForeignKey(r => r.BudgetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Calculated properties (ignored)
+            builder.Ignore(b => b.TotalBudget);
+            builder.Ignore(b => b.AllocatedAmount);
+            builder.Ignore(b => b.UnallocatedAmount);
+            builder.Ignore(b => b.AllocationPercentage);
+            builder.Ignore(b => b.IsOverAllocated);
+            builder.Ignore(b => b.CanBeModified);
+
+            // Check constraints
+            builder.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_Budgets_TotalAmount", "[TotalAmount] >= 0");
+                t.HasCheckConstraint("CK_Budgets_ContingencyPercentage", 
+                    "[ContingencyPercentage] >= 0 AND [ContingencyPercentage] <= 100");
+                t.HasCheckConstraint("CK_Budgets_ManagementReservePercentage", 
+                    "[ManagementReservePercentage] >= 0 AND [ManagementReservePercentage] <= 100");
+                t.HasCheckConstraint("CK_Budgets_ExchangeRate", "[ExchangeRate] > 0");
+            });
+
+            // Global query filter for soft delete
+            builder.HasQueryFilter(b => !b.IsDeleted);
+        }
     }
 }

@@ -1,13 +1,9 @@
-﻿namespace Web.Services.Interfaces
-{
-    public interface ILoadingService
-    {
-        bool IsLoading { get; }
-        string? Message { get; }
-        event Action? OnChange;
+namespace Web.Services.Interfaces;
 
-        void Show(string? message = null);
-        void Hide();
-        IDisposable ShowScoped(string? message = null);
-    }
+public interface ILoadingService
+{
+    event Action<bool, string>? OnLoadingChanged;
+    
+    void Show(string message = "Loading...");
+    void Hide();
 }

@@ -1,0 +1,41 @@
+@page "/profile-noauth"
+@using MudBlazor
+@inject IJSRuntime JS
+
+<PageTitle>Profile Test - No Auth</PageTitle>
+
+<MudContainer>
+    <MudAlert Severity="Severity.Success">
+        ¡Esta página se está renderizando correctamente!
+        <br/>
+        URL: @Navigation.Uri
+        <br/>
+        Tiempo: @DateTime.Now.ToString("HH:mm:ss.fff")
+    </MudAlert>
+    
+    <MudCard Class="mt-4">
+        <MudCardContent>
+            <MudText Typo="Typo.h6">Información de diagnóstico:</MudText>
+            <MudText>Esta página NO requiere autenticación</MudText>
+            <MudText>Si puedes ver esto, el routing funciona correctamente</MudText>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await JS.InvokeVoidAsync("console.log", "[ProfileNoAuth] ✅ OnInitializedAsync ejecutado");
+        await JS.InvokeVoidAsync("console.log", "[ProfileNoAuth] Current URL:", Navigation.Uri);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("console.log", "[ProfileNoAuth] ✅ Página renderizada por primera vez");
+        }
+    }
+}

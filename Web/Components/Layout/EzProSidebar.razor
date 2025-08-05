@@ -1,0 +1,491 @@
+@using MudBlazor
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<MudDrawer @bind-Open="@IsOpen" 
+           Variant="@DrawerVariant" 
+           Anchor="Anchor.Start"
+           Width="@Width"
+           Class="ezpro-sidebar"
+           ClipMode="@DrawerClipMode.Never"
+           Elevation="0">
+    <div class="sidebar-wrapper">
+        <!-- Logo Section -->
+        <div class="sidebar-header">
+            <a href="/" class="sidebar-logo">
+                @if (IsCollapsed && !IsMobile)
+                {
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="32" height="32" rx="8" fill="currentColor" fill-opacity="0.1"/>
+                        <path d="M8 12L16 8L24 12V20L16 24L8 20V12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M16 8V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                }
+                else
+                {
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="32" height="32" rx="8" fill="currentColor" fill-opacity="0.1"/>
+                        <path d="M8 12L16 8L24 12V20L16 24L8 20V12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M16 8V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M8 12L16 16L24 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12 14V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M20 14V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <span class="logo-text">EzPro MSD</span>
+                }
+            </a>
+            @if (IsMobile)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Close" 
+                               Color="Color.Default" 
+                               OnClick="@(() => OnToggleClick.InvokeAsync())"
+                               Class="d-lg-none" />
+            }
+        </div>
+
+        <!-- Navigation -->
+        <nav class="sidebar-nav">
+            @foreach (var navSection in NavigationSections)
+            {
+                @if (!string.IsNullOrEmpty(navSection.Title))
+                {
+                    <div class="nav-section-title @(IsCollapsed && !IsMobile ? "collapsed" : "")">
+                        @if (IsCollapsed && !IsMobile)
+                        {
+                            <MudTooltip Text="@navSection.Title" Placement="Placement.Right">
+                                <span class="section-initial">@(navSection.Title.Substring(0, 1))</span>
+                            </MudTooltip>
+                        }
+                        else
+                        {
+                            <span>@navSection.Title</span>
+                        }
+                    </div>
+                }
+                
+                @foreach (var item in navSection.Items)
+                {
+                    @if (item.HasChildren)
+                    {
+                        <div class="nav-item-wrapper">
+                            @if (IsCollapsed && !IsMobile)
+                            {
+                                <MudTooltip Text="@item.Text" Placement="Placement.Right" Arrow="true">
+                                    <a href="javascript:void(0)" @onclick="() => ToggleExpanded(item)" 
+                                       class="nav-link @(IsActive(item.Href) ? "active" : "")">
+                                        <i class="@item.Icon nav-icon"></i>
+                                    </a>
+                                </MudTooltip>
+                            }
+                            else
+                            {
+                                <a href="javascript:void(0)" @onclick="() => ToggleExpanded(item)" 
+                                   class="nav-link @(IsActive(item.Href) || IsChildActive(item) ? "active" : "") @(item.IsExpanded ? "expanded" : "")">
+                                    <i class="@item.Icon nav-icon"></i>
+                                    <span class="nav-text">@item.Text</span>
+                                    @if (item.Badge != null)
+                                    {
+                                        <span class="nav-badge">@item.Badge</span>
+                                    }
+                                    <i class="fal fa-chevron-down nav-arrow @(item.IsExpanded ? "rotated" : "")"></i>
+                                </a>
+
+                                <div class="nav-submenu @(item.IsExpanded ? "expanded" : "collapsed")">
+                                    @foreach (var child in item.Children)
+                                    {
+                                        <a href="@child.Href" @onclick="@(() => NavigateToChild(child.Href))" @onclick:preventDefault="true"
+                                           class="nav-sublink @(IsActive(child.Href) ? "active" : "")">
+                                            <i class="@child.Icon nav-subicon"></i>
+                                            <span class="nav-text">@child.Text</span>
+                                            @if (child.Badge != null)
+                                            {
+                                                <span class="nav-badge">@child.Badge</span>
+                                            }
+                                        </a>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        @if (IsCollapsed && !IsMobile)
+                        {
+                            <MudTooltip Text="@item.Text" Placement="Placement.Right" Arrow="true">
+                                <a href="@item.Href" @onclick="@(() => NavigateTo(item.Href))" @onclick:preventDefault="true"
+                                   class="nav-link @(IsActive(item.Href) ? "active" : "")">
+                                    <i class="@item.Icon nav-icon"></i>
+                                </a>
+                            </MudTooltip>
+                        }
+                        else
+                        {
+                            <a href="@item.Href" @onclick="@(() => NavigateTo(item.Href))" @onclick:preventDefault="true"
+                               class="nav-link @(IsActive(item.Href) ? "active" : "")">
+                                <i class="@item.Icon nav-icon"></i>
+                                <span class="nav-text">@item.Text</span>
+                                @if (item.Badge != null)
+                                {
+                                    <span class="nav-badge">@item.Badge</span>
+                                }
+                            </a>
+                        }
+                    }
+                }
+            }
+        </nav>
+
+        <!-- Footer (Optional) -->
+        @if (!IsCollapsed || IsMobile)
+        {
+            <div class="sidebar-footer">
+                <a href="/profile" class="sidebar-user-link">
+                    <div class="sidebar-user">
+                        <MudAvatar Size="Size.Small" Color="Color.Primary">
+                            @GetUserInitials()
+                        </MudAvatar>
+                        <div class="user-info">
+                            <div class="user-name">@UserName</div>
+                            <div class="user-role">@UserRole</div>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" 
+                                 Size="Size.Small" 
+                                 Style="color: var(--ynex-gray-400);" />
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+</MudDrawer>
+
+<style>
+    .nav-item-wrapper {
+        position: relative;
+    }
+
+    .nav-arrow {
+        margin-left: auto;
+        transition: transform 0.3s ease;
+        font-size: 0.875rem;
+    }
+
+    .nav-arrow.rotated {
+        transform: rotate(180deg);
+    }
+
+    .nav-submenu {
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+    }
+
+    .nav-submenu.collapsed {
+        max-height: 0;
+    }
+
+    .nav-submenu.expanded {
+        max-height: 500px;
+    }
+
+    .nav-sublink {
+        padding-left: 3.5rem !important;
+        font-size: 0.875rem;
+    }
+
+    .nav-subicon {
+        font-size: 0.75rem;
+        width: 20px;
+        margin-right: 0.75rem;
+        opacity: 0.7;
+    }
+
+    .sidebar-footer {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 1rem;
+        border-top: 1px solid var(--ynex-border-color);
+        background-color: var(--ynex-sidebar-bg);
+    }
+
+    .sidebar-user-link {
+        display: block;
+        text-decoration: none;
+        border-radius: var(--ynex-border-radius);
+        transition: background-color 0.2s ease;
+    }
+
+    .sidebar-user-link:hover {
+        background-color: var(--ynex-gray-100);
+    }
+
+    .sidebar-user {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+    }
+
+    .user-info {
+        flex: 1;
+    }
+
+    .user-name {
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: var(--ynex-gray-900);
+    }
+
+    .user-role {
+        font-size: 0.75rem;
+        color: var(--ynex-gray-500);
+    }
+
+    /* Dark mode adjustments */
+    [data-theme="dark"] .user-name {
+        color: var(--ynex-gray-100);
+    }
+
+    [data-theme="dark"] .user-role {
+        color: var(--ynex-gray-400);
+    }
+</style>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; } = true;
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public bool IsCollapsed { get; set; }
+    [Parameter] public EventCallback<bool> IsCollapsedChanged { get; set; }
+    [Parameter] public bool IsMobile { get; set; }
+    [Parameter] public EventCallback OnToggleClick { get; set; }
+    [Parameter] public string UserName { get; set; } = "Usuario";
+    [Parameter] public string UserRole { get; set; } = "Rol";
+
+    private DrawerVariant DrawerVariant => IsMobile ? DrawerVariant.Temporary : DrawerVariant.Persistent;
+    private string Width => IsCollapsed && !IsMobile ? "70px" : "260px";
+    private DrawerClipMode DrawerClipMode => IsMobile ? DrawerClipMode.Always : DrawerClipMode.Never;
+
+    public class NavigationSection
+    {
+        public string Title { get; set; } = "";
+        public List<NavigationItem> Items { get; set; } = new();
+    }
+
+    public class NavigationItem
+    {
+        public string Text { get; set; } = "";
+        public string Href { get; set; } = "";
+        public string Icon { get; set; } = "";
+        public string? Badge { get; set; }
+        public NavLinkMatch Match { get; set; } = NavLinkMatch.Prefix;
+        public List<NavigationItem> Children { get; set; } = new();
+        public bool IsExpanded { get; set; }
+        public bool HasChildren => Children.Any();
+    }
+
+    private List<NavigationSection> NavigationSections = new()
+    {
+        new NavigationSection
+        {
+            Items = new()
+            {
+                new NavigationItem { Text = "Tablero", Href = "/home", Icon = "fal fa-home" }
+            }
+        },
+        new NavigationSection
+        {
+            Title = "Gestión de Proyectos",
+            Items = new()
+            {
+                new NavigationItem 
+                { 
+                    Text = "Proyectos", 
+                    Href = "/projects", 
+                    Icon = "fal fa-project-diagram",
+                    Children = new()
+                    {
+                        new NavigationItem { Text = "Proyectos Activos", Href = "/projects/active", Icon = "fal fa-circle-check" },
+                        new NavigationItem { Text = "Proyectos Archivados", Href = "/projects/archived", Icon = "fal fa-archive" },
+                        new NavigationItem { Text = "Crear Proyecto", Href = "/projects/new", Icon = "fal fa-plus-circle" }
+                    }
+                },
+                new NavigationItem 
+                { 
+                    Text = "Estructura de Trabajo", 
+                    Href = "/wbs", 
+                    Icon = "fal fa-sitemap",
+                    Children = new()
+                    {
+                        new NavigationItem { Text = "Editor EDT", Href = "/wbs/editor", Icon = "fal fa-edit" },
+                        new NavigationItem { Text = "Diccionario EDT", Href = "/wbs/dictionary", Icon = "fal fa-book" },
+                        new NavigationItem { Text = "Plantillas", Href = "/wbs/templates", Icon = "fal fa-layer-group" }
+                    }
+                },
+                new NavigationItem { Text = "Cronograma", Href = "/schedule", Icon = "fal fa-calendar-alt" },
+                new NavigationItem { Text = "Equipo de Trabajo", Href = "/team", Icon = "fal fa-users" }
+            }
+        },
+        new NavigationSection
+        {
+            Title = "Control de Costos",
+            Items = new()
+            {
+                new NavigationItem 
+                { 
+                    Text = "Presupuestos", 
+                    Href = "/budgets", 
+                    Icon = "fal fa-dollar-sign",
+                    Badge = "3",
+                    Children = new()
+                    {
+                        new NavigationItem { Text = "Resumen de Presupuesto", Href = "/budgets/overview", Icon = "fal fa-chart-pie" },
+                        new NavigationItem { Text = "Partidas Presupuestarias", Href = "/budgets/items", Icon = "fal fa-list" },
+                        new NavigationItem { Text = "Aprobaciones", Href = "/budgets/approvals", Icon = "fal fa-check-double", Badge = "3" }
+                    }
+                },
+                new NavigationItem 
+                { 
+                    Text = "Compromisos", 
+                    Href = "/commitments", 
+                    Icon = "fal fa-file-contract",
+                    Children = new()
+                    {
+                        new NavigationItem { Text = "Órdenes de Compra", Href = "/commitments/po", Icon = "fal fa-file-invoice" },
+                        new NavigationItem { Text = "Subcontratos", Href = "/commitments/subcontracts", Icon = "fal fa-handshake" },
+                        new NavigationItem { Text = "Órdenes de Cambio", Href = "/commitments/changes", Icon = "fal fa-exchange-alt" }
+                    }
+                },
+                new NavigationItem { Text = "Reportes de Costos", Href = "/costs", Icon = "fal fa-chart-line" },
+                new NavigationItem { Text = "Valor Ganado", Href = "/evm", Icon = "fal fa-analytics" }
+            }
+        },
+        new NavigationSection
+        {
+            Title = "Documentos y Reportes",
+            Items = new()
+            {
+                new NavigationItem 
+                { 
+                    Text = "Documentos", 
+                    Href = "/documents", 
+                    Icon = "fal fa-folder-open",
+                    Children = new()
+                    {
+                        new NavigationItem { Text = "Control de Documentos", Href = "/documents/control", Icon = "fal fa-file-check" },
+                        new NavigationItem { Text = "Transmitales", Href = "/documents/transmittals", Icon = "fal fa-paper-plane" },
+                        new NavigationItem { Text = "Solicitudes de Información", Href = "/documents/rfis", Icon = "fal fa-question-circle" }
+                    }
+                },
+                new NavigationItem { Text = "Reportes", Href = "/reports", Icon = "fal fa-chart-bar" },
+                new NavigationItem { Text = "Indicadores KPI", Href = "/kpis", Icon = "fal fa-tachometer-alt" }
+            }
+        },
+        new NavigationSection
+        {
+            Title = "Configuración",
+            Items = new()
+            {
+                new NavigationItem 
+                { 
+                    Text = "Organización", 
+                    Href = "/organization", 
+                    Icon = "fal fa-sitemap",
+                    Children = new()
+                    {
+                        new NavigationItem { Text = "Compañías", Href = "/companies", Icon = "fal fa-building" },
+                        new NavigationItem { Text = "Operaciones", Href = "/operations", Icon = "fal fa-network-wired" },
+                        new NavigationItem { Text = "Contratistas", Href = "/contractors", Icon = "fal fa-hard-hat" },
+                        new NavigationItem { Text = "Disciplinas", Href = "/disciplines", Icon = "fal fa-layer-group" }
+                    }
+                },
+                new NavigationItem 
+                { 
+                    Text = "Usuarios y Roles", 
+                    Href = "/users", 
+                    Icon = "fal fa-users-cog",
+                    Children = new()
+                    {
+                        new NavigationItem { Text = "Gestión de Usuarios", Href = "/users/manage", Icon = "fal fa-user-edit" },
+                        new NavigationItem { Text = "Roles y Permisos", Href = "/users/roles", Icon = "fal fa-shield-alt" },
+                        new NavigationItem { Text = "Registro de Auditoría", Href = "/users/audit", Icon = "fal fa-history" }
+                    }
+                },
+                new NavigationItem { Text = "Configuración", Href = "/settings", Icon = "fal fa-cog" }
+            }
+        }
+    };
+
+    private void ToggleExpanded(NavigationItem item)
+    {
+        if (!IsCollapsed || IsMobile)
+        {
+            item.IsExpanded = !item.IsExpanded;
+            StateHasChanged();
+        }
+    }
+
+    private bool IsActive(string href)
+    {
+        if (string.IsNullOrEmpty(href)) return false;
+        var currentPath = Navigation.Uri.Replace(Navigation.BaseUri, "/");
+        return currentPath.StartsWith(href);
+    }
+
+    private bool IsChildActive(NavigationItem parent)
+    {
+        return parent.Children.Any(child => IsActive(child.Href));
+    }
+
+    private void NavigateTo(string href)
+    {
+        if (!string.IsNullOrEmpty(href))
+        {
+            Navigation.NavigateTo(href);
+        }
+    }
+
+    private void NavigateToChild(string href)
+    {
+        if (!string.IsNullOrEmpty(href))
+        {
+            Navigation.NavigateTo(href);
+            // Keep parent expanded when navigating to child
+            StateHasChanged();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Auto-expand parent if child is active
+        foreach (var section in NavigationSections)
+        {
+            foreach (var item in section.Items.Where(x => x.HasChildren))
+            {
+                if (IsChildActive(item) && !item.IsExpanded)
+                {
+                    item.IsExpanded = true;
+                }
+            }
+        }
+    }
+
+    private string GetUserInitials()
+    {
+        if (string.IsNullOrEmpty(UserName))
+            return "U";
+            
+        var names = UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (names.Length >= 2)
+            return $"{names[0][0]}{names[1][0]}".ToUpper();
+        else if (names.Length == 1)
+            return names[0].Substring(0, Math.Min(2, names[0].Length)).ToUpper();
+        else
+            return "U";
+    }
+}

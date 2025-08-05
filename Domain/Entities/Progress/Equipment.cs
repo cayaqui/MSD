@@ -1,4 +1,6 @@
-﻿using Domain.Entities.Projects;
+﻿using Domain.Common;
+using Domain.Entities.Contracts.Core;
+using Domain.Entities.Organization.Core;
 
 namespace Domain.Entities.Progress;
 

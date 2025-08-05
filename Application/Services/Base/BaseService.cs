@@ -1,4 +1,5 @@
 ﻿using Application.Interfaces.Common;
+using Domain.Common;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Services.Base;
@@ -26,7 +27,13 @@ public abstract class BaseService<TEntity, TDto, TCreateDto, TUpdateDto> : IBase
     }
 
     #region Read Operations
+    public virtual async Task<IEnumerable<TDto>> GetQueryable()
+    {
+        var entities = await _unitOfWork.Repository<TEntity>()
+            .GetAllAsync(filter: GetBaseFilter());
+        return _mapper.Map<IEnumerable<TDto>>(entities);
 
+    }
     public virtual async Task<TDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var entity = await _unitOfWork.Repository<TEntity>().GetByIdAsync(id);
@@ -56,7 +63,7 @@ public abstract class BaseService<TEntity, TDto, TCreateDto, TUpdateDto> : IBase
 
         var dtos = _mapper.Map<IEnumerable<TDto>>(items);
 
-        return new PagedResult<TDto>(dtos.ToList(), pageNumber, pageSize);
+        return new PagedResult<TDto>(dtos, pageNumber, pageSize);
     }
 
     public virtual async Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default)

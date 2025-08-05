@@ -1,0 +1,256 @@
+@page "/profile-diagnostic"
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using Core.DTOs.Auth.Users
+@inject IAuthService AuthService
+@inject IApiService ApiService
+@inject ILoggingService Logger
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Profile Diagnostic</PageTitle>
+
+<MudContainer>
+    <MudCard>
+        <MudCardContent>
+            <MudText Typo="Typo.h5">Profile Diagnostic Page</MudText>
+            
+            <MudDivider Class="my-4" />
+            
+            <MudText Typo="Typo.h6">Estado del componente:</MudText>
+            <MudSimpleTable Class="mt-2">
+                <tbody>
+                    <tr>
+                        <td><strong>Página renderizada:</strong></td>
+                        <td><MudChip T="string" Color="Color.Success">Sí</MudChip></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Estado de carga:</strong></td>
+                        <td>@_loadingState</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Usuario autenticado:</strong></td>
+                        <td>
+                            @if (_isAuthenticated.HasValue)
+                            {
+                                @if (_isAuthenticated.Value)
+                                {
+                                    <MudChip T="string" Color="Color.Success">Sí</MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Color="Color.Error">No</MudChip>
+                                }
+                            }
+                            else
+                            {
+                                <MudChip T="string" Color="Color.Warning">Verificando...</MudChip>
+                            }
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Usuario cargado:</strong></td>
+                        <td>
+                            @if (_currentUser != null)
+                            {
+                                <MudChip T="string" Color="Color.Success">@_currentUser.DisplayName</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Color="Color.Warning">No cargado</MudChip>
+                            }
+                        </td>
+                    </tr>
+                </tbody>
+            </MudSimpleTable>
+            
+            @if (_currentUser != null)
+            {
+                <MudDivider Class="my-4" />
+                
+                <MudText Typo="Typo.h6">Información del usuario:</MudText>
+                <MudSimpleTable Class="mt-2">
+                    <tbody>
+                        <tr>
+                            <td><strong>Nombre:</strong></td>
+                            <td>@_currentUser.DisplayName</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Email:</strong></td>
+                            <td>@_currentUser.Email</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Cargo:</strong></td>
+                            <td>@(_currentUser.JobTitle ?? "No especificado")</td>
+                        </tr>
+                    </tbody>
+                </MudSimpleTable>
+                
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Sync" 
+                          OnClick="SyncWithEntraId" Disabled="@_isSyncing" Class="mt-4">
+                    @if (_isSyncing)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                        <span class="ms-2">Sincronizando...</span>
+                    }
+                    else
+                    {
+                        <span>Sincronizar con Entra ID</span>
+                    }
+                </MudButton>
+            }
+            
+            <MudDivider Class="my-4" />
+            
+            <MudText Typo="Typo.h6">Logs:</MudText>
+            <MudPaper Class="pa-4 mt-2" Style="background-color: #f5f5f5;">
+                @foreach (var log in _logs)
+                {
+                    <MudText Typo="Typo.caption" Style="font-family: monospace;">@log</MudText>
+                }
+            </MudPaper>
+            
+            <MudStack Row="true" Spacing="2" Class="mt-4">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="RefreshAuth">
+                    Refrescar Autenticación
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="LoadUserManually">
+                    Cargar Usuario Manualmente
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Info" Href="/auth-debug">
+                    Ir a Auth Debug
+                </MudButton>
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private bool? _isAuthenticated;
+    private UserDto? _currentUser;
+    private bool _isSyncing = false;
+    private string _loadingState = "Inicializando...";
+    private List<string> _logs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AddLog("OnInitializedAsync started");
+        _loadingState = "Verificando autenticación...";
+        
+        try
+        {
+            // Verificar autenticación sin causar ciclos
+            await Task.Delay(100); // Pequeña espera para asegurar que todo esté listo
+            AddLog("Calling IsAuthenticatedAsync...");
+            _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            AddLog($"IsAuthenticated result: {_isAuthenticated}");
+            
+            if (_isAuthenticated == true)
+            {
+                _loadingState = "Cargando usuario...";
+                StateHasChanged();
+                await LoadUserProfile();
+            }
+            else
+            {
+                _loadingState = "Usuario no autenticado";
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"ERROR in OnInitializedAsync: {ex.Message}");
+            _loadingState = $"Error: {ex.Message}";
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task LoadUserProfile()
+    {
+        AddLog("LoadUserProfile started");
+        try
+        {
+            _currentUser = await AuthService.GetCurrentUserAsync();
+            if (_currentUser != null)
+            {
+                AddLog($"User loaded successfully: {_currentUser.DisplayName}");
+                _loadingState = "Usuario cargado exitosamente";
+            }
+            else
+            {
+                AddLog("GetCurrentUserAsync returned null");
+                _loadingState = "No se pudo cargar el usuario";
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"ERROR loading user: {ex.Message}");
+            _loadingState = $"Error al cargar usuario: {ex.Message}";
+        }
+    }
+
+    private async Task SyncWithEntraId()
+    {
+        AddLog("SyncWithEntraId started");
+        _isSyncing = true;
+        StateHasChanged();
+        
+        try
+        {
+            var syncedUser = await ApiService.PostAsync<object, UserDto>("api/auth/sync", new { });
+            if (syncedUser != null)
+            {
+                AddLog($"Sync successful: {syncedUser.DisplayName}");
+                _currentUser = syncedUser;
+            }
+            else
+            {
+                AddLog("Sync returned null");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog($"ERROR during sync: {ex.Message}");
+        }
+        finally
+        {
+            _isSyncing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshAuth()
+    {
+        AddLog("RefreshAuth clicked");
+        _isAuthenticated = null;
+        _currentUser = null;
+        _loadingState = "Refrescando...";
+        StateHasChanged();
+        
+        await OnInitializedAsync();
+    }
+
+    private async Task LoadUserManually()
+    {
+        AddLog("LoadUserManually clicked");
+        _loadingState = "Cargando usuario manualmente...";
+        StateHasChanged();
+        
+        await LoadUserProfile();
+    }
+
+    private void AddLog(string message)
+    {
+        var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
+        _logs.Add($"[{timestamp}] {message}");
+        
+        // Mantener solo los últimos 20 logs
+        if (_logs.Count > 20)
+        {
+            _logs.RemoveAt(0);
+        }
+        
+        // También log a consola
+        _ = JS.InvokeVoidAsync("console.log", $"[ProfileDiagnostic] {message}");
+    }
+}

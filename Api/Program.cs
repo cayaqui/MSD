@@ -1,13 +1,15 @@
 ﻿using API.Middleware;
 using Application;
-using Application.Interfaces.Auth;
 using Application.Services.Auth;
 using Carter;
 using Domain.Interfaces;
 using Infrastructure;
+using Infrastructure.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Identity.Web;
 using Serilog;
+using Application.Interfaces.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,15 +37,33 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // Add Authorization
 builder.Services.AddAuthorization();
 
+// Add custom authorization handler for system admins
+builder.Services.AddScoped<IAuthorizationHandler, Api.Authorization.SystemAdminOrRoleHandler>();
+
 // Add CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("BlazorApp", policy =>
     {
-        policy.WithOrigins(builder.Configuration["ClientUrl"] ?? "https://localhost:5001")
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
+        if (builder.Environment.IsDevelopment())
+        {
+            // En desarrollo, permitir cualquier origen
+            policy.SetIsOriginAllowed(origin => true)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        }
+        else
+        {
+            // En producción, usar los orígenes configurados
+            var allowedOrigins = builder.Configuration.GetSection("CorsSettings:AllowedOrigins").Get<string[]>() 
+                                ?? new[] { "https://localhost:5001" };
+            
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        }
     });
 });
 
@@ -99,18 +119,6 @@ builder.Services.AddSwaggerGen(c =>
 // Add HttpContextAccessor
 builder.Services.AddHttpContextAccessor();
 
-// Configure CurrentUserService
-builder.Services.AddScoped<ICurrentUserService>(provider =>
-{
-    var httpContextAccessor = provider.GetRequiredService<IHttpContextAccessor>();
-    var unitOfWork = provider.GetRequiredService<IUnitOfWork>();
-
-    var userService = new CurrentUserService(unitOfWork);
-
-    // This will be populated by the middleware
-    return userService;
-});
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -125,6 +133,9 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+// Global exception handling - MUST be first to catch all errors
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
 app.UseHttpsRedirection();
 app.UseSerilogRequestLogging();
 app.UseCors("BlazorApp");
@@ -132,9 +143,9 @@ app.UseCors("BlazorApp");
 app.UseAuthentication();
 // Add custom middleware to populate CurrentUserService
 app.UseMiddleware<CurrentUserMiddleware>();
+// Validate that authenticated users exist in the database
+app.UseUserValidation();
 app.UseAuthorization();
-// Global exception handling
-app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 // Map Carter modules
 app.MapCarter();
@@ -143,7 +154,69 @@ app.MapCarter();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
    .AllowAnonymous();
 
+// Diagnostic endpoint
+app.MapGet("/api/diagnostics", (IServiceProvider services, IConfiguration config) => 
+{
+    Log.Information("Diagnostics endpoint called");
+    
+    var diagnostics = new
+    {
+        timestamp = DateTime.UtcNow,
+        environment = app.Environment.EnvironmentName,
+        authentication = new
+        {
+            scheme = config["AzureAd:Instance"] != null ? "AzureAD" : "None",
+            tenantId = config["AzureAd:TenantId"],
+            clientId = config["AzureAd:ClientId"],
+            hasClientSecret = !string.IsNullOrEmpty(config["AzureAd:ClientSecret"])
+        },
+        services = new
+        {
+            hasDbContext = services.GetService<Infrastructure.Data.ApplicationDbContext>() != null,
+            hasUnitOfWork = services.GetService<IUnitOfWork>() != null,
+            hasUserService = services.GetService<IUserService>() != null,
+            hasAuthService = services.GetService<IAuthService>() != null,
+            hasCurrentUserService = services.GetService<ICurrentUserService>() != null,
+            hasHttpContextAccessor = services.GetService<IHttpContextAccessor>() != null
+        },
+        cors = new
+        {
+            policy = "BlazorApp",
+            allowedOrigins = config.GetSection("CorsSettings:AllowedOrigins").Get<string[]>()
+        }
+    };
+    
+    return Results.Ok(diagnostics);
+})
+.AllowAnonymous()
+.WithName("Diagnostics");
 
+// Test endpoint to verify API is responding
+app.MapGet("/api/test", () => 
+{
+    Log.Information("Test endpoint called");
+    return Results.Ok(new { 
+        message = "API is working", 
+        timestamp = DateTime.UtcNow,
+        environment = app.Environment.EnvironmentName 
+    });
+})
+.AllowAnonymous()
+.WithName("TestEndpoint");
+
+// Test authenticated endpoint
+app.MapGet("/api/test/auth", (HttpContext context) => 
+{
+    Log.Information("Authenticated test endpoint called by {User}", context.User.Identity?.Name ?? "Anonymous");
+    return Results.Ok(new { 
+        message = "Authenticated endpoint working",
+        user = context.User.Identity?.Name,
+        isAuthenticated = context.User.Identity?.IsAuthenticated,
+        claims = context.User.Claims.Select(c => new { c.Type, c.Value })
+    });
+})
+.RequireAuthorization()
+.WithName("TestAuthEndpoint");
 
 Log.Information("Starting EzPro API");
 

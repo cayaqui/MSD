@@ -1,6 +1,9 @@
-﻿using Core.DTOs.Cost.Commitments;
+﻿using Core.DTOs.Common;
+using Core.DTOs.Cost.CommitmentItems;
+using Core.DTOs.Cost.Commitments;
+using Core.DTOs.Cost.CommitmentWorkPackage;
 
-namespace Application.Services.Interfaces;
+namespace Application.Interfaces.Cost;
 
 /// <summary>
 /// Service interface for Commitment management

@@ -1,4 +1,4 @@
-﻿namespace Application.Interfaces.Cost;
+﻿namespace Core.DTOs.EVM;
 
 /// <summary>
 /// Result of Nine Column Report validation

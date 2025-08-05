@@ -1,4 +1,10 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Application.Interfaces.Reports;
+using Application.Interfaces.Auth;
+using Application.Interfaces.Storage;
+using Infrastructure.Data;
+using Infrastructure.Services.Auth;
+using Infrastructure.Services.Storage;
+using Microsoft.Extensions.Logging;
 namespace Infrastructure;
 
 /// <summary>
@@ -38,6 +44,9 @@ public static class DependencyInjection
         });
 
 
+        // Register User Context for audit
+        services.AddScoped<IUserContext, UserContext>();
+
         // Register Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -52,6 +61,15 @@ public static class DependencyInjection
             config.AddConsole();
             config.AddDebug();
         });
+
+        // Register Auth services
+        services.AddScoped<IGraphApiService, GraphApiService>();
+        
+        // Register Report services
+        //services.AddScoped<IReportExportService, ReportExportService>();
+        
+        // Register Storage services
+        services.AddScoped<IBlobStorageService, AzureBlobStorageService>();
 
         return services;
     }

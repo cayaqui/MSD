@@ -1,0 +1,271 @@
+@page "/home"
+@using MudBlazor
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject ILoggingService Logger
+
+<PageTitle>Tablero - EzPro MSD</PageTitle>
+
+<div class="fade-in">
+    <!-- Page Header -->
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" md="8">
+            <MudText Typo="Typo.h4" Class="mb-1" Style="font-weight: 700; color: var(--ynex-gray-900);">
+                Tablero de Control de Proyectos
+            </MudText>
+            <MudBreadcrumbs Items="_breadcrumbs" Class="pa-0">
+                <SeparatorTemplate>
+                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+                </SeparatorTemplate>
+            </MudBreadcrumbs>
+        </MudItem>
+        <MudItem xs="12" md="4" Class="d-flex justify-end align-center">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Class="me-2">
+                Nuevo Proyecto
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FileDownload">
+                Exportar Reporte
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Stats Cards -->
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Class="stat-card">
+                <MudCardContent>
+                    <div class="d-flex justify-space-between align-center mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.BusinessCenter" Size="Size.Large" Style="color: var(--ynex-primary);" />
+                        <MudChip T="string" Text="12%" Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Color="Color.Success" Style="font-size: 0.75rem;" />
+                    </div>
+                    <MudText Typo="Typo.h4" Style="font-weight: 700; color: var(--ynex-gray-900);">15</MudText>
+                    <MudText Typo="Typo.body2" Style="color: var(--ynex-gray-600);">Proyectos Activos</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Class="stat-card">
+                <MudCardContent>
+                    <div class="d-flex justify-space-between align-center mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Large" Style="color: var(--ynex-success);" />
+                        <MudChip T="string" Text="8%" Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Color="Color.Success" Style="font-size: 0.75rem;" />
+                    </div>
+                    <MudText Typo="Typo.h4" Style="font-weight: 700; color: var(--ynex-gray-900);">248</MudText>
+                    <MudText Typo="Typo.body2" Style="color: var(--ynex-gray-600);">Miembros del Equipo</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Class="stat-card">
+                <MudCardContent>
+                    <div class="d-flex justify-space-between align-center mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Size="Size.Large" Style="color: var(--ynex-warning);" />
+                        <MudChip T="string" Text="3%" Icon="@Icons.Material.Filled.TrendingDown" Size="Size.Small" Color="Color.Error" Style="font-size: 0.75rem;" />
+                    </div>
+                    <MudText Typo="Typo.h4" Style="font-weight: 700; color: var(--ynex-gray-900);">$12.5M</MudText>
+                    <MudText Typo="Typo.body2" Style="color: var(--ynex-gray-600);">Presupuesto Total</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Class="stat-card">
+                <MudCardContent>
+                    <div class="d-flex justify-space-between align-center mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: var(--ynex-info);" />
+                        <MudChip T="string" Text="5%" Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Color="Color.Success" Style="font-size: 0.75rem;" />
+                    </div>
+                    <MudText Typo="Typo.h4" Style="font-weight: 700; color: var(--ynex-gray-900);">85%</MudText>
+                    <MudText Typo="Typo.body2" Style="color: var(--ynex-gray-600);">Progreso General</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Main Content -->
+    <MudGrid>
+        <!-- Recent Projects Table -->
+        <MudItem xs="12" md="8">
+            <MudCard>
+                <MudCardContent Class="pa-0">
+                    <div class="pa-4 pb-0">
+                        <div class="d-flex justify-space-between align-center mb-4">
+                            <MudText Typo="Typo.h6" Style="font-weight: 600;">Proyectos Recientes</MudText>
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" EndIcon="@Icons.Material.Filled.ArrowForward">
+                                Ver Todos
+                            </MudButton>
+                        </div>
+                    </div>
+                    
+                    <MudSimpleTable Hover="true" Dense="true" Elevation="0" Class="table-borderless">
+                        <thead>
+                            <tr>
+                                <th>Nombre del Proyecto</th>
+                                <th>Progreso</th>
+                                <th>Estado</th>
+                                <th>Fecha de Entrega</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var project in _projects)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-center">
+                                            <MudAvatar Size="Size.Small" Color="@GetProjectColor(project.Name)" Class="me-3">
+                                                @project.Name.Substring(0, 2).ToUpper()
+                                            </MudAvatar>
+                                            <div>
+                                                <MudText Typo="Typo.body2" Style="font-weight: 600;">@project.Name</MudText>
+                                                <MudText Typo="Typo.caption" Style="color: var(--ynex-gray-500);">@project.Category</MudText>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div style="min-width: 120px;">
+                                            <MudProgressLinear Color="@GetProgressColor(project.Progress)" Value="@project.Progress" Style="height: 6px;" Class="mb-1" />
+                                            <MudText Typo="Typo.caption" Style="color: var(--ynex-gray-600);">@project.Progress%</MudText>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <MudChip T="string" Text="@project.Status" Color="@GetStatusColor(project.Status)" Size="Size.Small" Style="font-weight: 600;" />
+                                    </td>
+                                    <td>
+                                        <MudText Typo="Typo.body2">@project.DueDate.ToString("dd MMM yyyy", new System.Globalization.CultureInfo("es-ES"))</MudText>
+                                    </td>
+                                    <td>
+                                        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Color="Color.Default" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Side Panels -->
+        <MudItem xs="12" md="4">
+            <MudStack Spacing="4">
+                <!-- EVM Summary -->
+                <MudCard>
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6" Class="mb-4" Style="font-weight: 600;">Métricas de Valor Ganado</MudText>
+                        
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <div class="text-center pa-2">
+                                    <MudText Typo="Typo.caption" Style="color: var(--ynex-gray-500);">CPI</MudText>
+                                    <MudText Typo="Typo.h5" Style="font-weight: 700; color: var(--ynex-success);">1.15</MudText>
+                                    <MudText Typo="Typo.caption" Style="color: var(--ynex-gray-600);">Desempeño de Costos</MudText>
+                                </div>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <div class="text-center pa-2">
+                                    <MudText Typo="Typo.caption" Style="color: var(--ynex-gray-500);">SPI</MudText>
+                                    <MudText Typo="Typo.h5" Style="font-weight: 700; color: var(--ynex-warning);">0.92</MudText>
+                                    <MudText Typo="Typo.caption" Style="color: var(--ynex-gray-600);">Desempeño del Cronograma</MudText>
+                                </div>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudDivider Class="my-3" />
+
+                        <div class="d-flex justify-space-between align-center">
+                            <MudText Typo="Typo.body2">Presupuesto al Completar</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 600;">$5.2M</MudText>
+                        </div>
+                        <div class="d-flex justify-space-between align-center mt-2">
+                            <MudText Typo="Typo.body2">Estimado al Completar</MudText>
+                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: var(--ynex-success);">$4.8M</MudText>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+
+                <!-- Quick Actions -->
+                <MudCard>
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6" Class="mb-4" Style="font-weight: 600;">Acciones Rápidas</MudText>
+                        <MudStack Spacing="2">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" FullWidth="true" Class="justify-start">
+                                Asignar Miembro del Equipo
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AttachMoney" FullWidth="true" Class="justify-start">
+                                Crear Presupuesto
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CalendarMonth" FullWidth="true" Class="justify-start">
+                                Actualizar Cronograma
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Assessment" FullWidth="true" Class="justify-start">
+                                Generar Reporte
+                            </MudButton>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudStack>
+        </MudItem>
+    </MudGrid>
+</div>
+
+@code {
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem("Inicio", href: "/", icon: Icons.Material.Filled.Home),
+        new BreadcrumbItem("Tablero", href: null, disabled: true)
+    };
+
+    private List<ProjectData> _projects = new()
+    {
+        new ProjectData { Name = "Mejora de Infraestructura", Category = "Ingeniería Civil", Status = "En Curso", Progress = 65, DueDate = DateTime.Now.AddDays(30) },
+        new ProjectData { Name = "Complejo de Oficinas", Category = "Comercial", Status = "En Riesgo", Progress = 45, DueDate = DateTime.Now.AddDays(60) },
+        new ProjectData { Name = "Extensión de Autopista", Category = "Transporte", Status = "Retrasado", Progress = 25, DueDate = DateTime.Now.AddDays(45) },
+        new ProjectData { Name = "Planta de Tratamiento", Category = "Industrial", Status = "En Curso", Progress = 80, DueDate = DateTime.Now.AddDays(15) },
+        new ProjectData { Name = "Instalación Solar", Category = "Energía", Status = "En Curso", Progress = 55, DueDate = DateTime.Now.AddDays(90) }
+    };
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "En Curso" => Color.Success,
+        "En Riesgo" => Color.Warning,
+        "Retrasado" => Color.Error,
+        _ => Color.Default
+    };
+
+    private Color GetProgressColor(int progress) => progress switch
+    {
+        >= 75 => Color.Success,
+        >= 50 => Color.Info,
+        >= 25 => Color.Warning,
+        _ => Color.Error
+    };
+
+    private Color GetProjectColor(string name)
+    {
+        var index = Math.Abs(name.GetHashCode()) % 5;
+        return index switch
+        {
+            0 => Color.Primary,
+            1 => Color.Secondary,
+            2 => Color.Warning,
+            3 => Color.Success,
+            _ => Color.Info
+        };
+    }
+
+    protected override void OnInitialized()
+    {
+        Logger.LogInfo("Tablero cargado exitosamente con estilo YNEX");
+    }
+
+    private class ProjectData
+    {
+        public string Name { get; set; } = "";
+        public string Category { get; set; } = "";
+        public string Status { get; set; } = "";
+        public int Progress { get; set; }
+        public DateTime DueDate { get; set; }
+    }
+}

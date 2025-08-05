@@ -1,6 +1,6 @@
-﻿using Core.DTOs.ControlAccounts;
-using Core.DTOs.Common;
+﻿using Core.DTOs.Common;
 using Domain.Common;
+using Core.DTOs.Cost.ControlAccounts;
 
 namespace Application.Interfaces.Cost;
 

@@ -1,0 +1,147 @@
+@page "/authentication/{action}"
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject ILoggingService Logger
+@inject NavigationManager Navigation
+
+<RemoteAuthenticatorView Action="@Action">
+    <LoggingIn>
+        <div class="auth-container">
+            <MudCard Class="auth-card" Elevation="8">
+                <MudCardContent Class="text-center pa-8">
+                    <MudIcon Icon="@Icons.Custom.Brands.Microsoft" Color="Color.Primary" Style="font-size: 64px;" Class="mb-4" />
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+                    <MudText Typo="Typo.h4" Class="mb-2">Iniciando sesión</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Default">
+                        Conectando con Microsoft Entra ID...
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </div>
+    </LoggingIn>
+    <CompletingLoggingIn>
+        <div class="auth-container">
+            <MudCard Class="auth-card" Elevation="8">
+                <MudCardContent Class="text-center pa-8">
+                    <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" Class="mb-4" />
+                    <MudText Typo="Typo.h4" Class="mb-2">Completando inicio de sesión</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Default">
+                        Verificando credenciales...
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </div>
+    </CompletingLoggingIn>
+    <LogOut>
+        <div class="auth-container">
+            <MudCard Class="auth-card" Elevation="8">
+                <MudCardContent Class="text-center pa-8">
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+                    <MudText Typo="Typo.h4" Class="mb-2">Cerrando sesión</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Default">
+                        Un momento por favor...
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </div>
+    </LogOut>
+    <CompletingLogOut>
+        <div class="auth-container">
+            <MudCard Class="auth-card" Elevation="8">
+                <MudCardContent Class="text-center pa-8">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Style="font-size: 64px;" Class="mb-4" />
+                    <MudText Typo="Typo.h4" Class="mb-2">Sesión cerrada</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Default">
+                        Has cerrado sesión correctamente
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        </div>
+    </CompletingLogOut>
+    <LogInFailed>
+        <div class="auth-container">
+            <MudCard Class="auth-card" Elevation="8">
+                <MudCardContent Class="text-center pa-8">
+                    <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Style="font-size: 64px;" Class="mb-4" />
+                    <MudText Typo="Typo.h4" Class="mb-2" Color="Color.Error">Error de autenticación</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Default" Class="mb-4">
+                        No se pudo completar el inicio de sesión
+                    </MudText>
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-4">@ErrorMessage</MudAlert>
+                    }
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" 
+                               OnClick="TryAgain" Class="px-8">
+                        Intentar de nuevo
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </div>
+    </LogInFailed>
+    <LogOutFailed>
+        <div class="auth-container">
+            <MudCard Class="auth-card" Elevation="8">
+                <MudCardContent Class="text-center pa-8">
+                    <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Style="font-size: 64px;" Class="mb-4" />
+                    <MudText Typo="Typo.h4" Class="mb-2">Problema al cerrar sesión</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Default" Class="mb-4">
+                        Hubo un error al cerrar tu sesión
+                    </MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" 
+                               Href="/" Class="px-8">
+                        Volver al inicio
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </div>
+    </LogOutFailed>
+</RemoteAuthenticatorView>
+
+<style>
+    .auth-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .auth-card {
+        min-width: 450px;
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(10px);
+    }
+    
+    @@media (max-width: 600px) {
+        .auth-card {
+            min-width: 90vw;
+            margin: 1rem;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public string? Action { get; set; }
+    
+    private string? ErrorMessage { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Logger.LogInfo($"Página de autenticación cargada - Acción: {Action}");
+    }
+    
+    protected override void OnParametersSet()
+    {
+        // Captura el mensaje de error si existe
+        if (Navigation.Uri.Contains("message="))
+        {
+            var uri = new Uri(Navigation.Uri);
+            ErrorMessage = System.Web.HttpUtility.ParseQueryString(uri.Query).Get("message");
+        }
+    }
+
+    private void TryAgain()
+    {
+        Navigation.NavigateTo("authentication/login", true);
+    }
+}

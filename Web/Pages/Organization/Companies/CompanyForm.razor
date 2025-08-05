@@ -1,0 +1,372 @@
+@page "/companies/new"
+@page "/companies/{Id:guid}/edit"
+@using Core.DTOs.Organization.Company
+@using Web.Services.Interfaces.Organization
+@using MudBlazor
+@using System.ComponentModel.DataAnnotations
+@inject ICompanyApiService CompanyService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject ILoggingService Logger
+@attribute [Authorize]
+
+<PageTitle>@(_isEdit ? "Editar" : "Nueva") Compañía | EzPro MSD</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <!-- Header -->
+    <MudGrid AlignItems="Center" Class="mb-4">
+        <MudItem xs="12">
+            <div class="d-flex align-center mb-2">
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" 
+                               OnClick="@GoBack" 
+                               Class="mr-2" />
+                <MudText Typo="Typo.h4" GutterBottom="false">
+                    @(_isEdit ? "Editar Compañía" : "Nueva Compañía")
+                </MudText>
+            </div>
+            @if (_isEdit)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Modifica la información de la compañía
+                </MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Registra una nueva compañía en el sistema
+                </MudText>
+            }
+        </MudItem>
+    </MudGrid>
+
+    @if (_loading && _isEdit)
+    {
+        <MudCard>
+            <MudCardContent>
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="400px" />
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <EditForm Model="@_model" OnValidSubmit="@HandleValidSubmit">
+            <DataAnnotationsValidator />
+            
+            <MudCard>
+                <MudCardContent>
+                    <MudGrid>
+                        <!-- Basic Information -->
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.h6" Class="mb-3">Información Básica</MudText>
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="Código *" 
+                                          @bind-Value="_model.Code"
+                                          For="@(() => _model.Code)"
+                                          Disabled="@_isEdit"
+                                          HelperText="@(_isEdit ? "El código no se puede modificar" : "Código único de la compañía")" />
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="RFC/Tax ID *" 
+                                          @bind-Value="_model.TaxId"
+                                          For="@(() => _model.TaxId)"
+                                          HelperText="Registro Federal de Contribuyentes" />
+                        </MudItem>
+                        
+                        <MudItem xs="12">
+                            <MudTextField Label="Nombre *" 
+                                          @bind-Value="_model.Name"
+                                          For="@(() => _model.Name)"
+                                          HelperText="Nombre completo de la compañía" />
+                        </MudItem>
+                        
+                        <MudItem xs="12">
+                            <MudTextField Label="Descripción" 
+                                          @bind-Value="_model.Description"
+                                          For="@(() => _model.Description)"
+                                          Lines="3"
+                                          HelperText="Breve descripción de la compañía" />
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <MudSelect Label="Moneda por Defecto *" 
+                                       @bind-Value="_model.DefaultCurrency"
+                                       For="@(() => _model.DefaultCurrency)"
+                                       HelperText="Moneda predeterminada para operaciones">
+                                <MudSelectItem Value="@("USD")">USD - Dólar Estadounidense</MudSelectItem>
+                                <MudSelectItem Value="@("MXN")">MXN - Peso Mexicano</MudSelectItem>
+                                <MudSelectItem Value="@("EUR")">EUR - Euro</MudSelectItem>
+                                <MudSelectItem Value="@("GBP")">GBP - Libra Esterlina</MudSelectItem>
+                                <MudSelectItem Value="@("CAD")">CAD - Dólar Canadiense</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        
+                        @if (_isEdit)
+                        {
+                            <!-- Contact Information -->
+                            <MudItem xs="12">
+                                <MudDivider Class="my-4" />
+                                <MudText Typo="Typo.h6" Class="mb-3">Información de Contacto</MudText>
+                            </MudItem>
+                            
+                            <MudItem xs="12">
+                                <MudTextField Label="Dirección" 
+                                              @bind-Value="_editModel.Address"
+                                              For="@(() => _editModel.Address)"
+                                              HelperText="Dirección completa" />
+                            </MudItem>
+                            
+                            <MudItem xs="12" sm="6">
+                                <MudTextField Label="Ciudad" 
+                                              @bind-Value="_editModel.City"
+                                              For="@(() => _editModel.City)" />
+                            </MudItem>
+                            
+                            <MudItem xs="12" sm="6">
+                                <MudTextField Label="Estado/Provincia" 
+                                              @bind-Value="_editModel.State"
+                                              For="@(() => _editModel.State)" />
+                            </MudItem>
+                            
+                            <MudItem xs="12" sm="6">
+                                <MudTextField Label="País" 
+                                              @bind-Value="_editModel.Country"
+                                              For="@(() => _editModel.Country)" />
+                            </MudItem>
+                            
+                            <MudItem xs="12" sm="6">
+                                <MudTextField Label="Código Postal" 
+                                              @bind-Value="_editModel.PostalCode"
+                                              For="@(() => _editModel.PostalCode)" />
+                            </MudItem>
+                            
+                            <MudItem xs="12" sm="6">
+                                <MudTextField Label="Teléfono" 
+                                              @bind-Value="_editModel.Phone"
+                                              For="@(() => _editModel.Phone)"
+                                              HelperText="Incluir código de país" />
+                            </MudItem>
+                            
+                            <MudItem xs="12" sm="6">
+                                <MudTextField Label="Correo Electrónico" 
+                                              @bind-Value="_editModel.Email"
+                                              For="@(() => _editModel.Email)"
+                                              InputType="InputType.Email" />
+                            </MudItem>
+                            
+                            <MudItem xs="12">
+                                <MudTextField Label="Sitio Web" 
+                                              @bind-Value="_editModel.Website"
+                                              For="@(() => _editModel.Website)"
+                                              HelperText="URL completa incluyendo https://" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudCardContent>
+                
+                <MudCardActions Class="pa-4">
+                    <MudButton Variant="Variant.Text" 
+                               OnClick="@GoBack">
+                        Cancelar
+                    </MudButton>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary"
+                               ButtonType="ButtonType.Submit"
+                               Disabled="@_submitting">
+                        @if (_submitting)
+                        {
+                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                            <MudText Class="ms-2">Guardando...</MudText>
+                        }
+                        else
+                        {
+                            <MudText>@(_isEdit ? "Guardar Cambios" : "Crear Compañía")</MudText>
+                        }
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+            
+            <ValidationSummary />
+        </EditForm>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private bool _isEdit => Id.HasValue;
+    private bool _loading = false;
+    private bool _submitting = false;
+    
+    private CompanyFormModel _model = new();
+    private UpdateCompanyDto _editModel = new();
+    private CompanyDto? _existingCompany;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_isEdit && Id.HasValue)
+        {
+            await LoadCompany();
+        }
+    }
+
+    private async Task LoadCompany()
+    {
+        try
+        {
+            _loading = true;
+            _existingCompany = await CompanyService.GetCompanyByIdAsync(Id!.Value);
+            
+            if (_existingCompany == null)
+            {
+                Snackbar.Add("Compañía no encontrada", Severity.Error);
+                Navigation.NavigateTo("/companies");
+                return;
+            }
+            
+            // Populate form models
+            _model = new CompanyFormModel
+            {
+                Code = _existingCompany.Code,
+                Name = _existingCompany.Name,
+                TaxId = _existingCompany.TaxId,
+                Description = _existingCompany.Description,
+                DefaultCurrency = _existingCompany.DefaultCurrency
+            };
+            
+            _editModel = new UpdateCompanyDto
+            {
+                Name = _existingCompany.Name,
+                Description = _existingCompany.Description,
+                TaxId = _existingCompany.TaxId,
+                Address = _existingCompany.Address,
+                City = _existingCompany.City,
+                State = _existingCompany.State,
+                Country = _existingCompany.Country,
+                PostalCode = _existingCompany.PostalCode,
+                Phone = _existingCompany.Phone,
+                Email = _existingCompany.Email,
+                Website = _existingCompany.Website,
+                DefaultCurrency = _existingCompany.DefaultCurrency
+            };
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error loading company {Id}");
+            Snackbar.Add("Error al cargar la compañía", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            _submitting = true;
+            
+            if (_isEdit && Id.HasValue)
+            {
+                // Update existing company
+                var updateDto = new UpdateCompanyDto
+                {
+                    Name = _model.Name,
+                    Description = _model.Description,
+                    TaxId = _model.TaxId,
+                    Address = _editModel.Address,
+                    City = _editModel.City,
+                    State = _editModel.State,
+                    Country = _editModel.Country,
+                    PostalCode = _editModel.PostalCode,
+                    Phone = _editModel.Phone,
+                    Email = _editModel.Email,
+                    Website = _editModel.Website,
+                    DefaultCurrency = _model.DefaultCurrency
+                };
+                
+                var result = await CompanyService.UpdateCompanyAsync(Id.Value, updateDto);
+                if (result != null)
+                {
+                    Snackbar.Add("Compañía actualizada correctamente", Severity.Success);
+                    Navigation.NavigateTo($"/companies/{Id}");
+                }
+                else
+                {
+                    Snackbar.Add("Error al actualizar la compañía", Severity.Error);
+                }
+            }
+            else
+            {
+                // Create new company
+                var createDto = new CreateCompanyDto
+                {
+                    Code = _model.Code,
+                    Name = _model.Name,
+                    TaxId = _model.TaxId,
+                    Description = _model.Description,
+                    DefaultCurrency = _model.DefaultCurrency
+                };
+                
+                var result = await CompanyService.CreateCompanyAsync(createDto);
+                if (result != null)
+                {
+                    Snackbar.Add("Compañía creada correctamente", Severity.Success);
+                    Navigation.NavigateTo($"/companies/{result.Id}");
+                }
+                else
+                {
+                    Snackbar.Add("Error al crear la compañía", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving company");
+            Snackbar.Add("Error al guardar la compañía", Severity.Error);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        if (_isEdit && Id.HasValue)
+        {
+            Navigation.NavigateTo($"/companies/{Id}");
+        }
+        else
+        {
+            Navigation.NavigateTo("/companies");
+        }
+    }
+
+    // Form model with validation
+    private class CompanyFormModel
+    {
+        [Required(ErrorMessage = "El código es requerido")]
+        [StringLength(20, ErrorMessage = "El código no puede exceder 20 caracteres")]
+        [RegularExpression(@"^[A-Z0-9\-]+$", ErrorMessage = "El código solo puede contener letras mayúsculas, números y guiones")]
+        public string Code { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El nombre es requerido")]
+        [StringLength(200, ErrorMessage = "El nombre no puede exceder 200 caracteres")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El RFC es requerido")]
+        [StringLength(20, ErrorMessage = "El RFC no puede exceder 20 caracteres")]
+        public string TaxId { get; set; } = string.Empty;
+
+        [StringLength(500, ErrorMessage = "La descripción no puede exceder 500 caracteres")]
+        public string? Description { get; set; }
+
+        [Required(ErrorMessage = "La moneda es requerida")]
+        public string DefaultCurrency { get; set; } = "USD";
+    }
+}

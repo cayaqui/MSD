@@ -1,27 +1,30 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="NewFolder\**" />
-    <EmbeddedResource Remove="NewFolder\**" />
-    <None Remove="NewFolder\**" />
-  </ItemGroup>
+	<ItemGroup>
+		<Compile Remove="Entities\Contracts\Changes\**" />
+		<Compile Remove="Entities\Risks\Management\**" />
+		<Compile Remove="NewFolder\**" />
+		<EmbeddedResource Remove="Entities\Contracts\Changes\**" />
+		<EmbeddedResource Remove="Entities\Risks\Management\**" />
+		<EmbeddedResource Remove="NewFolder\**" />
+		<None Remove="Entities\Contracts\Changes\**" />
+		<None Remove="Entities\Risks\Management\**" />
+		<None Remove="NewFolder\**" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.7" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.7" />
+		<PackageReference Include="ClosedXML" Version="0.105.0" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Core\Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Entities\Cost\Commitments\" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Core\Core.csproj" />
+	</ItemGroup>
 
 </Project>

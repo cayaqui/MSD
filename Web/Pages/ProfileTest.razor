@@ -1,0 +1,14 @@
+@page "/profile-test"
+@using MudBlazor
+
+<PageTitle>Test Profile</PageTitle>
+
+<MudText Typo="Typo.h4">Profile Test Page</MudText>
+<MudText>If you can see this, the routing is working!</MudText>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Console.WriteLine("ProfileTest page initialized");
+    }
+}

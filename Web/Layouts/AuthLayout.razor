@@ -1,0 +1,27 @@
+@inherits LayoutComponentBase
+@using MudBlazor
+
+<MudThemeProvider Theme="@_theme" IsDarkMode="false" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private MudTheme _theme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#4361ee",
+            Secondary = "#6c757d",
+            AppbarBackground = "#ffffff",
+            Background = "#f4f6f9",
+            Surface = "#ffffff"
+        }
+    };
+}

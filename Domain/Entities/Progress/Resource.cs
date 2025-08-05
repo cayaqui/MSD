@@ -1,7 +1,7 @@
-﻿using System;
-using Domain.Common;
-using Domain.Entities.Setup;
-using Core.Enums.Progress;
+﻿using Domain.Common;
+using Domain.Entities.Auth.Security;
+using Domain.Entities.Organization.Core;
+using Core.Enums.Projects;
 
 namespace Domain.Entities.Progress;
 
@@ -40,7 +40,7 @@ public class Resource : BaseEntity, IAuditable, ISoftDelete
     public decimal ActualCost => ActualQuantity * (UnitRate ?? 0);
     public decimal CostVariance => PlannedCost - ActualCost;
     public decimal QuantityVariance => PlannedQuantity - ActualQuantity;
-    public decimal UtilizationRate => PlannedQuantity > 0 ? (ActualQuantity / PlannedQuantity) * 100 : 0;
+    public decimal UtilizationRate => PlannedQuantity > 0 ? ActualQuantity / PlannedQuantity * 100 : 0;
 
     // Status
     public bool IsActive { get; private set; }

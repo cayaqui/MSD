@@ -1,7 +1,6 @@
 ﻿using Core.DTOs.Cost.Commitments;
 using Core.Enums.Cost;
-using Domain.Entities.Cost;
-
+using Domain.Entities.Cost.Commitments;
 namespace Application.Specifications;
 
 /// <summary>

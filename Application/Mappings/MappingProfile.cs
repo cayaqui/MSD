@@ -1,6 +1,13 @@
-﻿using Core.DTOs.Companies;
-using Domain.Entities.Projects;
-
+﻿using Core.DTOs.Auth.ProjectTeamMembers;
+using Core.DTOs.Auth.Users;
+using Core.DTOs.Organization.Company;
+using Core.DTOs.Organization.Operation;
+using Core.DTOs.Organization.Project;
+using Core.DTOs.UI.Notifications;
+using Core.Enums.Projects;
+using Domain.Entities.Auth.Security;
+using Domain.Entities.Organization.Core;
+using Domain.Entities.UI;
 
 namespace Application.Mappings;
 
@@ -86,7 +93,7 @@ public class MappingProfile : Profile
                src.PlannedEndDate < DateTime.UtcNow ?
                    (DateTime.UtcNow - src.PlannedEndDate).Days : 0))
            .ForMember(dest => dest.IsOverdue, opt => opt.MapFrom(src =>
-               src.PlannedEndDate < DateTime.UtcNow && src.Status != Core.Enums.Setup.ProjectStatus.Completed))
+               src.PlannedEndDate < DateTime.UtcNow && src.Status != ProjectStatus.Completed))
            .ForMember(dest => dest.IsOverBudget, opt => opt.MapFrom(src =>
                src.ActualCost.HasValue && src.ActualCost.Value > src.TotalBudget))
            .ForMember(dest => dest.ActiveTeamMembers, opt => opt.MapFrom(src =>
@@ -101,13 +108,12 @@ public class MappingProfile : Profile
             .ConstructUsing(src => new Project(
                 src.Code,
                 src.Name,
-                src.Description ?? string.Empty,
                 src.OperationId,
                 src.PlannedStartDate,
                 src.PlannedEndDate,
                 src.TotalBudget,
-                src.Currency,
-                src.Location ?? string.Empty));
+                src.Currency
+                ));
 
         CreateMap<UpdateProjectDto, Project>()
             .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));

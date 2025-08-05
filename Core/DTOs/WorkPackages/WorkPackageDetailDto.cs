@@ -1,4 +1,4 @@
-﻿using Core.DTOs.Cost;
+﻿using Core.DTOs.Cost.CostItems;
 using Core.Enums.Progress;
 
 namespace Core.DTOs.WorkPackages;

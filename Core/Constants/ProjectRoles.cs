@@ -6,14 +6,22 @@
 /// </summary>
 public static class ProjectRoles
 {
-    // Role Constants
-    public const string ProjectManager = "ProjectManager";
-    public const string ProjectController = "ProjectController";
-    public const string CostController = "CostController";
-    public const string SchedController = "SchedController";
-    public const string TeamLead = "TeamLead";
-    public const string TeamMember = "TeamMember";
-    public const string Viewer = "Viewer";
+    // Role Constants - Must match database CHECK constraint values
+    public const string ProjectManager = "PROJECT_MANAGER";
+    public const string ProjectEngineer = "PROJECT_ENGINEER";
+    public const string CostController = "COST_CONTROLLER";
+    public const string Planner = "PLANNER";
+    public const string QaQc = "QA_QC";
+    public const string DocumentController = "DOCUMENT_CONTROLLER";
+    public const string TeamMember = "TEAM_MEMBER";
+    public const string Observer = "OBSERVER";
+    
+    // Legacy aliases for backward compatibility - DEPRECATED
+    // These are kept only for compilation compatibility and should be migrated
+    public const string ProjectController = "PROJECT_CONTROLLER_LEGACY"; // Should use ProjectEngineer
+    public const string SchedController = "SCHED_CONTROLLER_LEGACY"; // Should use Planner
+    public const string TeamLead = "TEAM_LEAD_LEGACY"; // Should use ProjectEngineer
+    public const string Viewer = "VIEWER_LEGACY"; // Should use Observer
 
 
     /// <summary>
@@ -21,13 +29,14 @@ public static class ProjectRoles
     /// </summary>
     public static readonly IReadOnlyList<string> AllRoles = new[]
     {
-        ProjectManager,
-        ProjectController,
-        CostController,
-        SchedController,
-        TeamLead,
-        TeamMember,
-        Viewer
+        ProjectManager,      // PROJECT_MANAGER
+        ProjectEngineer,     // PROJECT_ENGINEER
+        CostController,      // COST_CONTROLLER
+        Planner,            // PLANNER
+        QaQc,               // QA_QC
+        DocumentController,  // DOCUMENT_CONTROLLER
+        TeamMember,         // TEAM_MEMBER
+        Observer            // OBSERVER
     };
 
     /// <summary>
@@ -35,10 +44,14 @@ public static class ProjectRoles
     /// </summary>
     public static readonly IReadOnlyDictionary<string, int> RoleHierarchy = new Dictionary<string, int>
     {
-        { Viewer, 1 },
-        { TeamMember, 2 },
-        { TeamLead, 3 },
-        { ProjectManager, 4 }
+        { Observer, 1 },              // OBSERVER - lowest level
+        { TeamMember, 2 },            // TEAM_MEMBER
+        { DocumentController, 3 },     // DOCUMENT_CONTROLLER
+        { QaQc, 3 },                  // QA_QC
+        { Planner, 4 },               // PLANNER
+        { CostController, 4 },        // COST_CONTROLLER
+        { ProjectEngineer, 5 },       // PROJECT_ENGINEER
+        { ProjectManager, 6 }         // PROJECT_MANAGER - highest level
     };
 
     /// <summary>
@@ -200,9 +213,13 @@ public static class ProjectRoles
         return role switch
         {
             ProjectManager => Permissions.ProjectManagerPermissions,
-            TeamLead => Permissions.TeamLeadPermissions,
+            ProjectEngineer => Permissions.TeamLeadPermissions, // PROJECT_ENGINEER gets TeamLead permissions
+            CostController => Permissions.TeamLeadPermissions,  // Cost Controller gets enhanced permissions
+            Planner => Permissions.TeamLeadPermissions,         // Planner gets enhanced permissions
+            QaQc => Permissions.TeamMemberPermissions,          // QA/QC gets team member permissions
+            DocumentController => Permissions.TeamMemberPermissions, // Doc Controller gets team member permissions
             TeamMember => Permissions.TeamMemberPermissions,
-            Viewer => Permissions.ViewerPermissions,
+            Observer => Permissions.ViewerPermissions,
             _ => Array.Empty<string>()
         };
     }
@@ -238,9 +255,13 @@ public static class ProjectRoles
         return role switch
         {
             ProjectManager => "Project Manager",
-            TeamLead => "Team Lead",
+            ProjectEngineer => "Project Engineer",
+            CostController => "Cost Controller",
+            Planner => "Planner/Scheduler",
+            QaQc => "QA/QC Manager",
+            DocumentController => "Document Controller",
             TeamMember => "Team Member",
-            Viewer => "Viewer",
+            Observer => "Observer",
             _ => role
         };
     }
@@ -253,9 +274,13 @@ public static class ProjectRoles
         return role switch
         {
             ProjectManager => "Full control over the project including team management, budget approval, and project closure",
-            TeamLead => "Can manage project activities, create budgets and schedules, but cannot delete or close projects",
+            ProjectEngineer => "Technical lead with ability to manage project activities, create budgets and schedules",
+            CostController => "Manages project costs, budgets, and financial reporting",
+            Planner => "Manages project schedules, timelines, and resource planning",
+            QaQc => "Manages quality assurance and quality control processes",
+            DocumentController => "Manages project documentation and document control processes",
             TeamMember => "Can view project information and update progress on assigned tasks",
-            Viewer => "Read-only access to project information",
+            Observer => "Read-only access to project information",
             _ => "Unknown role"
         };
     }

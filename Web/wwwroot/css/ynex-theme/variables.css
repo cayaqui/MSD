@@ -1,0 +1,78 @@
+:root {
+    /* Primary Colors */
+    --primary: #5b6bef;
+    --primary-rgb: 91, 107, 239;
+    --primary-hover: #4c5de6;
+    --primary-light: rgba(91, 107, 239, 0.1);
+    
+    /* Secondary Colors */
+    --secondary: #6c757d;
+    --secondary-rgb: 108, 117, 125;
+    
+    /* Status Colors */
+    --success: #198754;
+    --success-rgb: 25, 135, 84;
+    --info: #0dcaf0;
+    --info-rgb: 13, 202, 240;
+    --warning: #ffc107;
+    --warning-rgb: 255, 193, 7;
+    --danger: #dc3545;
+    --danger-rgb: 220, 53, 69;
+    
+    /* Neutral Colors */
+    --white: #ffffff;
+    --light: #f8f9fa;
+    --dark: #212529;
+    --gray-100: #f8f9fa;
+    --gray-200: #e9ecef;
+    --gray-300: #dee2e6;
+    --gray-400: #ced4da;
+    --gray-500: #adb5bd;
+    --gray-600: #6c757d;
+    --gray-700: #495057;
+    --gray-800: #343a40;
+    --gray-900: #212529;
+    
+    /* Layout */
+    --sidebar-width: 280px;
+    --sidebar-mini-width: 80px;
+    --header-height: 70px;
+    
+    /* Typography */
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-size-base: 0.875rem;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-bold: 600;
+    
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    
+    /* Border */
+    --border-color: rgba(0, 0, 0, 0.08);
+    --border-radius: 0.375rem;
+    --border-radius-sm: 0.25rem;
+    --border-radius-lg: 0.5rem;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.1);
+    
+    /* Transitions */
+    --transition-base: all 0.2s ease-in-out;
+    --transition-fade: opacity 0.15s linear;
+    
+    /* Z-index */
+    --zindex-dropdown: 1000;
+    --zindex-sticky: 1020;
+    --zindex-fixed: 1030;
+    --zindex-modal-backdrop: 1040;
+    --zindex-modal: 1050;
+    --zindex-popover: 1060;
+    --zindex-tooltip: 1070;
+}

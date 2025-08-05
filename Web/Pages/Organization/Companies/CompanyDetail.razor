@@ -1,0 +1,398 @@
+@page "/companies/{Id:guid}"
+@using Core.DTOs.Organization.Company
+@using Core.DTOs.Organization.Operation
+@using Web.Services.Interfaces.Organization
+@using MudBlazor
+@inject ICompanyApiService CompanyService
+@inject IOperationApiService OperationService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILoggingService Logger
+@attribute [Authorize]
+
+<PageTitle>@(_company?.Name ?? "Cargando...") | EzPro MSD</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (_loading)
+    {
+        <MudGrid>
+            <MudItem xs="12">
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="40px" Width="300px" Class="mb-2" />
+                <MudSkeleton SkeletonType="SkeletonType.Text" Width="200px" />
+            </MudItem>
+            <MudItem xs="12" md="8">
+                <MudCard>
+                    <MudCardContent>
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudCard>
+                    <MudCardContent>
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+    else if (_company != null)
+    {
+        <!-- Header -->
+        <MudGrid AlignItems="Center" Class="mb-4">
+            <MudItem xs="12" sm="8">
+                <div class="d-flex align-center mb-2">
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" 
+                                   OnClick="@(() => Navigation.NavigateTo("/companies"))" 
+                                   Class="mr-2" />
+                    <MudText Typo="Typo.h4" GutterBottom="false">@_company.Name</MudText>
+                </div>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Código: @_company.Code | RFC: @_company.TaxId
+                </MudText>
+            </MudItem>
+            <MudItem xs="12" sm="4" Class="text-right">
+                <MudButton Variant="Variant.Outlined" 
+                           StartIcon="@Icons.Material.Filled.Edit"
+                           OnClick="@(() => Navigation.NavigateTo($"/companies/{Id}/edit"))"
+                           Class="mr-2">
+                    Editar
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" 
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.Delete"
+                           OnClick="@DeleteCompanyDialog">
+                    Eliminar
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid>
+            <!-- Company Information -->
+            <MudItem xs="12" md="8">
+                <MudCard Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Información General</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            @if (!string.IsNullOrEmpty(_company.Description))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2" Class="mb-1">Descripción</MudText>
+                                    <MudText Typo="Typo.body2">@_company.Description</MudText>
+                                </MudItem>
+                            }
+                            
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2" Class="mb-1">Moneda por Defecto</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary">@_company.DefaultCurrency</MudChip>
+                            </MudItem>
+                            
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2" Class="mb-1">Fecha de Creación</MudText>
+                                <MudText Typo="Typo.body2">@_company.CreatedAt.ToString("dd/MM/yyyy HH:mm")</MudText>
+                            </MudItem>
+                            
+                            @if (_company.UpdatedAt.HasValue)
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2" Class="mb-1">Última Actualización</MudText>
+                                    <MudText Typo="Typo.body2">@_company.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm")</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+
+                <!-- Contact Information -->
+                <MudCard Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Información de Contacto</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            @if (!string.IsNullOrEmpty(_company.Address))
+                            {
+                                <MudItem xs="12">
+                                    <div class="d-flex align-start mb-3">
+                                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Class="mr-3" Color="Color.Secondary" />
+                                        <div>
+                                            <MudText Typo="Typo.subtitle2" Class="mb-1">Dirección</MudText>
+                                            <MudText Typo="Typo.body2">@_company.Address</MudText>
+                                            @if (!string.IsNullOrEmpty(_company.City) || !string.IsNullOrEmpty(_company.State))
+                                            {
+                                                <MudText Typo="Typo.body2">
+                                                    @_company.City@((!string.IsNullOrEmpty(_company.City) && !string.IsNullOrEmpty(_company.State)) ? ", " : "")@_company.State
+                                                </MudText>
+                                            }
+                                            @if (!string.IsNullOrEmpty(_company.PostalCode) || !string.IsNullOrEmpty(_company.Country))
+                                            {
+                                                <MudText Typo="Typo.body2">
+                                                    @_company.PostalCode@((!string.IsNullOrEmpty(_company.PostalCode) && !string.IsNullOrEmpty(_company.Country)) ? ", " : "")@_company.Country
+                                                </MudText>
+                                            }
+                                        </div>
+                                    </div>
+                                </MudItem>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(_company.Phone))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <div class="d-flex align-center mb-3">
+                                        <MudIcon Icon="@Icons.Material.Filled.Phone" Class="mr-3" Color="Color.Secondary" />
+                                        <div>
+                                            <MudText Typo="Typo.subtitle2" Class="mb-1">Teléfono</MudText>
+                                            <MudText Typo="Typo.body2">@_company.Phone</MudText>
+                                        </div>
+                                    </div>
+                                </MudItem>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(_company.Email))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <div class="d-flex align-center mb-3">
+                                        <MudIcon Icon="@Icons.Material.Filled.Email" Class="mr-3" Color="Color.Secondary" />
+                                        <div>
+                                            <MudText Typo="Typo.subtitle2" Class="mb-1">Correo Electrónico</MudText>
+                                            <MudLink Href="@($"mailto:{_company.Email}")" Typo="Typo.body2">@_company.Email</MudLink>
+                                        </div>
+                                    </div>
+                                </MudItem>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(_company.Website))
+                            {
+                                <MudItem xs="12">
+                                    <div class="d-flex align-center mb-3">
+                                        <MudIcon Icon="@Icons.Material.Filled.Language" Class="mr-3" Color="Color.Secondary" />
+                                        <div>
+                                            <MudText Typo="Typo.subtitle2" Class="mb-1">Sitio Web</MudText>
+                                            <MudLink Href="@_company.Website" Target="_blank" Typo="Typo.body2">@_company.Website</MudLink>
+                                        </div>
+                                    </div>
+                                </MudItem>
+                            }
+                            
+                            @if (string.IsNullOrEmpty(_company.Phone) && string.IsNullOrEmpty(_company.Email) && 
+                                 string.IsNullOrEmpty(_company.Website) && string.IsNullOrEmpty(_company.Address))
+                            {
+                                <MudItem xs="12">
+                                    <MudAlert Severity="Severity.Info" Dense="true">
+                                        No hay información de contacto registrada para esta compañía.
+                                    </MudAlert>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Operations and Logo -->
+            <MudItem xs="12" md="4">
+                <!-- Company Logo -->
+                <MudCard Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Logo de la Compañía</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent Class="text-center">
+                        @if (_company.HasLogo)
+                        {
+                            <MudAvatar Size="Size.Large" Style="width: 120px; height: 120px;">
+                                <!-- TODO: Add company logo URL -->
+                                <MudImage Src="@($"/api/companies/{_company.Id}/logo")" />
+                            </MudAvatar>
+                        }
+                        else
+                        {
+                            <MudAvatar Size="Size.Large" 
+                                       Color="Color.Primary" 
+                                       Variant="Variant.Filled"
+                                       Style="width: 120px; height: 120px; font-size: 48px;">
+                                @_company.Name[0]
+                            </MudAvatar>
+                        }
+                        <MudButton Variant="Variant.Text" 
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Upload"
+                                   Class="mt-3">
+                            @(_company.HasLogo ? "Cambiar Logo" : "Subir Logo")
+                        </MudButton>
+                    </MudCardContent>
+                </MudCard>
+
+                <!-- Operations -->
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Operaciones</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIconButton Icon="@Icons.Material.Filled.Add" 
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           OnClick="@AddOperationDialog" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_loadingOperations)
+                        {
+                            <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
+                        }
+                        else if (_operations?.Any() == true)
+                        {
+                            <MudList T="string" Dense="true">
+                                @foreach (var operation in _operations)
+                                {
+                                    <MudListItem T="string" Icon="@Icons.Material.Filled.Folder">
+                                        <div class="d-flex justify-space-between align-center">
+                                            <div>
+                                                <MudText Typo="Typo.body2">@operation.Name</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@operation.Code</MudText>
+                                            </div>
+                                            <MudChip T="string" Size="Size.Small" 
+                                                     Color="@(operation.IsActive ? Color.Success : Color.Default)"
+                                                     Variant="Variant.Text">
+                                                @(operation.IsActive ? "Activa" : "Inactiva")
+                                            </MudChip>
+                                        </div>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true">
+                                No hay operaciones registradas para esta compañía.
+                            </MudAlert>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Error">
+            No se pudo cargar la información de la compañía.
+        </MudAlert>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private CompanyDto? _company;
+    private List<OperationDto>? _operations;
+    private bool _loading = true;
+    private bool _loadingOperations = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCompany();
+        await LoadOperations();
+    }
+
+    private async Task LoadCompany()
+    {
+        try
+        {
+            _loading = true;
+            _company = await CompanyService.GetCompanyByIdAsync(Id);
+            
+            if (_company == null)
+            {
+                Snackbar.Add("Compañía no encontrada", Severity.Error);
+                Navigation.NavigateTo("/companies");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error loading company {Id}");
+            Snackbar.Add("Error al cargar la compañía", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadOperations()
+    {
+        try
+        {
+            _loadingOperations = true;
+            _operations = await OperationService.GetOperationsByCompanyAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error loading operations for company {Id}");
+        }
+        finally
+        {
+            _loadingOperations = false;
+        }
+    }
+
+    private async Task DeleteCompanyDialog()
+    {
+        var parameters = new DialogParameters<SimpleConfirmDialog>
+        {
+            { x => x.ContentText, $"¿Está seguro de que desea eliminar la compañía '{_company!.Name}'? Esta acción no se puede deshacer." },
+            { x => x.ButtonText, "Eliminar" },
+            { x => x.Color, Color.Error }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<SimpleConfirmDialog>("Eliminar Compañía", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await DeleteCompany();
+        }
+    }
+
+    private async Task DeleteCompany()
+    {
+        try
+        {
+            var success = await CompanyService.DeleteCompanyAsync(Id);
+            if (success)
+            {
+                Snackbar.Add($"Compañía '{_company!.Name}' eliminada correctamente", Severity.Success);
+                Navigation.NavigateTo("/companies");
+            }
+            else
+            {
+                Snackbar.Add("Error al eliminar la compañía", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error deleting company {Id}");
+            Snackbar.Add("Error al eliminar la compañía", Severity.Error);
+        }
+    }
+
+    private async Task AddOperationDialog()
+    {
+        // TODO: Implement add operation dialog
+        Snackbar.Add("Funcionalidad en desarrollo", Severity.Info);
+    }
+}

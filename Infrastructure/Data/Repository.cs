@@ -18,7 +18,7 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _dbSet = _context.Set<T>();
     }
-
+    
     #region Read Operations
 
     /// <inheritdoc/>
@@ -54,7 +54,8 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
         Expression<Func<T, bool>>? filter = null,
         Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
         string includeProperties = "",
-        bool tracked = false)
+        bool tracked = false,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -70,7 +71,7 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
 
             if (orderBy != null)
             {
-                return await orderBy(query).ToListAsync();
+                return await orderBy(query).ToListAsync(cancellationToken);
             }
 
             return await query.ToListAsync();

@@ -1,6 +1,7 @@
 ﻿
 
-using Core.DTOs.WBS;
+using Core.DTOs.Projects.WBSElement;
+using Core.DTOs.Projects.WorkPackageDetails;
 
 namespace Application.Interfaces.Projects;
 

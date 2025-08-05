@@ -1,8 +1,8 @@
-﻿using Domain.Entities.Security;
+﻿using Domain.Entities.Auth.Permissions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Infrastructure.Data.Configurations.Security;
+namespace Infrastructure.Data.Configurations.Auth;
 
 /// <summary>
 /// Entity configuration for Permission

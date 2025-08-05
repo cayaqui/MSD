@@ -13,5 +13,5 @@ public enum CostCategory
     Operating = 6,
     Overhead = 7,
     Contingency = 8,
-    ManagementReserve = 9
+    ManagementReserve = 9,
 }

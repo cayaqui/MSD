@@ -1,23 +1,35 @@
-﻿using Application.Interfaces.Auth;
-using Application.Interfaces.Common;
-using Domain.Entities.Cost;
-using Domain.Entities.EVM;
-using Domain.Entities.Projects;
+﻿using Domain.Entities.Auth.Permissions;
+using Domain.Entities.Auth.Security;
+using Domain.Entities.Configuration.Core;
+using Domain.Entities.Configuration.Templates;
+using Domain.Entities.Contracts.Core;
+using Domain.Entities.Cost.Budget;
+using Domain.Entities.Cost.Commitments;
+using Domain.Entities.Cost.Control;
+using Domain.Entities.Cost.Core;
+using Domain.Entities.Cost.EVM;
+using Domain.Entities.Documents.Core;
+using Domain.Entities.Documents.Transmittals;
+using Domain.Entities.Organization.Core;
+using Domain.Entities.Progress;
+using Domain.Entities.WBS;
+using Infrastructure.Data.Configurations.Documents;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.Graph.Models;
+using System.Collections.Generic;
 using System.Data;
 using System.Reflection;
-using Operation = Domain.Entities.Setup.Operation;
-using User = Domain.Entities.Security.User;
+using ContractClaim = Domain.Entities.Contracts.Core.Claim;
+using Operation = Domain.Entities.Organization.Core.Operation;
+using User = Domain.Entities.Auth.Security.User;
 
 namespace Infrastructure.Data;
 
 /// <summary>
 /// Application database context for EzPro system
 /// </summary>
-public class ApplicationDbContext : DbContext, IApplicationDbContext
+public class ApplicationDbContext : DbContext 
 {
-    private readonly string? _currentUserId;
+    private readonly IUserContext? _userContext;
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
@@ -26,37 +38,84 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     public ApplicationDbContext(
         DbContextOptions<ApplicationDbContext> options,
-        ICurrentUserService currentUserService)
+        IUserContext userContext)
         : base(options)
     {
-        _currentUserId = currentUserService?.UserId;
+        _userContext = userContext;
     }
 
     #region DbSets - Security Module
 
     public DbSet<User> Users => Set<User>();
     public DbSet<ProjectTeamMember> TeamMembers => Set<ProjectTeamMember>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<UserProjectPermission> UserProjectPermissions => Set<UserProjectPermission>();
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
 
     #endregion
 
-    #region DbSets - Setup Module
+    #region DbSets - Organization Module
 
     public DbSet<Company> Companies => Set<Company>();
-    public DbSet<Operation> Operations => Set<Operation>();
-    public DbSet<Project> Projects => Set<Project>();
     public DbSet<Contractor> Contractors => Set<Contractor>();
     public DbSet<Currency> Currencies => Set<Currency>();
     public DbSet<Discipline> Disciplines => Set<Discipline>();
+    public DbSet<OBSNode> OBSNodes => Set<OBSNode>();
+    public DbSet<Operation> Operations => Set<Operation>();
+    public DbSet<Package> Packages => Set<Package>();
+    public DbSet<PackageDiscipline> PackageDisciplines => Set<PackageDiscipline>();
+    public DbSet<Phase> Phases => Set<Phase>();
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<RAM> RAMAssignments => Set<RAM>();
+    #endregion
+
+  
+    #region DbSets - UI/UX Module
+
+    public DbSet<Notification> Notifications => Set<Notification>();
+
+    #endregion
+
+    #region DbSets - Configuration Module
+
+    public DbSet<ProjectType> ProjectTypes => Set<ProjectType>();
+    public DbSet<SystemParameter> SystemParameters => Set<SystemParameter>();
+    public DbSet<WBSTemplate> WBSTemplates => Set<WBSTemplate>();
+    public DbSet<WBSTemplateElement> WBSTemplateElements => Set<WBSTemplateElement>();
+    public DbSet<CBSTemplate> CBSTemplates => Set<CBSTemplate>();
+    public DbSet<CBSTemplateElement> CBSTemplateElements => Set<CBSTemplateElement>();
+
+    #endregion
+
+    #region DbSets - Contracts Module
+
+    public DbSet<Contract> Contracts => Set<Contract>();
+    public DbSet<ContractChangeOrder> ContractChangeOrders => Set<ContractChangeOrder>();
+    public DbSet<ContractMilestone> ContractMilestones => Set<ContractMilestone>();
+    public DbSet<ContractClaim> Claims => Set<ContractClaim>();
+    public DbSet<Valuation> Valuations => Set<Valuation>();
+    public DbSet<ValuationItem> ValuationItems => Set<ValuationItem>();
+    public DbSet<ContractDocument> ContractDocuments => Set<ContractDocument>();
+    public DbSet<ChangeOrderDocument> ChangeOrderDocuments => Set<ChangeOrderDocument>();
+    public DbSet<MilestoneDocument> MilestoneDocuments => Set<MilestoneDocument>();
+    public DbSet<ClaimDocument> ClaimDocuments => Set<ClaimDocument>();
+    public DbSet<ValuationDocument> ValuationDocuments => Set<ValuationDocument>();
+    public DbSet<ChangeOrderMilestone> ChangeOrderMilestones => Set<ChangeOrderMilestone>();
+    public DbSet<MilestoneDependency> MilestoneDependencies => Set<MilestoneDependency>();
+    public DbSet<ClaimRelation> ClaimRelations => Set<ClaimRelation>();
+    public DbSet<ClaimChangeOrder> ClaimChangeOrders => Set<ClaimChangeOrder>();
+    public DbSet<ChangeOrderRelation> ChangeOrderRelations => Set<ChangeOrderRelation>();
 
     #endregion
 
     #region DbSets - Projects Module
 
-    public DbSet<Phase> Phases => Set<Phase>();
     public DbSet<WBSElement> WBSElements => Set<WBSElement>();
     public DbSet<WorkPackageDetails> WorkPackageDetails => Set<WorkPackageDetails>();
     public DbSet<PlanningPackage> PlanningPackages => Set<PlanningPackage>();
-    public DbSet<ProjectTeamMember> ProjectTeamMembers => Set<ProjectTeamMember>();
+    public DbSet<Activity> Activities => Set<Activity>();
+    public DbSet<Milestone> Milestones => Set<Milestone>();
+    public DbSet<Resource> Resources => Set<Resource>();
 
     #endregion
 
@@ -64,44 +123,46 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     public DbSet<Budget> Budgets => Set<Budget>();
     public DbSet<BudgetItem> BudgetItems => Set<BudgetItem>();
-    public DbSet<ControlAccount> ControlAccounts => Set<ControlAccount>();
-    public DbSet<ControlAccountAssignment> ControlAccountAssignments => Set<ControlAccountAssignment>();
+    public DbSet<BudgetRevision> BudgetRevisions => Set<BudgetRevision>();
     public DbSet<Commitment> Commitments => Set<Commitment>();
     public DbSet<CommitmentItem> CommitmentItems => Set<CommitmentItem>();
+    public DbSet<CommitmentRevision> CommitmentRevisions => Set<CommitmentRevision>();
     public DbSet<CommitmentWorkPackage> CommitmentWorkPackages => Set<CommitmentWorkPackage>();
+    public DbSet<ControlAccount> ControlAccounts => Set<ControlAccount>();
+    public DbSet<ControlAccountAssignment> ControlAccountAssignments => Set<ControlAccountAssignment>();
+    public DbSet<ActualCost> ActualCosts => Set<ActualCost>();
+    public DbSet<CostItem> CostItems => Set<CostItem>();
+    public DbSet<AccountCode> AccountCodes => Set<AccountCode>();
+    public DbSet<CBS> CBSElements => Set<CBS>();
+    public DbSet<CostControlReport> CostControlReports => Set<CostControlReport>();
+    public DbSet<CostControlReportItem> CostControlReportItems => Set<CostControlReportItem>();
+    public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
-
-    #endregion
-
-    #region DbSets - Schedule Module
-
-    public DbSet<Schedule> Schedules => Set<Schedule>();
-    public DbSet<Activity> Activities => Set<Activity>();
-    public DbSet<Milestone> Milestones => Set<Milestone>();
-
-    #endregion
-
-    #region DbSets - EVM Module
-
+    public DbSet<TimePhasedBudget> TimePhasedBudgets => Set<TimePhasedBudget>();
+    public DbSet<WBSCBSMapping> WBSCBSMappings => Set<WBSCBSMapping>();
     public DbSet<EVMRecord> EVMRecords => Set<EVMRecord>();
 
     #endregion
 
-    #region DbSets - Document Module
+    #region DbSets - Documents Module
+    
+    public DbSet<CommentAttachment> CommentAttachments => Set<CommentAttachment>();
+    public DbSet<Document> Documents => Set<Document>();
+    public DbSet<DocumentComment> DocumentComments => Set<DocumentComment>();
+    public DbSet<DocumentDistribution> DocumentDistributions => Set<DocumentDistribution>();
+    public DbSet<DocumentPermission> DocumentPermissions => Set<DocumentPermission>();
+    public DbSet<DocumentRelationship> DocumentRelationships => Set<DocumentRelationship>();
+    public DbSet<DocumentVersion> DocumentVersions => Set<DocumentVersion>();
 
-    // TODO: Implement when document management is required
-    //public DbSet<Document> Documents => Set<Document>();
-    //public DbSet<DocumentRevision> DocumentRevisions => Set<DocumentRevision>();
-    //public DbSet<Transmittal> Transmittals => Set<Transmittal>();
+    public DbSet<Transmittal> DocumentTypes => Set<Transmittal>(); 
+    public DbSet<TransmittalAttachment> TransmittalAttachments => Set<TransmittalAttachment>();
+    public DbSet<TransmittalDocument> TransmittalDocuments => Set<TransmittalDocument>();
+    public DbSet<TransmittalRecipient> TransmittalRecipients => Set<TransmittalRecipient>();
 
     #endregion
 
-    #region DbSets - UI/UX Module
 
-    public DbSet<Notification> Notifications => Set<Notification>();
-
-    #endregion
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -116,39 +177,23 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         // Security Module
         modelBuilder.Entity<User>().ToTable("Users", "Security");
         modelBuilder.Entity<ProjectTeamMember>().ToTable("ProjectTeamMembers", "Security");
+        modelBuilder.Entity<Permission>().ToTable("Permissions", "Security");
+        modelBuilder.Entity<UserProjectPermission>().ToTable("UserProjectPermissions", "Security");
+        modelBuilder.Entity<UserSession>().ToTable("UserSessions", "Security");
 
         // Setup Module
-        modelBuilder.Entity<Company>().ToTable("Companies", "Setup");
-        modelBuilder.Entity<Operation>().ToTable("Operations", "Setup");
-        modelBuilder.Entity<Project>().ToTable("Projects", "Setup");
-        modelBuilder.Entity<Contractor>().ToTable("Contractors", "Setup");
-        modelBuilder.Entity<Currency>().ToTable("Currencies", "Setup");
-        modelBuilder.Entity<Discipline>().ToTable("Disciplines", "Setup");
+        modelBuilder.Entity<Company>().ToTable("Companies", "Organization");
+        modelBuilder.Entity<Contractor>().ToTable("Contractors", "Organization");
+        modelBuilder.Entity<Currency>().ToTable("Currencies", "Organization");
+        modelBuilder.Entity<Discipline>().ToTable("Disciplines", "Organization");
+        modelBuilder.Entity<OBSNode>().ToTable("OBSNodes", "Organization");
+        modelBuilder.Entity<Operation>().ToTable("Operations", "Organization");
+        modelBuilder.Entity<Package>().ToTable("Packages", "Organization");
+        modelBuilder.Entity<PackageDiscipline>().ToTable("PackageDisciplines", "Organization");
+        modelBuilder.Entity<Phase>().ToTable("Phases", "Organization");
+        modelBuilder.Entity<Project>().ToTable("Projects", "Organization");
+        modelBuilder.Entity<RAM>().ToTable("RAMAssignments", "Organization");
 
-        // Projects Module
-        modelBuilder.Entity<Phase>().ToTable("Phases", "Projects");
-        modelBuilder.Entity<WBSElement>().ToTable("WBSElements", "Projects");
-        modelBuilder.Entity<WorkPackageDetails>().ToTable("WorkPackageDetails", "Projects");
-        modelBuilder.Entity<PlanningPackage>().ToTable("PlanningPackages", "Projects");
-
-        // Cost Module
-        modelBuilder.Entity<Budget>().ToTable("Budgets", "Cost");
-        modelBuilder.Entity<BudgetItem>().ToTable("BudgetItems", "Cost");
-        modelBuilder.Entity<ControlAccount>().ToTable("ControlAccounts", "Cost");
-        modelBuilder.Entity<ControlAccountAssignment>().ToTable("ControlAccountAssignments", "Cost");
-        modelBuilder.Entity<Commitment>().ToTable("Commitments", "Cost");
-        modelBuilder.Entity<CommitmentItem>().ToTable("CommitmentItems", "Cost");
-        modelBuilder.Entity<CommitmentWorkPackage>().ToTable("CommitmentWorkPackages", "Cost");
-        modelBuilder.Entity<Invoice>().ToTable("Invoices", "Cost");
-        modelBuilder.Entity<InvoiceItem>().ToTable("InvoiceItems", "Cost");
-
-        // Schedule Module
-        modelBuilder.Entity<Schedule>().ToTable("Schedules", "Schedule");
-        modelBuilder.Entity<Activity>().ToTable("Activities", "Schedule");
-        modelBuilder.Entity<Milestone>().ToTable("Milestones", "Schedule");
-
-        // EVM Module
-        modelBuilder.Entity<EVMRecord>().ToTable("EVMRecords", "EVM");
 
         // UI Module
         modelBuilder.Entity<Notification>().ToTable("Notifications", "UI");
@@ -169,144 +214,6 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         {
             property.SetColumnType("decimal(18,2)");
         }
-
-        // Configure indexes
-        ConfigureIndexes(modelBuilder);
-
-        // Configure relationships
-        ConfigureRelationships(modelBuilder);
-    }
-
-    private void ConfigureIndexes(ModelBuilder modelBuilder)
-    {
-        // Company
-        modelBuilder.Entity<Company>()
-            .HasIndex(c => c.Code)
-            .IsUnique();
-        modelBuilder.Entity<Company>()
-            .HasIndex(c => c.TaxId)
-            .IsUnique();
-
-        // Project
-        modelBuilder.Entity<Project>()
-            .HasIndex(p => p.Code)
-            .IsUnique();
-        modelBuilder.Entity<Project>()
-            .HasIndex(p => new { p.IsDeleted, p.IsActive });
-
-        // Phase
-        modelBuilder.Entity<Phase>()
-            .HasIndex(p => new { p.ProjectId, p.SequenceNumber })
-            .IsUnique();
-
-        // WBSElement
-        modelBuilder.Entity<WBSElement>()
-            .HasIndex(w => new { w.ProjectId, w.Code })
-            .IsUnique();
-        modelBuilder.Entity<WBSElement>()
-            .HasIndex(w => w.FullPath);
-
-        // ControlAccount
-        modelBuilder.Entity<ControlAccount>()
-            .HasIndex(ca => ca.Code)
-            .IsUnique();
-
-        // Contractor
-        modelBuilder.Entity<Contractor>()
-            .HasIndex(c => c.Code)
-            .IsUnique();
-        modelBuilder.Entity<Contractor>()
-            .HasIndex(c => c.TaxId)
-            .IsUnique();
-
-        // Currency
-        modelBuilder.Entity<Currency>()
-            .HasIndex(c => c.Code)
-            .IsUnique();
-
-        // Commitment
-        modelBuilder.Entity<Commitment>()
-            .HasIndex(c => c.ContractNumber)
-            .IsUnique();
-    }
-
-    private void ConfigureRelationships(ModelBuilder modelBuilder)
-    {
-        // Phase -> Project
-        modelBuilder.Entity<Phase>()
-            .HasOne(p => p.Project)
-            .WithMany(pr => pr.Phases)
-            .HasForeignKey(p => p.ProjectId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // WBSElement self-referencing
-        modelBuilder.Entity<WBSElement>()
-            .HasOne(w => w.ParentWBSElement)
-            .WithMany(w => w.ChildElements)
-            .HasForeignKey(w => w.ParentWBSElementId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // WBSElement -> ControlAccount
-        modelBuilder.Entity<WBSElement>()
-            .HasOne(w => w.ControlAccount)
-            .WithMany(ca => ca.WorkPackages)
-            .HasForeignKey(w => w.ControlAccountId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // ControlAccount -> Phase
-        modelBuilder.Entity<ControlAccount>()
-            .HasOne(ca => ca.Phase)
-            .WithMany(p => p.ControlAccounts)
-            .HasForeignKey(ca => ca.PhaseId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // ControlAccount -> CAM User
-        modelBuilder.Entity<ControlAccount>()
-            .HasOne(ca => ca.CAMUser)
-            .WithMany()
-            .HasForeignKey(ca => ca.CAMUserId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // ControlAccountAssignment
-        modelBuilder.Entity<ControlAccountAssignment>()
-            .HasOne(a => a.ControlAccount)
-            .WithMany(ca => ca.Assignments)
-            .HasForeignKey(a => a.ControlAccountId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // EVMRecord -> ControlAccount
-        modelBuilder.Entity<EVMRecord>()
-            .HasOne(e => e.ControlAccount)
-            .WithMany(ca => ca.EVMRecords)
-            .HasForeignKey(e => e.ControlAccountId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // CommitmentWorkPackage
-        modelBuilder.Entity<CommitmentWorkPackage>()
-            .HasOne(cw => cw.Commitment)
-            .WithMany(c => c.WorkPackageAllocations)
-            .HasForeignKey(cw => cw.CommitmentId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<CommitmentWorkPackage>()
-            .HasOne(cw => cw.WBSElement)
-            .WithMany(w => w.CommitmentWorkPackages)
-            .HasForeignKey(cw => cw.WBSElementId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Commitment -> Contractor
-        modelBuilder.Entity<Commitment>()
-            .HasOne(c => c.Contractor)
-            .WithMany(ct => ct.Commitments)
-            .HasForeignKey(c => c.ContractorId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Invoice -> Contractor
-        modelBuilder.Entity<Invoice>()
-            .HasOne(i => i.Contractor)
-            .WithMany(c => c.Invoices)
-            .HasForeignKey(i => i.ContractorId)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 
     public override int SaveChanges()
@@ -334,11 +241,11 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             if (entry.State == EntityState.Added)
             {
                 entity.CreatedAt = DateTime.UtcNow;
-                entity.CreatedBy = _currentUserId ?? "System";
+                entity.CreatedBy = _userContext?.CurrentUserId ?? "System";
             }
 
             entity.UpdatedAt = DateTime.UtcNow;
-            entity.UpdatedBy = _currentUserId ?? "System";
+            entity.UpdatedBy = _userContext?.CurrentUserId ?? "System";
         }
     }
 }

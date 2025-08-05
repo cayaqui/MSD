@@ -1,5 +1,5 @@
 ﻿using FluentValidation;
-using Core.DTOs.Budget;
+using Core.DTOs.Cost.Budgets;
 
 namespace Application.Validators.ControlAccounts;
 

@@ -1,9 +1,4 @@
 ﻿namespace Core.Enums.Cost;
-#region Invoice Enums
-
-#endregion
-
-
 /// <summary>
 /// EVM Status based on performance indices
 /// </summary>

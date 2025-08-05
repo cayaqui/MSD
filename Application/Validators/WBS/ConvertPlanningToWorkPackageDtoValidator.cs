@@ -1,4 +1,4 @@
-﻿using Core.DTOs.WBS;
+﻿using Core.DTOs.Projects.WorkPackageDetails;
 using FluentValidation;
 
 namespace Application.Validators.WBS;

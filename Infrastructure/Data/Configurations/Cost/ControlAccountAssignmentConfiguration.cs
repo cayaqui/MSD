@@ -1,65 +1,83 @@
-﻿using Domain.Entities.Cost;
+using Domain.Entities.Cost.Control;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Infrastructure.Data.Configurations.Cost;
-
-/// <summary>
-/// Entity configuration for ControlAccountAssignment
-/// </summary>
-public class ControlAccountAssignmentConfiguration : IEntityTypeConfiguration<ControlAccountAssignment>
+namespace Infrastructure.Data.Configurations.Cost
 {
-    public void Configure(EntityTypeBuilder<ControlAccountAssignment> builder)
+    public class ControlAccountAssignmentConfiguration : IEntityTypeConfiguration<ControlAccountAssignment>
     {
-        // Table name and schema
-        builder.ToTable("ControlAccountAssignments", "Cost");
+        public void Configure(EntityTypeBuilder<ControlAccountAssignment> builder)
+        {
+            // Table name and schema
+            builder.ToTable("ControlAccountAssignments", "Cost");
 
-        // Primary key
-        builder.HasKey(caa => caa.Id);
+            // Primary key
+            builder.HasKey(c => c.Id);
 
-        // Indexes
-        builder.HasIndex(caa => new { caa.ControlAccountId, caa.UserId, caa.Role }).IsUnique();
-        builder.HasIndex(caa => caa.ControlAccountId);
-        builder.HasIndex(caa => caa.UserId);
-        builder.HasIndex(caa => caa.Role);
-        builder.HasIndex(caa => new { caa.IsActive, caa.AssignedDate, caa.EndDate });
+            // Indexes
+            builder.HasIndex(c => c.ControlAccountId);
+            builder.HasIndex(c => c.UserId);
+            builder.HasIndex(c => c.Role);
+            builder.HasIndex(c => c.AssignedDate);
+            builder.HasIndex(c => c.IsActive);
+            builder.HasIndex(c => new { c.ControlAccountId, c.UserId, c.Role }).IsUnique();
+            builder.HasIndex(c => new { c.UserId, c.IsActive });
 
-        // Properties
-        builder.Property(caa => caa.Role)
-            .IsRequired()
-            .HasConversion<string>()
-            .HasMaxLength(50);
+            // Assignment Information
+            builder.Property(c => c.Role)
+                .IsRequired()
+                .HasMaxLength(50);
 
-        builder.Property(caa => caa.AssignedDate)
-            .IsRequired();
+            // Period
+            builder.Property(c => c.AssignedDate)
+                .IsRequired();
 
-        builder.Property(caa => caa.EndDate);
+            builder.Property(c => c.EndDate);
 
-        builder.Property(caa => caa.Notes)
-            .HasMaxLength(500);
+            // Allocation
+            builder.Property(c => c.AllocationPercentage)
+                .HasPrecision(5, 2);
 
-        // Audit properties
-        builder.Property(caa => caa.CreatedAt)
-            .IsRequired();
+            // Status
+            builder.Property(c => c.IsActive)
+                .IsRequired()
+                .HasDefaultValue(true);
 
-        builder.Property(caa => caa.CreatedBy)
-            .HasMaxLength(256);
+            // Notes
+            builder.Property(c => c.Notes)
+                .HasMaxLength(1000);
 
-        builder.Property(caa => caa.UpdatedAt);
+            // Audit properties
+            builder.Property(c => c.CreatedAt)
+                .IsRequired();
 
-        builder.Property(caa => caa.UpdatedBy)
-            .HasMaxLength(256);
+            builder.Property(c => c.CreatedBy)
+                .HasMaxLength(256);
 
-        // Foreign key relationships
-        builder.HasOne(caa => caa.ControlAccount)
-            .WithMany(ca => ca.Assignments)
-            .HasForeignKey(caa => caa.ControlAccountId)
-            .OnDelete(DeleteBehavior.Cascade);
+            builder.Property(c => c.UpdatedAt);
 
-        builder.HasOne(caa => caa.User)
-            .WithMany()
-            .HasForeignKey(caa => caa.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            builder.Property(c => c.UpdatedBy)
+                .HasMaxLength(256);
 
+            // Relationships
+            builder.HasOne(c => c.ControlAccount)
+                .WithMany(ca => ca.Assignments)
+                .HasForeignKey(c => c.ControlAccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Check constraints
+            builder.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_ControlAccountAssignments_AllocationPercentage", 
+                    "[AllocationPercentage] IS NULL OR ([AllocationPercentage] >= 0 AND [AllocationPercentage] <= 100)");
+                t.HasCheckConstraint("CK_ControlAccountAssignments_EndDate", 
+                    "[EndDate] IS NULL OR [EndDate] >= [AssignedDate]");
+            });
+        }
     }
 }

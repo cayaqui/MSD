@@ -1,83 +1,107 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
+
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>EzPro - Sistema de Control de Proyectos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>EzPro MSD - Project Control System</title>
     <base href="/" />
-    <link rel="icon" type="image/png" href="favicon.ico" />
-
-   
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
-
-
-    <!-- Custom Theme CSS -->
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    
+    <!-- MudBlazor CSS -->
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    
+    <!-- Font Awesome Pro Light -->
+    <script src="https://kit.fontawesome.com/63fd362a47.js" crossorigin="anonymous"></script>
+    
+    <!-- App CSS -->
     <link href="css/app.css" rel="stylesheet" />
-
-    <!-- Blazor CSS -->
+    <link href="css/ynex-theme.css" rel="stylesheet" />
+    <link href="css/mudblazor-overrides.css" rel="stylesheet" />
+    
+    <!-- Blazor WebAssembly -->
     <link href="Web.styles.css" rel="stylesheet" />
-
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 </head>
+
 <body>
     <div id="app">
-        <div class="d-flex justify-content-center align-items-center vh-100">
-            <div class="text-center">
-                <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
-                    <span class="visually-hidden">Cargando...</span>
-                </div>
-                <div>
-                    <h5 class="text-muted">Cargando EzPro...</h5>
-                    <small class="text-muted">Sistema de Control de Proyectos</small>
-                </div>
+        <!-- Loading Screen -->
+        <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f6f9;">
+            <div style="text-align: center;">
+                <div style="display: inline-block; width: 48px; height: 48px; border: 4px solid #f3f3f3; border-top: 4px solid #4361ee; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <h4 style="color: #4361ee; margin-top: 16px; font-family: Roboto, sans-serif;">EzPro MSD</h4>
+                <p style="color: #6c757d; font-family: Roboto, sans-serif;">Loading Project Control System...</p>
+            </div>
+        </div>
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+    </div>
+
+    <div id="blazor-error-ui" style="display: none; position: fixed; bottom: 20px; right: 20px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 400px;">
+        <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; padding: 16px; color: #721c24;">
+            <h4 style="margin: 0 0 8px 0; color: #721c24;">An error has occurred</h4>
+            <p style="margin: 0 0 16px 0;">This application has encountered an error and needs to be reloaded.</p>
+            <hr style="margin: 16px 0; border: 0; border-top: 1px solid #f5c6cb;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <a href="" style="background: #4361ee; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none;">Reload</a>
+                <a class="dismiss" style="color: #721c24; text-decoration: none; font-size: 24px; cursor: pointer;">🗙</a>
             </div>
         </div>
     </div>
 
-    <div id="blazor-error-ui">
-        <div class="alert alert-danger m-3">
-            <h5><i class="fa-light fa-exclamation-triangle me-2"></i>Error de Aplicación</h5>
-            <p>Ha ocurrido un error inesperado. Por favor, recargue la página.</p>
-            <a href="" class="btn btn-sm btn-primary">
-                <i class="fa-light fa-refresh me-1"></i>Recargar
-            </a>
-            <a class="dismiss text-muted ms-3" style="cursor: pointer;">
-                <i class="fa-light fa-times"></i>
-            </a>
-        </div>
-    </div>
-
-    <!-- Microsoft Authentication -->
-    <script src="_content/Microsoft.Authentication.WebAssembly.Msal/AuthenticationService.js"></script>
-
+    <!-- Service Worker Handler (load early to prevent warnings) -->
+    <script src="js/sw-handler.js"></script>
+    
+    <!-- MudBlazor JS -->
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    
     <!-- Blazor WebAssembly -->
+    <script src="_content/Microsoft.Authentication.WebAssembly.Msal/AuthenticationService.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>
-    <script src="https://kit.fontawesome.com/63fd362a47.js" crossorigin="anonymous"></script>
-    <!-- Bootstrap Bundle (includes Popper) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script>
-
-    <!-- Custom Scripts -->
+    
+    <!-- MSAL and Graph Helpers (load after Blazor) -->
+    <script src="js/graph-helper.js"></script>
+    <script src="js/msal-init.js"></script>
+    
+    <!-- App Scripts -->
     <script src="js/app.js"></script>
-    <script src="js/charts.js"></script>
-    <script src="js/interops.js"></script>
-    <script src="js/utils.js"></script>
-    <!-- Initialize tooltips and popovers -->
+    <script src="js/msal-debug.js"></script>
+    
+    <!-- Startup Logging -->
     <script>
-        window.initializeBootstrap = () => {
-            // Initialize tooltips
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-
-            // Initialize popovers
-            var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-            var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
-                return new bootstrap.Popover(popoverTriggerEl);
-            });
-        };
+        console.log('[EzPro MSD] index.html loaded at', new Date().toISOString());
+        console.log('[EzPro MSD] Waiting for Blazor to start...');
+        
+        // Blazor will start automatically via blazor.webassembly.js
+        // Just log when it's ready
+        window.addEventListener('load', function() {
+            console.log('[EzPro MSD] Page fully loaded at', new Date().toISOString());
+        });
+        
+        // Check if the app div is still showing loading after 5 seconds
+        setTimeout(function() {
+            var appDiv = document.getElementById('app');
+            if (appDiv && appDiv.innerHTML.includes('Loading Project Control System')) {
+                console.error('[EzPro MSD] ERROR: App is still showing loading screen after 5 seconds!');
+                console.log('[EzPro MSD] App div content:', appDiv.innerHTML.substring(0, 200) + '...');
+                
+                // Force navigate to test page
+                console.log('[EzPro MSD] Attempting to force navigate to /test');
+                if (window.location.pathname === '/') {
+                    window.location.href = '/test';
+                }
+            } else {
+                console.log('[EzPro MSD] App loaded successfully, loading screen removed');
+            }
+        }, 5000);
     </script>
 </body>
+
 </html>

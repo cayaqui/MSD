@@ -1,9 +1,6 @@
 ﻿using Domain.Common;
-using Domain.Entities.Projects;
-using Domain.Entities.Security;
 using Core.Enums.Progress;
-using System;
-using System.Collections.Generic;
+using Domain.Entities.WBS;
 
 namespace Domain.Entities.Progress
 {
@@ -305,7 +302,7 @@ namespace Domain.Entities.Progress
         public bool RequiresAttention => IsDelayed || IsOverBudget || IsBehindSchedule || RequiresReview;
 
         public decimal ProgressEfficiency => PreviousProgress > 0 && ProgressDelta > 0
-            ? (CostDelta / ProgressDelta)
+            ? CostDelta / ProgressDelta
             : 0;
     }
 }

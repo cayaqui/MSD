@@ -5,6 +5,15 @@
 /// </summary>
 public class BulkOperationResult
 {
+    public BulkOperationResult()
+    {
+        
+    }
+    public BulkOperationResult(int success, int failure)
+    {
+        SuccessCount = success;
+        FailureCount = failure;
+    }
     /// <summary>
     /// Number of successful operations
     /// </summary>

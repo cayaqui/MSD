@@ -1,88 +1,95 @@
-﻿using Domain.Entities.Cost;
+using Domain.Entities.Cost.Commitments;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Infrastructure.Data.Configurations.Cost;
-
-/// <summary>
-/// Entity configuration for CommitmentWorkPackage
-/// </summary>
-public class CommitmentWorkPackageConfiguration : IEntityTypeConfiguration<CommitmentWorkPackage>
+namespace Infrastructure.Data.Configurations.Cost
 {
-    public void Configure(EntityTypeBuilder<CommitmentWorkPackage> builder)
+    public class CommitmentWorkPackageConfiguration : IEntityTypeConfiguration<CommitmentWorkPackage>
     {
-        // Table name and schema with check constraints
-        builder.ToTable("CommitmentWorkPackages", "Cost", t =>
+        public void Configure(EntityTypeBuilder<CommitmentWorkPackage> builder)
         {
-            t.HasCheckConstraint("CK_CommitmentWorkPackages_AllocatedAmount",
-                "[AllocatedAmount] > 0");
-            t.HasCheckConstraint("CK_CommitmentWorkPackages_InvoicedAmount",
-                "[InvoicedAmount] >= 0 AND [InvoicedAmount] <= [AllocatedAmount]");
-            t.HasCheckConstraint("CK_CommitmentWorkPackages_RetainedAmount",
-                "[RetainedAmount] >= 0");
-            t.HasCheckConstraint("CK_CommitmentWorkPackages_PaidAmount",
-                "[PaidAmount] >= 0 AND [PaidAmount] <= [InvoicedAmount]");
-            t.HasCheckConstraint("CK_CommitmentWorkPackages_ProgressPercentage",
-                "[ProgressPercentage] >= 0 AND [ProgressPercentage] <= 100");
-            t.HasCheckConstraint("CK_CommitmentWorkPackages_LastProgressUpdate",
-                "[LastProgressUpdate] IS NULL OR [LastProgressUpdate] <= GETUTCDATE()");
-        });
+            // Table name and schema
+            builder.ToTable("CommitmentWorkPackages", "Cost");
 
-        // Primary key
-        builder.HasKey(cwp => cwp.Id);
+            // Primary key
+            builder.HasKey(c => c.Id);
 
-        // Indexes
-        builder.HasIndex(cwp => new { cwp.CommitmentId, cwp.WBSElementId }).IsUnique();
-        builder.HasIndex(cwp => cwp.CommitmentId);
-        builder.HasIndex(cwp => cwp.WBSElementId);
-        builder.HasIndex(cwp => cwp.ProgressPercentage);
-        builder.HasIndex(cwp => cwp.LastProgressUpdate);
-        builder.HasIndex(cwp => new { cwp.InvoicedAmount, cwp.PaidAmount }); // For payment tracking
+            // Indexes
+            builder.HasIndex(c => c.CommitmentId);
+            builder.HasIndex(c => c.WBSElementId);
+            builder.HasIndex(c => new { c.CommitmentId, c.WBSElementId }).IsUnique();
+            builder.HasIndex(c => c.ProgressPercentage);
 
-        // Properties
-        builder.Property(cwp => cwp.AllocatedAmount)
-            .HasPrecision(18, 2)
-            .IsRequired();
+            // Foreign Keys
+            builder.Property(c => c.CommitmentId)
+                .IsRequired();
 
-        builder.Property(cwp => cwp.InvoicedAmount)
-            .HasPrecision(18, 2)
-            .IsRequired()
-            .HasDefaultValue(0);
+            builder.Property(c => c.WBSElementId)
+                .IsRequired();
 
-        builder.Property(cwp => cwp.RetainedAmount)
-            .HasPrecision(18, 2)
-            .IsRequired()
-            .HasDefaultValue(0);
+            // Financial amounts
+            builder.Property(c => c.AllocatedAmount)
+                .IsRequired()
+                .HasPrecision(18, 2);
 
-        builder.Property(cwp => cwp.ProgressPercentage)
-            .HasPrecision(5, 2)
-            .IsRequired()
-            .HasDefaultValue(0);
+            builder.Property(c => c.InvoicedAmount)
+                .IsRequired()
+                .HasPrecision(18, 2)
+                .HasDefaultValue(0);
 
-        builder.Property(cwp => cwp.LastProgressUpdate);
+            builder.Property(c => c.RetainedAmount)
+                .IsRequired()
+                .HasPrecision(18, 2)
+                .HasDefaultValue(0);
 
-        builder.Property(cwp => cwp.PaidAmount)
-            .HasPrecision(18, 2)
-            .IsRequired()
-            .HasDefaultValue(0);
+            builder.Property(c => c.PaidAmount)
+                .IsRequired()
+                .HasPrecision(18, 2)
+                .HasDefaultValue(0);
 
-        // Computed column for PendingAmount
-        builder.Property(cwp => cwp.PendingAmount)
-            .HasComputedColumnSql("[AllocatedAmount] - [InvoicedAmount]", stored: false);
+            // Progress tracking
+            builder.Property(c => c.ProgressPercentage)
+                .IsRequired()
+                .HasPrecision(5, 2)
+                .HasDefaultValue(0);
 
-        // Audit properties (inherited from BaseEntity)
-        builder.Property(cwp => cwp.CreatedAt)
-            .IsRequired();
+            builder.Property(c => c.LastProgressUpdate);
 
-        // Foreign key relationships
-        builder.HasOne(cwp => cwp.Commitment)
-            .WithMany(c => c.WorkPackages)
-            .HasForeignKey(cwp => cwp.CommitmentId)
-            .OnDelete(DeleteBehavior.Cascade);
+            // Audit properties
+            builder.Property(c => c.CreatedAt)
+                .IsRequired();
 
-        builder.HasOne(cwp => cwp.WBSElement)
-            .WithMany()
-            .HasForeignKey(cwp => cwp.WBSElementId)
-            .OnDelete(DeleteBehavior.Restrict);
+            builder.Property(c => c.CreatedBy)
+                .HasMaxLength(256);
+
+            builder.Property(c => c.UpdatedAt);
+
+            builder.Property(c => c.UpdatedBy)
+                .HasMaxLength(256);
+
+            // Relationships
+            builder.HasOne(c => c.Commitment)
+                .WithMany(com => com.WorkPackageAllocations)
+                .HasForeignKey(c => c.CommitmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasOne(c => c.WBSElement)
+                .WithMany()
+                .HasForeignKey(c => c.WBSElementId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Check constraints
+            builder.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_CommitmentWorkPackages_Amounts", 
+                    "[AllocatedAmount] >= 0 AND [InvoicedAmount] >= 0 AND [RetainedAmount] >= 0 AND [PaidAmount] >= 0");
+                t.HasCheckConstraint("CK_CommitmentWorkPackages_Progress", 
+                    "[ProgressPercentage] >= 0 AND [ProgressPercentage] <= 100");
+                t.HasCheckConstraint("CK_CommitmentWorkPackages_InvoicedVsAllocated", 
+                    "[InvoicedAmount] <= [AllocatedAmount]");
+                t.HasCheckConstraint("CK_CommitmentWorkPackages_PaidVsInvoiced", 
+                    "[PaidAmount] <= [InvoicedAmount]");
+            });
+        }
     }
 }

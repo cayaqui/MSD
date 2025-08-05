@@ -1,5 +1,5 @@
 ﻿using Core.Constants;
-using Core.DTOs.Projects;
+using Core.DTOs.Auth.ProjectTeamMembers;
 using FluentValidation;
 
 namespace Application.Validators.Auth;

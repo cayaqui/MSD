@@ -1,0 +1,119 @@
+@page "/msaltest"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@attribute [AllowAnonymous]
+@inject IAccessTokenProvider TokenProvider
+@inject ILoggingService Logger
+
+<PageTitle>MSAL Test</PageTitle>
+
+<div class="container mt-5">
+    <h1>MSAL Test Page</h1>
+    <p>This page tests MSAL configuration without requiring authentication.</p>
+    
+    <div class="mt-4">
+        <h3>Tests:</h3>
+        
+        <div class="card mb-3">
+            <div class="card-header">Token Provider Test</div>
+            <div class="card-body">
+                <button class="btn btn-primary" @onclick="TestTokenProvider">Test Token Provider</button>
+                <div class="mt-2">
+                    <strong>Result:</strong> @tokenTestResult
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">Request Token Test</div>
+            <div class="card-body">
+                <button class="btn btn-primary" @onclick="RequestToken">Request Access Token</button>
+                <div class="mt-2">
+                    <strong>Result:</strong> @tokenRequestResult
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">Force Login</div>
+            <div class="card-body">
+                <a href="authentication/login" class="btn btn-warning">Go to Login</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string tokenTestResult = "Not tested";
+    private string tokenRequestResult = "Not tested";
+
+    protected override void OnInitialized()
+    {
+        Logger.LogInfo("MSAL Test page initialized");
+    }
+
+    private async Task TestTokenProvider()
+    {
+        try
+        {
+            Logger.LogInfo("Testing token provider...");
+            tokenTestResult = "Testing...";
+            
+            if (TokenProvider != null)
+            {
+                tokenTestResult = "Token provider is available";
+                Logger.LogInfo("Token provider is available");
+            }
+            else
+            {
+                tokenTestResult = "Token provider is NULL";
+                Logger.LogError("Token provider is NULL");
+            }
+        }
+        catch (Exception ex)
+        {
+            tokenTestResult = $"Error: {ex.Message}";
+            Logger.LogError(ex, "Error testing token provider");
+        }
+    }
+
+    private async Task RequestToken()
+    {
+        try
+        {
+            Logger.LogInfo("Requesting access token...");
+            tokenRequestResult = "Requesting...";
+            
+            var tokenResult = await TokenProvider.RequestAccessToken();
+            
+            if (tokenResult.Status == AccessTokenResultStatus.Success)
+            {
+                if (tokenResult.TryGetToken(out var token))
+                {
+                    tokenRequestResult = $"Success! Token expires: {token.Expires}";
+                    Logger.LogInfo("Token acquired successfully, expires: {0}", token.Expires);
+                }
+                else
+                {
+                    tokenRequestResult = "Success but no token returned";
+                    Logger.LogWarning("Token result success but no token returned");
+                }
+            }
+            else if (tokenResult.Status == AccessTokenResultStatus.RequiresRedirect)
+            {
+                tokenRequestResult = "Requires redirect to login";
+                Logger.LogWarning("Token request requires redirect");
+            }
+            else
+            {
+                tokenRequestResult = $"Failed with status: {tokenResult.Status}";
+                Logger.LogWarning("Token request failed with status: {0}", tokenResult.Status);
+            }
+        }
+        catch (Exception ex)
+        {
+            tokenRequestResult = $"Error: {ex.Message}";
+            Logger.LogError(ex, "Error requesting token");
+        }
+    }
+}

@@ -1,11 +1,6 @@
-﻿global using Application.Interfaces.Auth;
-global using Application.Services.Auth;
-global using Application.Services.Setup;
+﻿
 global using Domain.Common;
-global using Domain.Entities.Cost;
-global using Domain.Entities.Progress;
-global using Domain.Entities.Security;
-global using Domain.Entities.Setup;
+
 global using Domain.Entities.UI;
 global using Domain.Interfaces;
 global using Microsoft.EntityFrameworkCore;
@@ -16,7 +11,7 @@ global using Microsoft.EntityFrameworkCore.Storage;
 global using System.Linq.Expressions;
 global using System.Collections.Concurrent;
 global using Infrastructure.Data;
-global using Infrastructure.Security.Services;
+
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using System.Security.Claims;

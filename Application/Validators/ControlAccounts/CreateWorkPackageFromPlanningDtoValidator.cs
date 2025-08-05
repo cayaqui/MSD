@@ -1,11 +1,11 @@
 ﻿using FluentValidation;
-using Core.DTOs.Cost;
+using Core.DTOs.Projects.WorkPackageDetails;
 using Core.Enums.Cost;
 using Core.Enums.Progress;
 
 namespace Application.Validators.ControlAccounts;
 
-public class CreateWorkPackageFromPlanningDtoValidator : AbstractValidator<CreateWorkPackageFromPlanningDto>
+public class CreateWorkPackageFromPlanningDtoValidator : AbstractValidator<ConvertPlanningToWorkPackageDto>
 {
     public CreateWorkPackageFromPlanningDtoValidator()
     {

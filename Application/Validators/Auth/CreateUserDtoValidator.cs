@@ -1,4 +1,4 @@
-﻿using Core.DTOs.Auth;
+﻿using Core.DTOs.Auth.Users;
 using FluentValidation;
 
 namespace Application.Validators.Auth;

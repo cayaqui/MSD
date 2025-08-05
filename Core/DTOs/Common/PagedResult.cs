@@ -1,4 +1,4 @@
-﻿namespace Core.DTOs.Common;
+namespace Core.DTOs.Common;
 
 /// <summary>
 /// Paginated result container
@@ -23,12 +23,12 @@ public class PagedResult<T> where T : class
     /// <summary>
     /// Total number of items across all pages
     /// </summary>
-    public int TotalCount => Items?.Count ?? 0;
+    public int TotalCount => Items.Count;
 
     /// <summary>
     /// Total number of pages
     /// </summary>
-    public int TotalPages => PageSize > 0 ? (int)Math.Ceiling(TotalCount / (double)PageSize) : 0;
+    public int TotalPages { get; set; }
 
     /// <summary>
     /// Indicates if there's a previous page
@@ -66,6 +66,7 @@ public class PagedResult<T> where T : class
         Items = items?.ToList() ?? new List<T>();
         PageNumber = pageNumber;
         PageSize = pageSize;
+        TotalPages = pageSize > 0 ? (int)Math.Ceiling(TotalCount / (double)pageSize) : 0;
     }
 
     /// <summary>
@@ -78,6 +79,7 @@ public class PagedResult<T> where T : class
             Items = new List<T>(),
             PageNumber = pageNumber,
             PageSize = pageSize,
+            TotalPages = 0
         };
     }
 }

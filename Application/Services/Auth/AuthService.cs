@@ -1,12 +1,8 @@
-﻿// Application/Services/Auth/AuthService.cs
-using Core.DTOs.Auth;
-using Domain.Entities.Security;
-using Domain.Interfaces;
-using Microsoft.EntityFrameworkCore;
-using AutoMapper;
-using Microsoft.Extensions.Logging;
-using Application.Interfaces.Auth;
+﻿using Application.Interfaces.Auth;
 using Core.Constants;
+using Core.DTOs.Auth.Permissions;
+using Core.DTOs.Auth.Users;
+using Domain.Entities.Auth.Security;
 
 namespace Application.Services.Auth;
 
@@ -16,17 +12,20 @@ public class AuthService : IAuthService
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
     private readonly ILogger<AuthService> _logger;
+    private readonly IGraphApiService? _graphApiService;
 
     public AuthService(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
         IMapper mapper,
-        ILogger<AuthService> logger)
+        ILogger<AuthService> logger,
+        IGraphApiService? graphApiService = null)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _mapper = mapper;
         _logger = logger;
+        _graphApiService = graphApiService;
     }
 
     public async Task<UserDto?> GetCurrentUserAsync()
@@ -42,14 +41,9 @@ public class AuthService : IAuthService
 
         if (user == null)
         {
-            // Try to sync with Azure AD if user doesn't exist
-            if (!string.IsNullOrEmpty(_currentUserService.Email) && !string.IsNullOrEmpty(_currentUserService.UserName))
-            {
-                return await SyncUserWithAzureAsync(
-                    _currentUserService.UserId,
-                    _currentUserService.Email,
-                    _currentUserService.UserName);
-            }
+            // User doesn't exist in database - return null
+            // User must be created by an administrator
+            _logger.LogWarning("User with EntraId {EntraId} not found in database", _currentUserService.UserId);
             return null;
         }
 
@@ -118,7 +112,7 @@ public class AuthService : IAuthService
         return permissions;
     }
 
-    public async Task<ProjectPermissionsDto?> GetUserProjectPermissionsAsync(Guid projectId)
+    public async Task<ProjectPermissionDto?> GetUserProjectPermissionsAsync(Guid projectId)
     {
         if (!_currentUserService.IsAuthenticated || string.IsNullOrEmpty(_currentUserService.UserId))
             return null;
@@ -136,12 +130,12 @@ public class AuthService : IAuthService
         if (membership == null)
             return null;
 
-        return new ProjectPermissionsDto
+        return new ProjectPermissionDto
         {
             ProjectId = membership.ProjectId,
             ProjectName = membership.Project.Name,
             ProjectCode = membership.Project.Code,
-            UserRole = membership.Role,
+            Role = membership.Role,
             IsActive = membership.IsActive,
             Permissions = GetPermissionsForRole(membership.Role)
         };
@@ -168,17 +162,58 @@ public class AuthService : IAuthService
 
             if (user == null)
             {
-                // Create new user
-                user = new User(entraId, email, displayName);
-                await _unitOfWork.Repository<User>().AddAsync(user);
-            }
-            else
-            {
-                user.UpdateProfile(displayName);
-                user.RecordLogin();
-                _unitOfWork.Repository<User>().Update(user);
+                // User must exist in database before syncing
+                // Only administrators can create new users
+                _logger.LogWarning("Cannot sync user {EntraId} - user does not exist in database", entraId);
+                return null;
             }
 
+            // Update existing user with latest Azure AD info
+            user.UpdateProfile(displayName);
+            user.RecordLogin();
+            
+            // Try to sync additional data from Graph API if available
+            if (_graphApiService != null)
+            {
+                try
+                {
+                    var graphUser = await _graphApiService.GetUserByObjectIdAsync(entraId);
+                    if (graphUser != null)
+                    {
+                        // Update user with Graph data
+                        if (!string.IsNullOrEmpty(graphUser.GivenName))
+                            user.UpdateProfile(graphUser.DisplayName, graphUser.GivenName, graphUser.Surname);
+                        
+                        if (!string.IsNullOrEmpty(graphUser.JobTitle))
+                            user.JobTitle = graphUser.JobTitle;
+                            
+                        if (!string.IsNullOrEmpty(graphUser.Department))
+                            user.Department = graphUser.Department;
+                            
+                        if (!string.IsNullOrEmpty(graphUser.OfficeLocation))
+                            user.OfficeLocation = graphUser.OfficeLocation;
+                            
+                        if (!string.IsNullOrEmpty(graphUser.MobilePhone))
+                            user.MobilePhone = graphUser.MobilePhone;
+                        
+                        // Try to get and save user photo
+
+                        var photoUrl = await _graphApiService.GetUserPhotoAsDataUrlAsync(entraId);
+                        if (!string.IsNullOrEmpty(photoUrl))
+                        {
+                            // Store as data URL for easy display
+                            user.PhotoUrl = photoUrl;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to sync additional user data from Graph API for {EntraId}", entraId);
+                    // Continue without Graph data
+                }
+            }
+            
+            _unitOfWork.Repository<User>().Update(user);
             await _unitOfWork.SaveChangesAsync();
             return _mapper.Map<UserDto>(user);
         }
@@ -199,16 +234,23 @@ public class AuthService : IAuthService
             .ToList();
 
         // Return the highest role based on hierarchy
-        if (activeRoles.Contains(ProjectRoles.ProjectManager))
+        // Check both new constants and actual DB values for compatibility
+        if (activeRoles.Any(r => r == ProjectRoles.ProjectManager || r == "PROJECT_MANAGER"))
             return ProjectRoles.ProjectManager;
-        if (activeRoles.Contains(ProjectRoles.ProjectController))
-            return ProjectRoles.ProjectController;
-        if (activeRoles.Contains(ProjectRoles.TeamLead))
-            return ProjectRoles.TeamLead;
-        if (activeRoles.Contains(ProjectRoles.TeamMember))
+        if (activeRoles.Any(r => r == ProjectRoles.ProjectEngineer || r == "PROJECT_ENGINEER"))
+            return ProjectRoles.ProjectEngineer;
+        if (activeRoles.Any(r => r == ProjectRoles.CostController || r == "COST_CONTROLLER"))
+            return ProjectRoles.CostController;
+        if (activeRoles.Any(r => r == ProjectRoles.Planner || r == "PLANNER"))
+            return ProjectRoles.Planner;
+        if (activeRoles.Any(r => r == ProjectRoles.QaQc || r == "QA_QC"))
+            return ProjectRoles.QaQc;
+        if (activeRoles.Any(r => r == ProjectRoles.DocumentController || r == "DOCUMENT_CONTROLLER"))
+            return ProjectRoles.DocumentController;
+        if (activeRoles.Any(r => r == ProjectRoles.TeamMember || r == "TEAM_MEMBER"))
             return ProjectRoles.TeamMember;
 
-        return ProjectRoles.Viewer;
+        return ProjectRoles.Observer;
     }
 
     private List<string> GetGlobalPermissionsForProjectRole(string role)
@@ -245,6 +287,68 @@ public class AuthService : IAuthService
                 "report.kpi.view"
             },
 
+            ProjectRoles.ProjectEngineer => new List<string>
+            {
+                // Configuration
+                "company.view",
+                "system.users.view",
+                
+                // Projects
+                "project.view",
+                "project.team.view",
+                
+                // Budget & Cost
+                "budget.view",
+                "cost.view",
+                
+                // Schedule
+                "schedule.view",
+                
+                // Documents
+                "document.view",
+                
+                // Reports
+                "report.dashboard.view",
+                "report.project.view"
+            },
+            
+            ProjectRoles.CostController => new List<string>
+            {
+                // Configuration
+                "company.view",
+                
+                // Projects
+                "project.view",
+                
+                // Budget & Cost - Full access
+                "budget.view",
+                "budget.create",
+                "budget.edit",
+                "cost.view",
+                "cost.create",
+                "cost.edit",
+                
+                // Reports
+                "report.dashboard.view",
+                "report.project.view",
+                "report.kpi.view"
+            },
+            
+            ProjectRoles.Planner => new List<string>
+            {
+                // Projects
+                "project.view",
+                
+                // Schedule - Full access
+                "schedule.view",
+                "schedule.create",
+                "schedule.edit",
+                
+                // Reports
+                "report.dashboard.view",
+                "report.project.view"
+            },
+            
             ProjectRoles.ProjectController => new List<string>
             {
                 // Configuration
@@ -292,6 +396,41 @@ public class AuthService : IAuthService
                 "report.project.view"
             },
 
+            ProjectRoles.QaQc => new List<string>
+            {
+                // Projects
+                "project.view",
+                
+                // Quality
+                "quality.view",
+                "quality.create",
+                "quality.edit",
+                
+                // Documents
+                "document.view",
+                "document.create",
+                
+                // Reports
+                "report.dashboard.view",
+                "report.project.view"
+            },
+            
+            ProjectRoles.DocumentController => new List<string>
+            {
+                // Projects
+                "project.view",
+                
+                // Documents - Full access
+                "document.view",
+                "document.create",
+                "document.edit",
+                "document.distribute",
+                
+                // Reports
+                "report.dashboard.view",
+                "report.project.view"
+            },
+
             ProjectRoles.TeamMember => new List<string>
             {
                 // Projects
@@ -308,6 +447,25 @@ public class AuthService : IAuthService
                 "document.view",
                 
                 // Reports
+                "report.dashboard.view"
+            },
+            
+            ProjectRoles.Observer => new List<string>
+            {
+                // Projects - View only
+                "project.view",
+                
+                // Budget & Cost - View only
+                "budget.view",
+                "cost.view",
+                
+                // Schedule - View only
+                "schedule.view",
+                
+                // Documents - View only
+                "document.view",
+                
+                // Reports - Basic view
                 "report.dashboard.view"
             },
 
@@ -416,7 +574,7 @@ public class AuthService : IAuthService
 
     private List<string> GetPermissionsForRole(string role)
     {
-        return ProjectRoles.GetPermissionsForRole(role).ToList();
+        return PermissionConstants.GetPermissionsForRole(role).ToList();
     }
 
     #endregion

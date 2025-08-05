@@ -1,4 +1,6 @@
-﻿
+﻿using Domain.Entities.UI;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Data.Configurations.UI;
 
@@ -12,8 +14,8 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
         // Table name
         builder.ToTable("Notifications", "UIUX", t =>
         {
-            t.HasCheckConstraint("CK_Notification_ExpiresAt", "ExpiresAt >= CreatedAt");
-            t.HasCheckConstraint("CK_Notification_ReadDate", "ReadAt >= CreatedAt");
+            t.HasCheckConstraint("CK_Notification_ExpiresAt", "[ExpiresAt] IS NULL OR [ExpiresAt] >= [CreatedAt]");
+            t.HasCheckConstraint("CK_Notification_ReadDate", "[ReadAt] IS NULL OR [ReadAt] >= [CreatedAt]");
         });
 
         // Primary key
@@ -31,8 +33,7 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
         builder.HasIndex(n => n.CreatedAt);
         builder.HasIndex(n => n.ExpiresAt);
         builder.HasIndex(n => new { n.IsDeleted, n.Status });
-        builder.HasIndex(n => new { n.UserId, n.Status, n.CreatedAt })
-            .HasName("IX_Notifications_User_Status_Date");
+        builder.HasIndex(n => new { n.UserId, n.Status, n.CreatedAt }, "IX_Notifications_User_Status_Date");
 
         // Properties
         builder.Property(n => n.Title)
@@ -44,19 +45,13 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
             .HasMaxLength(2000);
 
         builder.Property(n => n.Type)
-            .IsRequired()
-            .HasConversion<string>()
-            .HasMaxLength(20);
+            .IsRequired();
 
         builder.Property(n => n.Priority)
-            .IsRequired()
-            .HasConversion<string>()
-            .HasMaxLength(20);
+            .IsRequired();
 
         builder.Property(n => n.Status)
-            .IsRequired()
-            .HasConversion<string>()
-            .HasMaxLength(20);
+            .IsRequired();
 
         builder.Property(n => n.IsImportant)
             .IsRequired()
@@ -95,13 +90,14 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
         builder.HasOne(n => n.Project)
             .WithMany()
             .HasForeignKey(n => n.ProjectId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(n => n.Company)
             .WithMany()
             .HasForeignKey(n => n.CompanyId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
-       
+        // Global query filter for soft delete
+        builder.HasQueryFilter(n => !n.IsDeleted);
     }
 }

@@ -1,0 +1,162 @@
+/* Additional component styles */
+
+/* Breadcrumb */
+.breadcrumb {
+    font-size: 0.875rem;
+}
+
+/* Activity Feed */
+.activity-feed {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.activity-feed::before {
+    content: '';
+    position: absolute;
+    left: 0.75rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: var(--gray-300);
+}
+
+/* Timeline */
+.timeline {
+    position: relative;
+    padding: 1rem 0;
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 3rem;
+    padding-bottom: 2rem;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: var(--primary);
+    border: 3px solid var(--white);
+    border-radius: 50%;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Avatar */
+.avatar {
+    position: relative;
+    display: inline-block;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-sm {
+    width: 2rem;
+    height: 2rem;
+}
+
+.avatar-lg {
+    width: 3rem;
+    height: 3rem;
+}
+
+.avatar-xl {
+    width: 4rem;
+    height: 4rem;
+}
+
+/* Status Badge */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: var(--font-weight-medium);
+    border-radius: 1rem;
+    gap: 0.25rem;
+}
+
+.status-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: currentColor;
+}
+
+/* Progress Card */
+.progress-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-card .progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Icon Box */
+.icon-box {
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--border-radius);
+    font-size: 1.25rem;
+}
+
+.icon-box-sm {
+    width: 2rem;
+    height: 2rem;
+    font-size: 1rem;
+}
+
+.icon-box-lg {
+    width: 4rem;
+    height: 4rem;
+    font-size: 1.5rem;
+}
+
+/* List Group Custom */
+.list-group-item-action:hover {
+    background-color: var(--gray-100);
+}
+
+.list-group-item-action.active {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+/* Dropdown Custom */
+.dropdown-menu {
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+}
+
+.dropdown-item {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+.dropdown-item:hover {
+    background-color: var(--gray-100);
+}
+
+.dropdown-divider {
+    margin: 0.5rem 0;
+}

@@ -1,0 +1,456 @@
+@page "/operations/{Id:guid}"
+@using Core.DTOs.Organization.Operation
+@using Core.DTOs.Organization.Project
+@using Web.Services.Interfaces.Organization
+@using Web.Services.Interfaces
+@using MudBlazor
+@inject IOperationApiService OperationService
+@inject IProjectService ProjectService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILoggingService Logger
+@attribute [Authorize]
+
+<PageTitle>@(_operation?.Name ?? "Cargando...") | EzPro MSD</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (_loading)
+    {
+        <MudGrid>
+            <MudItem xs="12">
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="40px" Width="300px" Class="mb-2" />
+                <MudSkeleton SkeletonType="SkeletonType.Text" Width="200px" />
+            </MudItem>
+            <MudItem xs="12" md="8">
+                <MudCard>
+                    <MudCardContent>
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="300px" />
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudCard>
+                    <MudCardContent>
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="300px" />
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+    else if (_operation != null)
+    {
+        <!-- Header -->
+        <MudGrid AlignItems="Center" Class="mb-4">
+            <MudItem xs="12" sm="8">
+                <div class="d-flex align-center mb-2">
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" 
+                                   OnClick="@(() => Navigation.NavigateTo("/operations"))" 
+                                   Class="mr-2" />
+                    <MudText Typo="Typo.h4" GutterBottom="false">@_operation.Name</MudText>
+                    <MudChip T="string" Size="Size.Small" 
+                             Color="@(_operation.IsActive ? Color.Success : Color.Default)"
+                             Variant="Variant.Text"
+                             Class="ml-3">
+                        @(_operation.IsActive ? "Activa" : "Inactiva")
+                    </MudChip>
+                </div>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Código: @_operation.Code | Compañía: 
+                    <MudLink Href="@($"/companies/{_operation.CompanyId}")" Color="Color.Primary">
+                        @_operation.CompanyName
+                    </MudLink>
+                </MudText>
+            </MudItem>
+            <MudItem xs="12" sm="4" Class="text-right">
+                <MudButton Variant="Variant.Outlined" 
+                           StartIcon="@Icons.Material.Filled.Edit"
+                           OnClick="@(() => Navigation.NavigateTo($"/operations/{Id}/edit"))"
+                           Class="mr-2">
+                    Editar
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" 
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.Delete"
+                           OnClick="@DeleteOperationDialog">
+                    Eliminar
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid>
+            <!-- Operation Information -->
+            <MudItem xs="12" md="8">
+                <!-- General Information -->
+                <MudCard Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Información General</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            @if (!string.IsNullOrEmpty(_operation.Description))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2" Class="mb-1">Descripción</MudText>
+                                    <MudText Typo="Typo.body2">@_operation.Description</MudText>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudDivider Class="my-3" />
+                                </MudItem>
+                            }
+                            
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2" Class="mb-1">Centro de Costo</MudText>
+                                <MudText Typo="Typo.body2">
+                                    @(!string.IsNullOrEmpty(_operation.CostCenter) ? _operation.CostCenter : "No especificado")
+                                </MudText>
+                            </MudItem>
+                            
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2" Class="mb-1">Estado</MudText>
+                                <MudChip T="string" Size="Size.Small" 
+                                         Color="@(_operation.IsActive ? Color.Success : Color.Default)">
+                                    @(_operation.IsActive ? "Operación Activa" : "Operación Inactiva")
+                                </MudChip>
+                            </MudItem>
+                            
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2" Class="mb-1">Fecha de Creación</MudText>
+                                <MudText Typo="Typo.body2">@_operation.CreatedAt.ToString("dd/MM/yyyy HH:mm")</MudText>
+                            </MudItem>
+                            
+                            @if (_operation.UpdatedAt.HasValue)
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2" Class="mb-1">Última Actualización</MudText>
+                                    <MudText Typo="Typo.body2">@_operation.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm")</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+
+                <!-- Location Information -->
+                <MudCard Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Ubicación</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (!string.IsNullOrEmpty(_operation.Location) || !string.IsNullOrEmpty(_operation.Address))
+                        {
+                            <MudGrid>
+                                @if (!string.IsNullOrEmpty(_operation.Location))
+                                {
+                                    <MudItem xs="12">
+                                        <div class="d-flex align-start mb-3">
+                                            <MudIcon Icon="@Icons.Material.Filled.Place" Class="mr-3" Color="Color.Secondary" />
+                                            <div>
+                                                <MudText Typo="Typo.subtitle2" Class="mb-1">Ubicación</MudText>
+                                                <MudText Typo="Typo.body2">@_operation.Location</MudText>
+                                            </div>
+                                        </div>
+                                    </MudItem>
+                                }
+                                
+                                @if (!string.IsNullOrEmpty(_operation.Address))
+                                {
+                                    <MudItem xs="12">
+                                        <div class="d-flex align-start mb-3">
+                                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Class="mr-3" Color="Color.Secondary" />
+                                            <div>
+                                                <MudText Typo="Typo.subtitle2" Class="mb-1">Dirección</MudText>
+                                                <MudText Typo="Typo.body2">@_operation.Address</MudText>
+                                                @if (!string.IsNullOrEmpty(_operation.City) || !string.IsNullOrEmpty(_operation.State))
+                                                {
+                                                    <MudText Typo="Typo.body2">
+                                                        @_operation.City@((!string.IsNullOrEmpty(_operation.City) && !string.IsNullOrEmpty(_operation.State)) ? ", " : "")@_operation.State
+                                                    </MudText>
+                                                }
+                                                @if (!string.IsNullOrEmpty(_operation.Country))
+                                                {
+                                                    <MudText Typo="Typo.body2">@_operation.Country</MudText>
+                                                }
+                                            </div>
+                                        </div>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true">
+                                No hay información de ubicación registrada para esta operación.
+                            </MudAlert>
+                        }
+                    </MudCardContent>
+                </MudCard>
+
+                <!-- Management Information -->
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Gestión</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (!string.IsNullOrEmpty(_operation.ManagerName) || !string.IsNullOrEmpty(_operation.ManagerEmail))
+                        {
+                            <div class="d-flex align-start">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-3" Color="Color.Secondary" />
+                                <div>
+                                    <MudText Typo="Typo.subtitle2" Class="mb-1">Gerente de Operación</MudText>
+                                    @if (!string.IsNullOrEmpty(_operation.ManagerName))
+                                    {
+                                        <MudText Typo="Typo.body2">@_operation.ManagerName</MudText>
+                                    }
+                                    @if (!string.IsNullOrEmpty(_operation.ManagerEmail))
+                                    {
+                                        <MudLink Href="@($"mailto:{_operation.ManagerEmail}")" Typo="Typo.body2">
+                                            @_operation.ManagerEmail
+                                        </MudLink>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true">
+                                No hay un gerente asignado a esta operación.
+                            </MudAlert>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Projects and Stats -->
+            <MudItem xs="12" md="4">
+                <!-- Operation Stats -->
+                <MudCard Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Estadísticas</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <div class="text-center">
+                                    <MudText Typo="Typo.h4" Color="Color.Primary">@_projectCount</MudText>
+                                    <MudText Typo="Typo.caption">Proyectos</MudText>
+                                </div>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <div class="text-center">
+                                    <MudText Typo="Typo.h4" Color="Color.Success">@_activeProjectCount</MudText>
+                                    <MudText Typo="Typo.caption">Proyectos Activos</MudText>
+                                </div>
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+
+                <!-- Recent Projects -->
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Proyectos Recientes</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIconButton Icon="@Icons.Material.Filled.Add" 
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           OnClick="@(() => Navigation.NavigateTo($"/projects/new?operationId={Id}"))" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_loadingProjects)
+                        {
+                            <div class="d-flex justify-center">
+                                <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
+                            </div>
+                        }
+                        else if (_projects?.Any() == true)
+                        {
+                            <MudList T="string" Dense="true">
+                                @foreach (var project in _projects.Take(5))
+                                {
+                                    <MudListItem T="string" Icon="@Icons.Material.Filled.FolderOpen" 
+                                                 OnClick="@(() => Navigation.NavigateTo($"/projects/{project.Id}"))">
+                                        <div class="d-flex justify-space-between align-center">
+                                            <div>
+                                                <MudText Typo="Typo.body2">@project.Name</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@project.Code</MudText>
+                                            </div>
+                                            <MudChip T="string" Size="Size.Small" 
+                                                     Color="@GetProjectStatusColor(project.Status)"
+                                                     Variant="Variant.Text">
+                                                @project.Status
+                                            </MudChip>
+                                        </div>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                            
+                            @if (_projectCount > 5)
+                            {
+                                <MudButton Variant="Variant.Text" 
+                                           Color="Color.Primary"
+                                           FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.ViewList"
+                                           OnClick="@(() => Navigation.NavigateTo($"/projects?operationId={Id}"))">
+                                    Ver todos los proyectos (@_projectCount)
+                                </MudButton>
+                            }
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true">
+                                No hay proyectos asociados a esta operación.
+                            </MudAlert>
+                            <MudButton Variant="Variant.Text" 
+                                       Color="Color.Primary"
+                                       FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       Class="mt-2"
+                                       OnClick="@(() => Navigation.NavigateTo($"/projects/new?operationId={Id}"))">
+                                Crear Primer Proyecto
+                            </MudButton>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Error">
+            No se pudo cargar la información de la operación.
+        </MudAlert>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private OperationDto? _operation;
+    private List<ProjectListDto>? _projects;
+    private bool _loading = true;
+    private bool _loadingProjects = true;
+    private int _projectCount = 0;
+    private int _activeProjectCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOperation();
+        await LoadProjects();
+    }
+
+    private async Task LoadOperation()
+    {
+        try
+        {
+            _loading = true;
+            _operation = await OperationService.GetOperationByIdAsync(Id);
+            
+            if (_operation == null)
+            {
+                Snackbar.Add("Operación no encontrada", Severity.Error);
+                Navigation.NavigateTo("/operations");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error loading operation {Id}");
+            Snackbar.Add("Error al cargar la operación", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadProjects()
+    {
+        try
+        {
+            _loadingProjects = true;
+            // TODO: Load projects for this operation when the endpoint is available
+            // For now, we'll simulate with empty data
+            _projects = new List<ProjectListDto>();
+            _projectCount = 0;
+            _activeProjectCount = 0;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error loading projects for operation {Id}");
+        }
+        finally
+        {
+            _loadingProjects = false;
+        }
+    }
+
+    private Color GetProjectStatusColor(string status)
+    {
+        return status?.ToLower() switch
+        {
+            "active" => Color.Success,
+            "planning" => Color.Info,
+            "on-hold" => Color.Warning,
+            "completed" => Color.Primary,
+            "cancelled" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private async Task DeleteOperationDialog()
+    {
+        var parameters = new DialogParameters<SimpleConfirmDialog>
+        {
+            { x => x.ContentText, $"¿Está seguro de que desea eliminar la operación '{_operation!.Name}'? Esta acción no se puede deshacer." },
+            { x => x.ButtonText, "Eliminar" },
+            { x => x.Color, Color.Error }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<SimpleConfirmDialog>("Eliminar Operación", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await DeleteOperation();
+        }
+    }
+
+    private async Task DeleteOperation()
+    {
+        try
+        {
+            var success = await OperationService.DeleteOperationAsync(Id);
+            if (success)
+            {
+                Snackbar.Add($"Operación '{_operation!.Name}' eliminada correctamente", Severity.Success);
+                Navigation.NavigateTo("/operations");
+            }
+            else
+            {
+                Snackbar.Add("Error al eliminar la operación", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error deleting operation {Id}");
+            Snackbar.Add("Error al eliminar la operación", Severity.Error);
+        }
+    }
+}

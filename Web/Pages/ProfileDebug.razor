@@ -1,0 +1,117 @@
+@page "/profile-debug"
+@using MudBlazor
+@using Microsoft.AspNetCore.Authorization
+@using Core.DTOs.Auth.Users
+@attribute [Authorize]
+@inject IAuthService AuthService
+@inject IApiService ApiService
+@inject ILoggingService Logger
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Mi Perfil - EzPro MSD</PageTitle>
+
+<MudContainer>
+    <MudAlert Severity="Severity.Info">
+        La página Profile se está renderizando correctamente.
+        <br/>
+        Tiempo: @DateTime.Now.ToString("HH:mm:ss")
+    </MudAlert>
+    
+    @if (_currentUser != null)
+    {
+        <MudCard Class="mt-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6">Usuario: @_currentUser.DisplayName</MudText>
+                <MudText>Email: @_currentUser.Email</MudText>
+                
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Sync" 
+                           OnClick="SyncWithEntraId"
+                           Disabled="@_isSyncing"
+                           Class="mt-4">
+                    @if (_isSyncing)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ms-2" />
+                        <span>Sincronizando...</span>
+                    }
+                    else
+                    {
+                        <span>Sincronizar con Entra ID</span>
+                    }
+                </MudButton>
+            </MudCardContent>
+        </MudCard>
+    }
+    else if (_isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+        <MudText>Cargando perfil...</MudText>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Warning">No se pudo cargar el perfil del usuario</MudAlert>
+    }
+</MudContainer>
+
+@code {
+    private UserDto? _currentUser;
+    private bool _isLoading = true;
+    private bool _isSyncing = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await JS.InvokeVoidAsync("console.log", "[ProfileDebug] OnInitializedAsync called");
+        Logger.LogInfo("[ProfileDebug] Página de perfil inicializada");
+        
+        try
+        {
+            _currentUser = await AuthService.GetCurrentUserAsync();
+            await JS.InvokeVoidAsync("console.log", "[ProfileDebug] User loaded:", _currentUser?.DisplayName ?? "null");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "[ProfileDebug] Error loading user:", ex.Message);
+            Logger.LogError(ex, "Error al cargar usuario");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SyncWithEntraId()
+    {
+        _isSyncing = true;
+        try
+        {
+            await JS.InvokeVoidAsync("console.log", "[ProfileDebug] Starting sync...");
+            var syncedUser = await ApiService.PostAsync<object, UserDto>("api/auth/sync", new { });
+            
+            if (syncedUser != null)
+            {
+                _currentUser = syncedUser;
+                await JS.InvokeVoidAsync("console.log", "[ProfileDebug] Sync successful");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "[ProfileDebug] Sync error:", ex.Message);
+        }
+        finally
+        {
+            _isSyncing = false;
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("console.log", "[ProfileDebug] Page rendered for the first time");
+        }
+    }
+}
