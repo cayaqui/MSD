@@ -1,0 +1,87 @@
+@page "/public/login"
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@layout EmptyLayout
+
+<PageTitle>Iniciar Sesión - EzPro MSD</PageTitle>
+
+<div class="login-container">
+    <MudCard Class="login-card" Elevation="8">
+        <MudCardContent Class="text-center pa-8">
+            <div class="mb-6">
+                <MudIcon Icon="@Icons.Material.Filled.Engineering" 
+                         Style="font-size: 64px; color: var(--mud-palette-primary);" />
+                <MudText Typo="Typo.h4" Class="mt-4 mb-2" Style="font-weight: 700;">
+                    EzPro MSD
+                </MudText>
+                <MudText Typo="Typo.body1" Color="Color.Default">
+                    Sistema de Control de Proyectos
+                </MudText>
+            </div>
+            
+            <MudDivider Class="my-4" />
+            
+            <MudText Typo="Typo.h6" Class="mb-4">
+                Bienvenido
+            </MudText>
+            
+            <MudButton Variant="Variant.Filled" 
+                       Color="Color.Primary" 
+                       Size="Size.Large"
+                       StartIcon="@Icons.Custom.Brands.Microsoft"
+                       OnClick="LoginAuth"
+                       FullWidth="true"
+                       Class="py-3">
+                Iniciar Sesión con Microsoft
+            </MudButton>
+            
+            <MudText Typo="Typo.caption" Color="Color.Default" Class="mt-4">
+                Usa tu cuenta corporativa de Microsoft para acceder
+            </MudText>
+        </MudCardContent>
+    </MudCard>
+</div>
+
+<style>
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .login-card {
+        min-width: 400px;
+        max-width: 450px;
+        background: rgba(255, 255, 255, 0.98) !important;
+        backdrop-filter: blur(10px);
+    }
+    
+    @@media (max-width: 600px) {
+        .login-card {
+            min-width: 90vw;
+            margin: 1rem;
+        }
+    }
+</style>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        // Si ya está autenticado, redirigir a home
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User?.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo("/home");
+        }
+    }
+    
+    private void LoginAuth()
+    {
+        Navigation.NavigateTo("authentication/login", true);
+    }
+}

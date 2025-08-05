@@ -6,7 +6,7 @@ using Core.DTOs.Common;
 using Core.DTOs.Cost.ControlAccounts;
 using Domain.Common;
 using Domain.Entities.Cost.Control;
-using Domain.Entities.Projects.WBS;
+using Domain.Entities.WBS;
 using Domain.Entities.Cost.EVM;
 using Domain.Entities.Auth.Security;
 using Microsoft.EntityFrameworkCore;

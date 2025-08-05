@@ -1,0 +1,356 @@
+@page "/projects/new"
+@page "/projects/{Id:guid}/edit"
+@using Core.DTOs.Organization.Project
+@using Core.DTOs.Organization.Operation
+@using Web.Services.Interfaces
+@using Web.Services.Interfaces.Organization
+@using MudBlazor
+@inject IProjectApiService ProjectService
+@inject IOperationApiService OperationService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject ILoggingService Logger
+@attribute [Authorize]
+
+<PageTitle>@(_isEdit ? "Editar" : "Nuevo") Proyecto | EzPro MSD</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <!-- Header -->
+    <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
+    
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5">@(_isEdit ? "Editar Proyecto" : "Nuevo Proyecto")</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudForm @ref="_form" @bind-IsValid="@_formValid">
+                <MudGrid>
+                    <!-- Basic Information -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.h6" Class="mb-3">Información Básica</MudText>
+                    </MudItem>
+                    
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string"
+                                      Label="Código *"
+                                      @bind-Value="_model.Code"
+                                      Required="true"
+                                      RequiredError="El código es requerido"
+                                      MaxLength="50"
+                                      Counter="50" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string"
+                                      Label="Código WBS"
+                                      @bind-Value="_model.WBSCode"
+                                      MaxLength="50"
+                                      HelperText="Se generará automáticamente si no se especifica" />
+                    </MudItem>
+                    
+                    <MudItem xs="12">
+                        <MudTextField T="string"
+                                      Label="Nombre *"
+                                      @bind-Value="_model.Name"
+                                      Required="true"
+                                      RequiredError="El nombre es requerido"
+                                      MaxLength="200"
+                                      Counter="200" />
+                    </MudItem>
+                    
+                    <MudItem xs="12">
+                        <MudTextField T="string"
+                                      Label="Descripción"
+                                      @bind-Value="_model.Description"
+                                      Lines="3"
+                                      MaxLength="500" />
+                    </MudItem>
+                    
+                    <MudItem xs="12">
+                        <MudSelect T="Guid" 
+                                   Label="Operación *" 
+                                   @bind-Value="_model.OperationId"
+                                   Required="true"
+                                   RequiredError="La operación es requerida"
+                                   Disabled="_isEdit">
+                            @if (_operations != null)
+                            {
+                                @foreach (var operation in _operations)
+                                {
+                                    <MudSelectItem Value="@operation.Id">@operation.Name</MudSelectItem>
+                                }
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    
+                    <!-- Schedule Information -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.h6" Class="mb-3 mt-4">Cronograma</MudText>
+                    </MudItem>
+                    
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker Label="Fecha de Inicio Planificada *"
+                                       @bind-Date="_plannedStartDate"
+                                       Required="true"
+                                       RequiredError="La fecha de inicio es requerida" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker Label="Fecha de Fin Planificada *"
+                                       @bind-Date="_plannedEndDate"
+                                       Required="true"
+                                       RequiredError="La fecha de fin es requerida"
+                                       MinDate="_plannedStartDate" />
+                    </MudItem>
+                    
+                    <!-- Financial Information -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.h6" Class="mb-3 mt-4">Información Financiera</MudText>
+                    </MudItem>
+                    
+                    <MudItem xs="12" md="8">
+                        <MudNumericField T="decimal"
+                                         Label="Presupuesto Total *"
+                                         @bind-Value="_model.TotalBudget"
+                                         Format="N2"
+                                         Required="true"
+                                         RequiredError="El presupuesto es requerido"
+                                         Min="0"
+                                         Adornment="Adornment.Start"
+                                         AdornmentText="@_model.Currency" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" md="4">
+                        <MudSelect T="string" 
+                                   Label="Moneda *" 
+                                   @bind-Value="_model.Currency"
+                                   Required="true">
+                            <MudSelectItem Value="@("USD")">USD</MudSelectItem>
+                            <MudSelectItem Value="@("EUR")">EUR</MudSelectItem>
+                            <MudSelectItem Value="@("MXN")">MXN</MudSelectItem>
+                            <MudSelectItem Value="@("COP")">COP</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    
+                    <!-- Additional Information -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.h6" Class="mb-3 mt-4">Información Adicional</MudText>
+                    </MudItem>
+                    
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string"
+                                      Label="Ubicación"
+                                      @bind-Value="_model.Location"
+                                      MaxLength="200" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string"
+                                      Label="Cliente"
+                                      @bind-Value="_model.Client"
+                                      MaxLength="200" />
+                    </MudItem>
+                    
+                    <MudItem xs="12">
+                        <MudTextField T="string"
+                                      Label="Número de Contrato"
+                                      @bind-Value="_model.ContractNumber"
+                                      MaxLength="100" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton OnClick="Cancel">Cancelar</MudButton>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" 
+                       Color="Color.Primary" 
+                       OnClick="SaveProject"
+                       Disabled="@(!_formValid || _saving)">
+                @if (_saving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                @(_isEdit ? "Actualizar" : "Crear") Proyecto
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+    
+    private bool _isEdit => Id.HasValue;
+    private MudForm _form = null!;
+    private bool _formValid;
+    private bool _saving;
+    
+    private CreateProjectDto _model = new();
+    private UpdateProjectDto _updateModel = new();
+    private DateTime? _plannedStartDate;
+    private DateTime? _plannedEndDate;
+    
+    private List<OperationDto>? _operations;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOperations();
+        
+        if (_isEdit)
+        {
+            await LoadProject();
+            _breadcrumbs = new List<BreadcrumbItem>
+            {
+                new BreadcrumbItem("Inicio", href: "/", icon: Icons.Material.Filled.Home),
+                new BreadcrumbItem("Proyectos", href: "/projects"),
+                new BreadcrumbItem("Editar Proyecto", href: null, disabled: true)
+            };
+        }
+        else
+        {
+            _plannedStartDate = DateTime.Today;
+            _plannedEndDate = DateTime.Today.AddMonths(6);
+            _model.PlannedStartDate = _plannedStartDate.Value;
+            _model.PlannedEndDate = _plannedEndDate.Value;
+            
+            _breadcrumbs = new List<BreadcrumbItem>
+            {
+                new BreadcrumbItem("Inicio", href: "/", icon: Icons.Material.Filled.Home),
+                new BreadcrumbItem("Proyectos", href: "/projects"),
+                new BreadcrumbItem("Nuevo Proyecto", href: null, disabled: true)
+            };
+        }
+    }
+
+    private async Task LoadOperations()
+    {
+        try
+        {
+            var result = await OperationService.GetOperationsAsync(pageSize: 100);
+            _operations = result?.Items?.Where(o => o.IsActive).ToList() ?? new List<OperationDto>();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading operations");
+            Snackbar.Add("Error al cargar las operaciones", Severity.Error);
+        }
+    }
+
+    private async Task LoadProject()
+    {
+        if (!Id.HasValue)
+            return;
+            
+        try
+        {
+            var project = await ProjectService.GetProjectByIdAsync(Id.Value);
+            if (project != null)
+            {
+                // Map to create model for form binding
+                _model = new CreateProjectDto
+                {
+                    Code = project.Code,
+                    Name = project.Name,
+                    Description = project.Description,
+                    WBSCode = project.WBSCode,
+                    OperationId = project.OperationId,
+                    PlannedStartDate = project.PlannedStartDate,
+                    PlannedEndDate = project.PlannedEndDate,
+                    TotalBudget = project.TotalBudget,
+                    Currency = project.Currency,
+                    Location = project.Location,
+                    Client = project.Client,
+                    ContractNumber = project.ContractNumber
+                };
+                
+                _plannedStartDate = project.PlannedStartDate;
+                _plannedEndDate = project.PlannedEndDate;
+            }
+            else
+            {
+                Snackbar.Add("Proyecto no encontrado", Severity.Error);
+                Navigation.NavigateTo("/projects");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error loading project {Id}");
+            Snackbar.Add("Error al cargar el proyecto", Severity.Error);
+        }
+    }
+
+    private async Task SaveProject()
+    {
+        await _form.Validate();
+        if (!_formValid)
+            return;
+            
+        _saving = true;
+        
+        try
+        {
+            // Update dates from date pickers
+            if (_plannedStartDate.HasValue)
+                _model.PlannedStartDate = _plannedStartDate.Value;
+            if (_plannedEndDate.HasValue)
+                _model.PlannedEndDate = _plannedEndDate.Value;
+            
+            if (_isEdit)
+            {
+                // Map to update DTO
+                _updateModel = new UpdateProjectDto
+                {
+                    Name = _model.Name,
+                    Description = _model.Description,
+                    PlannedStartDate = _model.PlannedStartDate,
+                    PlannedEndDate = _model.PlannedEndDate,
+                    TotalBudget = _model.TotalBudget,
+                    Location = _model.Location,
+                    Client = _model.Client,
+                    ContractNumber = _model.ContractNumber
+                };
+                
+                var updated = await ProjectService.UpdateProjectAsync(Id!.Value, _updateModel);
+                if (updated != null)
+                {
+                    Snackbar.Add("Proyecto actualizado correctamente", Severity.Success);
+                    Navigation.NavigateTo($"/projects/{Id}");
+                }
+                else
+                {
+                    Snackbar.Add("Error al actualizar el proyecto", Severity.Error);
+                }
+            }
+            else
+            {
+                var created = await ProjectService.CreateProjectAsync(_model);
+                if (created != null)
+                {
+                    Snackbar.Add("Proyecto creado correctamente", Severity.Success);
+                    Navigation.NavigateTo($"/projects/{created.Id}");
+                }
+                else
+                {
+                    Snackbar.Add("Error al crear el proyecto", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving project");
+            Snackbar.Add("Error al guardar el proyecto", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/projects");
+    }
+}

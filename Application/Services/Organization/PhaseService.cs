@@ -1,12 +1,6 @@
 using Application.Interfaces.Organization;
 using Application.Services.Base;
-using AutoMapper;
-using Core.DTOs.Organization.Phase;
 using Core.Enums.Projects;
-using Domain.Entities.Organization.Core;
-using Domain.Interfaces;
-using Microsoft.Extensions.Logging;
-using System.Linq.Expressions;
 
 namespace Application.Services.Organization
 {

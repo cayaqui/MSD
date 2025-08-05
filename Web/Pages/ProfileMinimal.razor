@@ -1,7 +1,8 @@
 @page "/profile-minimal"
-@using MudBlazor
-@using Microsoft.AspNetCore.Authorization
 @using Core.DTOs.Auth.Users
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@using Web.Services.Interfaces.Auth
 @attribute [Authorize]
 @inject IAuthService AuthService
 @inject ILoggingService Logger

@@ -1,12 +1,5 @@
 using Application.Interfaces.Organization;
-using Application.Services.Base;
-using AutoMapper;
-using Core.DTOs.Organization.Package;
-using Domain.Entities.Organization.Core;
-using Domain.Entities.Auth.Security;
-using Domain.Interfaces;
-using Microsoft.Extensions.Logging;
-using System.Linq.Expressions;
+
 
 namespace Application.Services.Organization
 {
@@ -268,7 +261,7 @@ namespace Application.Services.Organization
                     cancellationToken: cancellationToken);
 
             if (entity == null)
-                throw new InvalidOperationException($"Package discipline {id} not found");
+                throw new System.InvalidOperationException($"Package discipline {id} not found");
 
             var summary = new DisciplinePerformanceSummaryDto
             {

@@ -38,8 +38,13 @@
         </div>
         <style>
             @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
+                0% {
+                    transform: rotate(0deg);
+                }
+
+                100% {
+                    transform: rotate(360deg);
+                }
             }
         </style>
     </div>
@@ -56,51 +61,33 @@
         </div>
     </div>
 
-    <!-- Service Worker Handler (load early to prevent warnings) -->
-    <script src="js/sw-handler.js"></script>
-    
+    <!-- Service Worker Handler disabled temporarily -->
+    <!-- <script src="js/sw-handler.js"></script> -->
+
     <!-- MudBlazor JS -->
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
-    
+
     <!-- Blazor WebAssembly -->
     <script src="_content/Microsoft.Authentication.WebAssembly.Msal/AuthenticationService.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>
-    
-    <!-- MSAL and Graph Helpers (load after Blazor) -->
-    <script src="js/graph-helper.js"></script>
-    <script src="js/msal-init.js"></script>
-    
+
     <!-- App Scripts -->
     <script src="js/app.js"></script>
-    <script src="js/msal-debug.js"></script>
-    
-    <!-- Startup Logging -->
+    <!-- Initialize tooltips and popovers -->
     <script>
-        console.log('[EzPro MSD] index.html loaded at', new Date().toISOString());
-        console.log('[EzPro MSD] Waiting for Blazor to start...');
-        
-        // Blazor will start automatically via blazor.webassembly.js
-        // Just log when it's ready
-        window.addEventListener('load', function() {
-            console.log('[EzPro MSD] Page fully loaded at', new Date().toISOString());
-        });
-        
-        // Check if the app div is still showing loading after 5 seconds
-        setTimeout(function() {
-            var appDiv = document.getElementById('app');
-            if (appDiv && appDiv.innerHTML.includes('Loading Project Control System')) {
-                console.error('[EzPro MSD] ERROR: App is still showing loading screen after 5 seconds!');
-                console.log('[EzPro MSD] App div content:', appDiv.innerHTML.substring(0, 200) + '...');
-                
-                // Force navigate to test page
-                console.log('[EzPro MSD] Attempting to force navigate to /test');
-                if (window.location.pathname === '/') {
-                    window.location.href = '/test';
-                }
-            } else {
-                console.log('[EzPro MSD] App loaded successfully, loading screen removed');
-            }
-        }, 5000);
+        window.initializeBootstrap = () => {
+            // Initialize tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Initialize popovers
+            var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+            var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+                return new bootstrap.Popover(popoverTriggerEl);
+            });
+        };
     </script>
 </body>
 

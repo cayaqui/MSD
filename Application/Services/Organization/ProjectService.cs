@@ -1,12 +1,6 @@
 using Application.Interfaces.Organization;
 using Application.Services.Base;
-using AutoMapper;
-using Core.DTOs.Organization.Project;
 using Core.Enums.Projects;
-using Core.Enums.Contracts;
-using Domain.Entities.Organization.Core;
-using Domain.Interfaces;
-using Microsoft.Extensions.Logging;
 
 namespace Application.Services.Organization
 {

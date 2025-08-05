@@ -1,7 +1,8 @@
 @page "/profile-debug"
-@using MudBlazor
-@using Microsoft.AspNetCore.Authorization
 @using Core.DTOs.Auth.Users
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@using Web.Services.Interfaces.Auth
 @attribute [Authorize]
 @inject IAuthService AuthService
 @inject IApiService ApiService

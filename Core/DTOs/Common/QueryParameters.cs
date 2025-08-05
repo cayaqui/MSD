@@ -61,10 +61,8 @@ public class QueryParameters
     /// </summary>
     public string SortDirection { get; set; } = "asc";
 
-    /// <summary>
-    /// Additional filters as key-value pairs
-    /// </summary>
-    public Dictionary<string, string> Filters { get; set; } = new();
+    // Removed Filters property as it causes binding issues with minimal APIs
+    // Specific filter properties should be added to derived classes instead
 
     /// <summary>
     /// Include soft-deleted records

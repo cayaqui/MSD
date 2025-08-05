@@ -2,7 +2,7 @@
 @using MudBlazor
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@inject ILoggingService Logger
+@* @inject ILoggingService Logger *@
 
 <PageTitle>Tablero - EzPro MSD</PageTitle>
 
@@ -257,7 +257,7 @@
 
     protected override void OnInitialized()
     {
-        Logger.LogInfo("Tablero cargado exitosamente con estilo YNEX");
+        // Logger.LogInfo("Tablero cargado exitosamente con estilo YNEX");
     }
 
     private class ProjectData

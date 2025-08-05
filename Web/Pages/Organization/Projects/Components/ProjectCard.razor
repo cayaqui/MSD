@@ -1,0 +1,92 @@
+@using Core.DTOs.Organization.Project
+@using MudBlazor
+
+<MudCard>
+    <MudCardContent>
+        <div class="d-flex justify-space-between align-center mb-2">
+            <MudText Typo="Typo.h6" Class="mb-0">@Project.Name</MudText>
+            <MudChip T="string" Size="Size.Small" Color="@GetStatusColor()" Text="@Project.Status" />
+        </div>
+        
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
+            <MudIcon Icon="@Icons.Material.Filled.Tag" Size="Size.Small" Class="mr-1" />
+            @Project.Code
+        </MudText>
+        
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
+            <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Class="mr-1" />
+            @Project.OperationName
+        </MudText>
+        
+        <div class="d-flex justify-space-between align-center mt-3">
+            <MudText Typo="Typo.body2">
+                <MudIcon Icon="@Icons.Material.Filled.DateRange" Size="Size.Small" Class="mr-1" />
+                @Project.PlannedStartDate.ToString("dd/MM/yyyy") - @Project.PlannedEndDate.ToString("dd/MM/yyyy")
+            </MudText>
+        </div>
+        
+        <MudProgressLinear Color="@GetProgressColor()" Value="@((double)Project.ProgressPercentage)" Class="my-3" />
+        
+        <div class="d-flex justify-space-between align-center">
+            <MudText Typo="Typo.body2">
+                Progreso: @Project.ProgressPercentage.ToString("F0")%
+            </MudText>
+            <MudText Typo="Typo.body2">
+                @Project.Currency @Project.TotalBudget.ToString("N0")
+            </MudText>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Project.UserRole))
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" Class="mt-2">
+                @Project.UserRole
+            </MudChip>
+        }
+    </MudCardContent>
+    
+    <MudCardActions>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="OnView">
+            Ver
+        </MudButton>
+        <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" OnClick="OnEdit">
+            Editar
+        </MudButton>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                       Color="Color.Error" 
+                       Size="Size.Small"
+                       OnClick="OnDelete" />
+    </MudCardActions>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired] public ProjectListDto Project { get; set; } = null!;
+    [Parameter] public EventCallback OnView { get; set; }
+    [Parameter] public EventCallback OnEdit { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    private Color GetStatusColor()
+    {
+        return Project.Status switch
+        {
+            "Active" => Color.Success,
+            "Planning" => Color.Info,
+            "OnHold" => Color.Warning,
+            "Completed" => Color.Primary,
+            "Cancelled" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetProgressColor()
+    {
+        if (Project.ProgressPercentage < 25)
+            return Color.Error;
+        else if (Project.ProgressPercentage < 50)
+            return Color.Warning;
+        else if (Project.ProgressPercentage < 75)
+            return Color.Info;
+        else
+            return Color.Success;
+    }
+}

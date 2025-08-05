@@ -1,8 +1,6 @@
-﻿using Application.Common.Exceptions;
-using Core.Constants;
-using InvalidOperationException = Application.Common.Exceptions.InvalidOperationException;
+﻿using Core.Constants;
 using Core.DTOs.Auth.ProjectTeamMembers;
-using Application.Interfaces.Auth;
+
 
 namespace Application.Services.Auth;
 

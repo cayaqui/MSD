@@ -1,0 +1,200 @@
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Web
+@inject NavigationManager Navigation
+
+<MudAppBar Elevation="0" Fixed="true" Class="ezpro-header">
+    <div class="header-content">
+        <div class="header-left">
+            <!-- Menu Toggle Button -->
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" 
+                           Color="Color.Default" 
+                           Edge="Edge.Start" 
+                           OnClick="@OnToggleClick"
+                           Class="menu-toggle" />
+            
+            <!-- Search Box -->
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <div class="search-box">
+                    <MudTextField T="string"
+                                  @bind-Value="SearchText"
+                                  Placeholder="Buscar..."
+                                  Variant="Variant.Outlined"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Class="search-input"
+                                  Immediate="false"
+                                  Margin="Margin.Dense" />
+                </div>
+            </MudHidden>
+        </div>
+
+        <MudSpacer />
+
+        <div class="header-right">
+            <!-- Notifications -->
+            <MudBadge Content="@NotificationCount" Overlap="true" Color="Color.Error" Visible="@(NotificationCount > 0)">
+                <MudIconButton Icon="@Icons.Material.Filled.Notifications"
+                               Color="Color.Default"
+                               OnClick="@OnNotificationsClick" />
+            </MudBadge>
+
+            <!-- User Menu -->
+            <MudMenu AnchorOrigin="Origin.BottomRight" 
+                     TransformOrigin="Origin.TopRight"
+                     Class="user-menu">
+                <ActivatorContent>
+                    <MudButton Variant="Variant.Text" 
+                               Color="Color.Default" 
+                               StartIcon="@(string.IsNullOrEmpty(UserAvatar) ? Icons.Material.Filled.AccountCircle : null)"
+                               EndIcon="@Icons.Material.Filled.KeyboardArrowDown"
+                               Class="user-menu-button">
+                        @if (!string.IsNullOrEmpty(UserAvatar) && UserAvatar.StartsWith("http"))
+                        {
+                            <MudAvatar Size="Size.Small" Class="me-2">
+                                <MudImage Src="@UserAvatar" />
+                            </MudAvatar>
+                        }
+                        else if (!string.IsNullOrEmpty(UserAvatar) && UserAvatar.StartsWith("data:"))
+                        {
+                            <MudAvatar Size="Size.Small" Class="me-2">
+                                <MudImage Src="@UserAvatar" />
+                            </MudAvatar>
+                        }
+                        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                            <span class="user-name">@UserName</span>
+                        </MudHidden>
+                    </MudButton>
+                </ActivatorContent>
+                <ChildContent>
+                    <div class="user-menu-header pa-4">
+                        <div class="d-flex align-center gap-3">
+                            <MudAvatar Size="Size.Large" Color="Color.Primary">
+                                @if (!string.IsNullOrEmpty(UserAvatar) && (UserAvatar.StartsWith("http") || UserAvatar.StartsWith("data:")))
+                                {
+                                    <MudImage Src="@UserAvatar" />
+                                }
+                                else
+                                {
+                                    @GetUserInitials()
+                                }
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.h6">@UserName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Default">@UserEmail</MudText>
+                            </div>
+                        </div>
+                    </div>
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Filled.Person" OnClick="@OnProfileClick">
+                        Mi Perfil
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Settings" OnClick="@OnSettingsClick">
+                        Configuración
+                    </MudMenuItem>
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Filled.Logout" OnClick="@OnLogoutClick">
+                        Cerrar Sesión
+                    </MudMenuItem>
+                </ChildContent>
+            </MudMenu>
+        </div>
+    </div>
+</MudAppBar>
+
+<style>
+    .ezpro-header {
+        background-color: #ffffff;
+        border-bottom: 1px solid #e0e0e0;
+        padding: 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .header-content {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        padding: 0 16px;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .search-box {
+        min-width: 300px;
+    }
+
+    .search-input {
+        margin: 0;
+    }
+
+    .user-menu-button {
+        text-transform: none;
+    }
+
+    .user-name {
+        margin: 0 8px;
+    }
+
+    .user-menu-header {
+        background-color: var(--mud-palette-background);
+        border-bottom: 1px solid var(--mud-palette-divider);
+    }
+
+    ::deep .search-input .mud-input-root {
+        background-color: #f5f5f5;
+    }
+
+    ::deep .search-input .mud-input-outlined {
+        padding: 8px 12px;
+    }
+
+    ::deep .search-input .mud-input-outlined-border {
+        border-color: #e0e0e0;
+    }
+    
+    ::deep .search-input .mud-input-adornment-start .mud-icon-root {
+        color: #666666;
+    }
+</style>
+
+@code {
+    [Parameter] public EventCallback OnToggleClick { get; set; }
+    [Parameter] public EventCallback<bool> OnThemeToggle { get; set; }
+    [Parameter] public bool IsDarkMode { get; set; }
+    [Parameter] public string UserName { get; set; } = "Usuario";
+    [Parameter] public string UserEmail { get; set; } = "usuario@empresa.com";
+    [Parameter] public string? UserAvatar { get; set; }
+    [Parameter] public int NotificationCount { get; set; }
+    [Parameter] public int MessageCount { get; set; }
+    [Parameter] public EventCallback<string> OnSearchChanged { get; set; }
+    [Parameter] public EventCallback OnNotificationsClick { get; set; }
+    [Parameter] public EventCallback OnMessagesClick { get; set; }
+    [Parameter] public EventCallback OnProfileClick { get; set; }
+    [Parameter] public EventCallback OnSettingsClick { get; set; }
+    [Parameter] public EventCallback OnLogoutClick { get; set; }
+
+    private string SearchText = "";
+
+    private string GetUserInitials()
+    {
+        if (string.IsNullOrWhiteSpace(UserName))
+            return "U";
+
+        var parts = UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        else if (parts.Length == 1)
+            return parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpper();
+        else
+            return "U";
+    }
+}

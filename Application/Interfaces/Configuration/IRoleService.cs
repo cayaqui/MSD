@@ -1,5 +1,5 @@
 using Application.Interfaces.Common;
-using Core.DTOs.Security.Roles;
+using Core.DTOs.Auth.Roles;
 
 namespace Application.Interfaces.Configuration;
 

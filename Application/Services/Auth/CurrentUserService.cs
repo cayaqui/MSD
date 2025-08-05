@@ -9,6 +9,7 @@ public class CurrentUserService : ICurrentUserService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CurrentUserService> _logger;
+    private User? _cachedUser;
 
     // These properties are set by the CurrentUserMiddleware
     public string? UserId { get;  set; }
@@ -16,6 +17,11 @@ public class CurrentUserService : ICurrentUserService
     public string? Email { get;  set; }
     public bool IsAuthenticated { get;  set; }
     public ClaimsPrincipal? Principal { get;  set; }
+    
+    // Simplified system role properties
+    public bool IsAdmin => SystemRole == SimplifiedRoles.System.Admin;
+    public bool IsSupport => SystemRole == SimplifiedRoles.System.Support;
+    public string? SystemRole { get; private set; }
 
     public CurrentUserService(IUnitOfWork unitOfWork, ILogger<CurrentUserService> logger)
     {
@@ -141,10 +147,7 @@ public class CurrentUserService : ICurrentUserService
         if (string.IsNullOrEmpty(UserId))
             return new List<Guid>();
 
-        var user = await _unitOfWork.Repository<User>()
-            .Query()
-            .Include(u => u.ProjectTeamMembers)
-            .FirstOrDefaultAsync(u => u.EntraId == UserId && !u.IsDeleted);
+        var user = await GetCurrentUserAsync();
             
         if (user == null)
             return new List<Guid>();
@@ -153,5 +156,59 @@ public class CurrentUserService : ICurrentUserService
             .Where(ptm => ptm.IsActive)
             .Select(ptm => ptm.ProjectId)
             .ToList();
+    }
+    
+    // New simplified methods
+    public async Task<bool> HasSystemAccessAsync()
+    {
+        var user = await GetCurrentUserAsync();
+        return user != null && (user.SystemRole == SimplifiedRoles.System.Admin || 
+                                user.SystemRole == SimplifiedRoles.System.Support);
+    }
+    
+    public async Task<bool> IsSystemRoleAsync()
+    {
+        return await HasSystemAccessAsync();
+    }
+    
+    public async Task<bool> CanEditProjectAsync(Guid projectId)
+    {
+        // System roles can edit any project
+        if (await HasSystemAccessAsync())
+            return true;
+            
+        var projectRole = await GetProjectRoleAsync(projectId);
+        return projectRole != null && SimplifiedRoles.Project.CanEdit.Contains(projectRole);
+    }
+    
+    public async Task<bool> CanViewProjectAsync(Guid projectId)
+    {
+        // System roles can view any project
+        if (await HasSystemAccessAsync())
+            return true;
+            
+        // Any project member can view
+        return await HasProjectAccessAsync(projectId);
+    }
+    
+    private async Task<User?> GetCurrentUserAsync()
+    {
+        if (!IsAuthenticated || string.IsNullOrEmpty(UserId))
+            return null;
+            
+        if (_cachedUser != null)
+            return _cachedUser;
+            
+        _cachedUser = await _unitOfWork.Repository<User>()
+            .Query()
+            .Include(u => u.ProjectTeamMembers)
+            .FirstOrDefaultAsync(u => u.EntraId == UserId && !u.IsDeleted);
+            
+        if (_cachedUser != null)
+        {
+            SystemRole = _cachedUser.SystemRole;
+        }
+            
+        return _cachedUser;
     }
 }

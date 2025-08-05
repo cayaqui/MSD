@@ -1,0 +1,14 @@
+@page "/testbasic"
+
+<div style="padding: 20px;">
+    <h1>Test Básico</h1>
+    <p>Si ves esta página, Blazor está funcionando correctamente.</p>
+    <p>Fecha: @DateTime.Now</p>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Console.WriteLine("TestBasic page initialized");
+    }
+}

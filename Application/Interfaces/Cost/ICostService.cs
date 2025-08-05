@@ -14,7 +14,7 @@ public interface ICostService
     // Query Operations
     Task<PagedResult<CostItemDto>> GetCostItemsAsync(
         Guid projectId,
-        QueryParameters parameters,
+        CostQueryParameters parameters,
         CancellationToken cancellationToken = default
     );
 
@@ -82,7 +82,7 @@ public interface ICostService
     // Planning Package Operations
     Task<PagedResult<PlanningPackageDto>> GetPlanningPackagesAsync(
         Guid controlAccountId,
-        QueryParameters parameters,
+        PlanningPackageQueryParameters parameters,
         CancellationToken cancellationToken = default
     );
 

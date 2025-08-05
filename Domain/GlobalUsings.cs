@@ -15,7 +15,7 @@ global using Domain.Entities.Risks.Core;
 global using Domain.Entities.Documents.Core;
 global using Domain.Entities.Cost.Core;
 global using Domain.Entities.Cost.Commitments;
-global using Domain.Entities.Projects.WBS;
+global using Domain.Entities.WBS;
 global using Domain.Entities.Organization.Core;
 global using Domain.Entities.Documents.Transmittals;
 global using System.Linq.Expressions;

@@ -40,7 +40,7 @@ public class CostService : ICostService
 
     public async Task<PagedResult<CostItemDto>> GetCostItemsAsync(
         Guid projectId,
-        QueryParameters parameters,
+        CostQueryParameters parameters,
         CancellationToken cancellationToken = default)
     {
         var query = _unitOfWork.Repository<CostItem>()
@@ -58,39 +58,23 @@ public class CostService : ICostService
         }
 
         // Apply filters
-        if (parameters.Filters != null && parameters.Filters.Any())
-        {
-            foreach (var filter in parameters.Filters)
-            {
-                switch (filter.Key.ToLower())
-                {
-                    case "type":
-                        if (Enum.TryParse<CostType>(filter.Value, out var type))
-                            query = query.Where(c => c.Type == type);
-                        break;
-                    case "category":
-                        if (Enum.TryParse<CostCategory>(filter.Value, out var category))
-                            query = query.Where(c => c.Category == category);
-                        break;
-                    case "status":
-                        if (Enum.TryParse<CostItemStatus>(filter.Value, out var status))
-                            query = query.Where(c => c.Status == status);
-                        break;
-                    case "controlaccountid":
-                        if (Guid.TryParse(filter.Value, out var caId))
-                            query = query.Where(c => c.ControlAccountId == caId);
-                        break;
-                    case "wbselementid":
-                        if (Guid.TryParse(filter.Value, out var wbsId))
-                            query = query.Where(c => c.WBSElementId == wbsId);
-                        break;
-                    case "isapproved":
-                        if (bool.TryParse(filter.Value, out var isApproved))
-                            query = query.Where(c => c.IsApproved == isApproved);
-                        break;
-                }
-            }
-        }
+        if (parameters.Type.HasValue)
+            query = query.Where(c => c.Type == parameters.Type.Value);
+        
+        if (parameters.Category.HasValue)
+            query = query.Where(c => c.Category == parameters.Category.Value);
+        
+        if (parameters.Status.HasValue)
+            query = query.Where(c => c.Status == parameters.Status.Value);
+        
+        if (parameters.ControlAccountId.HasValue)
+            query = query.Where(c => c.ControlAccountId == parameters.ControlAccountId.Value);
+        
+        if (parameters.WBSElementId.HasValue)
+            query = query.Where(c => c.WBSElementId == parameters.WBSElementId.Value);
+        
+        if (parameters.IsApproved.HasValue)
+            query = query.Where(c => c.IsApproved == parameters.IsApproved.Value);
 
         // Apply sorting
         if (!string.IsNullOrWhiteSpace(parameters.SortBy))
@@ -506,7 +490,7 @@ public class CostService : ICostService
 
     public async Task<PagedResult<PlanningPackageDto>> GetPlanningPackagesAsync(
         Guid controlAccountId,
-        QueryParameters parameters,
+        PlanningPackageQueryParameters parameters,
         CancellationToken cancellationToken = default)
     {
         var query = _unitOfWork.Repository<PlanningPackage>()
@@ -524,27 +508,14 @@ public class CostService : ICostService
         }
 
         // Apply filters
-        if (parameters.Filters != null && parameters.Filters.Any())
-        {
-            foreach (var filter in parameters.Filters)
-            {
-                switch (filter.Key.ToLower())
-                {
-                    case "status":
-                        if (Enum.TryParse<PlanningPackageStatus>(filter.Value, out var status))
-                            query = query.Where(pp => pp.Status == status);
-                        break;
-                    case "isconverted":
-                        if (bool.TryParse(filter.Value, out var isConverted))
-                            query = query.Where(pp => pp.IsConverted == isConverted);
-                        break;
-                    case "phaseid":
-                        if (Guid.TryParse(filter.Value, out var phaseId))
-                            query = query.Where(pp => pp.PhaseId == phaseId);
-                        break;
-                }
-            }
-        }
+        if (parameters.Status.HasValue)
+            query = query.Where(pp => pp.Status == parameters.Status.Value);
+        
+        if (parameters.IsConverted.HasValue)
+            query = query.Where(pp => pp.IsConverted == parameters.IsConverted.Value);
+        
+        if (parameters.PhaseId.HasValue)
+            query = query.Where(pp => pp.PhaseId == parameters.PhaseId.Value);
 
         // Apply sorting
         if (!string.IsNullOrWhiteSpace(parameters.SortBy))

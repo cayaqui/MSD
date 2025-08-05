@@ -1,13 +1,16 @@
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Web;
-using Web.Services;
-using Web.Services.Implementation;
-using Web.Services.Interfaces;
 using Blazored.LocalStorage;
 using Blazored.SessionStorage;
 using MudBlazor.Services;
+using Web.Services.Interfaces;
+using Web.Services.Interfaces.Auth;
+using Web.Services.Interfaces.Cost;
+using Web.Services.Interfaces.Organization;
+using Web.Services.Implementation;
+using Web.Services.Implementation.Auth;
+using Web.Services.Implementation.Cost;
+using Web.Services.Implementation.Organization;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -27,17 +30,8 @@ builder.Services.AddScoped(sp =>
 builder.Services.AddMsalAuthentication(options =>
 {
     builder.Configuration.Bind("AzureAd", options.ProviderOptions.Authentication);
-    
-    var defaultScope = builder.Configuration["AzureAd:DefaultScopes:0"] ?? "api://25c8d8d0-8323-40fe-8863-e4b22711f572/access_as_user";
-    options.ProviderOptions.DefaultAccessTokenScopes.Add(defaultScope);
-    
+    options.ProviderOptions.DefaultAccessTokenScopes.Add("api://25c8d8d0-8323-40fe-8863-e4b22711f572/access_as_user");
     options.ProviderOptions.LoginMode = "redirect";
-    options.ProviderOptions.Cache.CacheLocation = "localStorage";
-    
-    // Log MSAL configuration for debugging
-    Console.WriteLine($"[MSAL Config] Authority: {options.ProviderOptions.Authentication.Authority}");
-    Console.WriteLine($"[MSAL Config] ClientId: {options.ProviderOptions.Authentication.ClientId}");
-    Console.WriteLine($"[MSAL Config] Default Scope: {defaultScope}");
 });
 
 // Registrar el servicio de autenticación simple
@@ -64,7 +58,7 @@ builder.Services.AddScoped(sp =>
     
     handler.ConfigureHandler(
         authorizedUrls: new[] { apiUrl },
-        scopes: new[] { configuration["AzureAd:DefaultScopes:0"] ?? "api://25c8d8d0-8323-40fe-8863-e4b22711f572/access_as_user" }
+        scopes: new[] { "api://25c8d8d0-8323-40fe-8863-e4b22711f572/access_as_user" }
     );
     
     return handler;
@@ -89,37 +83,29 @@ builder.Services.AddScoped<ILoadingService, LoadingService>();
 builder.Services.AddScoped<IStateService, StateService>();
 
 // Add API Services
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IProjectService, ProjectService>();
-builder.Services.AddScoped<ICompanyService, CompanyService>();
+// builder.Services.AddScoped<IUserService, UserService>(); // TODO: Create IUserService interface
 builder.Services.AddScoped<ICostService, CostService>();
 builder.Services.AddScoped<IEVMService, EVMService>();
 
 // Add Organization API Services
-builder.Services.AddScoped<Web.Services.Interfaces.Organization.ICompanyApiService, Web.Services.Implementation.Organization.CompanyApiService>();
-builder.Services.AddScoped<Web.Services.Interfaces.Organization.IOperationApiService, Web.Services.Implementation.Organization.OperationApiService>();
-builder.Services.AddScoped<Web.Services.Interfaces.Organization.IContractorApiService, Web.Services.Implementation.Organization.ContractorApiService>();
-builder.Services.AddScoped<Web.Services.Interfaces.Organization.IDisciplineApiService, Web.Services.Implementation.Organization.DisciplineApiService>();
-builder.Services.AddScoped<Web.Services.Interfaces.Organization.IPhaseApiService, Web.Services.Implementation.Organization.PhaseApiService>();
+builder.Services.AddScoped<ICompanyApiService, CompanyApiService>();
+builder.Services.AddScoped<IOperationApiService, OperationApiService>();
+builder.Services.AddScoped<IContractorApiService, ContractorApiService>();
+builder.Services.AddScoped<IDisciplineApiService, DisciplineApiService>();
+builder.Services.AddScoped<IProjectApiService, ProjectApiService>();
+builder.Services.AddScoped<IPhaseApiService, PhaseApiService>();
+builder.Services.AddScoped<IOBSNodeApiService, OBSNodeApiService>();
+builder.Services.AddScoped<IRAMApiService, RAMApiService>();
+
+// Add wrapper services
+builder.Services.AddScoped<IProjectService, ProjectService>();
+
+// Add user photo service
+builder.Services.AddScoped<UserPhotoService>();
 
 // Configure Logging
 builder.Logging.SetMinimumLevel(LogLevel.Information);
 
 var app = builder.Build();
 
-// Get logging service to log startup
-var loggingService = app.Services.GetRequiredService<ILoggingService>();
-loggingService.LogInfo("=== EzPro MSD Web Application Starting ===");
-loggingService.LogInfo("API Base URL: {0}", builder.Configuration["ApiSettings:BaseUrl"] ?? "api://25c8d8d0-8323-40fe-8863-e4b22711f572/access_as_user");
-loggingService.LogInfo("Azure AD Authority: {0}", builder.Configuration["AzureAd:Authority"] ?? "Not configured");
-
-try
-{
-    loggingService.LogInfo("Starting Blazor WebAssembly app...");
-    await app.RunAsync();
-}
-catch (Exception ex)
-{
-    loggingService.LogError(ex, "Failed to start application");
-    throw;
-}
+await app.RunAsync();

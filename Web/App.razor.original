@@ -1,0 +1,127 @@
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated != true)
+                    {
+                        <RedirectToLogin />
+                    }
+                    else
+                    {
+                        <div class="auth-container">
+                            <MudCard Class="auth-card" Elevation="8">
+                                <MudCardContent Class="text-center pa-8">
+                                    <MudIcon Icon="@Icons.Material.Filled.Block" Color="Color.Error" Style="font-size: 64px;" Class="mb-4" />
+                                    <MudText Typo="Typo.h4" Class="mb-2">Acceso Denegado</MudText>
+                                    <MudText Typo="Typo.body1" Color="Color.Default" Class="mb-4">
+                                        No tienes permisos para acceder a esta página.
+                                    </MudText>
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" 
+                                               Href="/home" Class="px-8">
+                                        Ir al Inicio
+                                    </MudButton>
+                                </MudCardContent>
+                            </MudCard>
+                        </div>
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <div class="auth-container">
+                        <MudCard Class="auth-card" Elevation="8">
+                            <MudCardContent Class="text-center pa-8">
+                                <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" Class="mb-4" />
+                                <MudText Typo="Typo.h4" Class="mb-2">Verificando autenticación</MudText>
+                                <MudText Typo="Typo.body1" Color="Color.Default">
+                                    Por favor espera...
+                                </MudText>
+                            </MudCardContent>
+                        </MudCard>
+                    </div>
+                </Authorizing>
+            </AuthorizeRouteView>
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <div class="not-found-container">
+                    <MudCard Elevation="8" Class="not-found-card">
+                        <MudCardContent Class="text-center pa-8">
+                            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Color="Color.Warning" Style="font-size: 80px;" Class="mb-4" />
+                            <MudText Typo="Typo.h1" Class="mb-2" Style="font-weight: 700;">404</MudText>
+                            <MudText Typo="Typo.h4" Class="mb-2">Página no encontrada</MudText>
+                            <MudText Typo="Typo.body1" Color="Color.Default" Class="mb-4">
+                                La página que buscas no existe o ha sido movida.
+                            </MudText>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" 
+                                       Href="/home" StartIcon="@Icons.Material.Filled.Home" Class="px-8">
+                                Volver al Inicio
+                            </MudButton>
+                        </MudCardContent>
+                    </MudCard>
+                </div>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
+
+<style>
+    .auth-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .auth-card {
+        min-width: 450px;
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(10px);
+    }
+    
+    .not-found-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: var(--ynex-body-bg);
+    }
+    
+    .not-found-card {
+        max-width: 500px;
+    }
+    
+    @@media (max-width: 600px) {
+        .auth-card, .not-found-card {
+            min-width: 90vw;
+            margin: 1rem;
+        }
+    }
+</style>
+
+@code {
+    [Inject]
+    private ILoggingService Logger { get; set; } = default!;
+    
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Logger.LogInfo("=== App.razor inicializado con autenticación ===");
+            Logger.LogInfo($"URI Base: {Navigation.BaseUri}");
+            Logger.LogInfo($"URI Actual: {Navigation.Uri}");
+            await Task.Delay(100); // Pequeña espera para asegurar que todo esté listo
+            Logger.LogInfo("App.razor inicializado correctamente con CascadingAuthenticationState");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error al inicializar App.razor");
+        }
+    }
+}

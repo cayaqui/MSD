@@ -1,11 +1,8 @@
 @inject NavigationManager Navigation
-@inject ILoggingService Logger
 
 @code {
     protected override void OnInitialized()
     {
-        Logger.LogInfo("Usuario no autenticado - Redirigiendo al login...");
-        var returnUrl = Uri.EscapeDataString(Navigation.ToAbsoluteUri(Navigation.Uri).PathAndQuery);
-        Navigation.NavigateTo($"authentication/login?returnUrl={returnUrl}");
+        Navigation.NavigateTo("/public/login");
     }
 }

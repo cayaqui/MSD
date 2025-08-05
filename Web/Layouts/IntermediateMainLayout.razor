@@ -1,0 +1,97 @@
+@inherits LayoutComponentBase
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using Web.Components.Layout
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ILoggingService Logger
+@* @inject UserPhotoService UserPhotoService *@
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <!-- Usar EzProSidebar pero sin el Header problemático -->
+    <EzProSidebar @bind-IsOpen="@_drawerOpen"
+                  @bind-IsCollapsed="@_sidebarCollapsed"
+                  IsMobile="false"
+                  OnToggleClick="@ToggleDrawer"
+                  UserName="@_userName"
+                  UserRole="Usuario" />
+    
+    <!-- EzProHeader simplificado -->
+    <EzProHeaderSimple OnToggleClick="@ToggleDrawer"
+                       OnThemeToggle="@ToggleTheme"
+                       IsDarkMode="@_isDarkMode"
+                       UserName="@_userName"
+                       UserEmail="@_userEmail"
+                       UserAvatar="@_userAvatar"
+                       NotificationCount="3"
+                       OnNotificationsClick="@(() => Navigation.NavigateTo("/notifications"))"
+                       OnProfileClick="@(() => Navigation.NavigateTo("/profile"))"
+                       OnSettingsClick="@(() => Navigation.NavigateTo("/settings"))"
+                       OnLogoutClick="@Logout" />
+    
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _sidebarCollapsed = false;
+    private bool _isDarkMode = false;
+    private string _userName = "Usuario";
+    private string _userEmail = "usuario@empresa.com";
+    private string? _userAvatar = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Logger.LogInfo("IntermediateMainLayout inicializándose...");
+            
+            // Obtener información básica del usuario
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                _userName = user.FindFirst("name")?.Value 
+                    ?? user.Identity.Name 
+                    ?? "Usuario";
+                
+                _userEmail = user.FindFirst("email")?.Value 
+                    ?? user.FindFirst("preferred_username")?.Value
+                    ?? "usuario@empresa.com";
+                    
+                Logger.LogInfo($"Usuario autenticado: {_userName}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error al inicializar IntermediateMainLayout");
+        }
+    }
+
+    
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+    
+    private void ToggleTheme()
+    {
+        _isDarkMode = !_isDarkMode;
+    }
+    
+    
+    private void Logout()
+    {
+        Navigation.NavigateTo("authentication/logout");
+    }
+}

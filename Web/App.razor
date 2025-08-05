@@ -4,30 +4,9 @@
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
-            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(IntermediateMainLayout)">
                 <NotAuthorized>
-                    @if (context.User.Identity?.IsAuthenticated != true)
-                    {
-                        <RedirectToLogin />
-                    }
-                    else
-                    {
-                        <div class="auth-container">
-                            <MudCard Class="auth-card" Elevation="8">
-                                <MudCardContent Class="text-center pa-8">
-                                    <MudIcon Icon="@Icons.Material.Filled.Block" Color="Color.Error" Style="font-size: 64px;" Class="mb-4" />
-                                    <MudText Typo="Typo.h4" Class="mb-2">Acceso Denegado</MudText>
-                                    <MudText Typo="Typo.body1" Color="Color.Default" Class="mb-4">
-                                        No tienes permisos para acceder a esta página.
-                                    </MudText>
-                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" 
-                                               Href="/home" Class="px-8">
-                                        Ir al Inicio
-                                    </MudButton>
-                                </MudCardContent>
-                            </MudCard>
-                        </div>
-                    }
+                    <RedirectToLogin />
                 </NotAuthorized>
                 <Authorizing>
                     <div class="auth-container">
@@ -45,7 +24,7 @@
             </AuthorizeRouteView>
         </Found>
         <NotFound>
-            <LayoutView Layout="@typeof(MainLayout)">
+            <LayoutView Layout="@typeof(IntermediateMainLayout)">
                 <div class="not-found-container">
                     <MudCard Elevation="8" Class="not-found-card">
                         <MudCardContent Class="text-center pa-8">
@@ -103,25 +82,5 @@
 </style>
 
 @code {
-    [Inject]
-    private ILoggingService Logger { get; set; } = default!;
     
-    [Inject]
-    private NavigationManager Navigation { get; set; } = default!;
-
-    protected override async Task OnInitializedAsync()
-    {
-        try
-        {
-            Logger.LogInfo("=== App.razor inicializado con autenticación ===");
-            Logger.LogInfo($"URI Base: {Navigation.BaseUri}");
-            Logger.LogInfo($"URI Actual: {Navigation.Uri}");
-            await Task.Delay(100); // Pequeña espera para asegurar que todo esté listo
-            Logger.LogInfo("App.razor inicializado correctamente con CascadingAuthenticationState");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error al inicializar App.razor");
-        }
-    }
 }

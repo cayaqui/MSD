@@ -1,8 +1,5 @@
 using Domain.Entities.Cost.Core;
 using Domain.Entities.Cost.Budget;
-using Domain.Entities.Projects.WBS;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Data.Configurations.Cost
 {

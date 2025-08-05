@@ -17,5 +17,8 @@ public class MilestoneDocument : BaseEntity
     public DateTime UploadedDate { get; set; }
     public string UploadedBy { get; set; } = string.Empty;
     
+    public DateTime AttachedDate { get; set; }
+    public string AttachedBy { get; set; } = string.Empty;
+    
     public bool IsActive { get; set; } = true;
 }

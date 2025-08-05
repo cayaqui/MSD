@@ -22,3 +22,9 @@ global using Core.DTOs.Organization.Phase;
 global using Core.DTOs.Organization.Package;
 global using Core.DTOs.Organization.Company;
 global using Core.Enums;
+
+global using Web.Services.Interfaces;
+global using Web.Services.Interfaces.Organization;
+global using Web.Services.Implementation;
+global using Web.Services.Implementation.Organization;
+

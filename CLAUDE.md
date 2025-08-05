@@ -2,130 +2,121 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Architecture Overview
+## Project Overview
 
-EzPro MSD is a Project Control System for Engineering and Construction built with:
-- **Backend**: ASP.NET Core 9.0 Web API with minimal APIs (Carter)
-- **Frontend**: Blazor WebAssembly
-- **Architecture**: Clean Architecture with DDD principles
-- **Authentication**: Azure AD/Entra ID with JWT tokens
-- **Database**: Entity Framework Core with SQL Server
+EzPro is a Project Control System for Engineering and Construction, built with:
+- .NET 9.0 following Clean Architecture principles
+- Blazor WebAssembly frontend with MudBlazor UI components
+- Entity Framework Core with SQL Server
+- Azure AD authentication using MSAL
+- Carter for minimal API endpoints
 
-### Project Structure
+## Architecture Layers
 
-- **Api**: Web API layer with minimal API endpoints
-- **Application**: Business logic, interfaces, and services
-- **Domain**: Core entities and domain logic
-- **Infrastructure**: Data access, external services, authentication
-- **DTOs**: Data Transfer Objects for API communication
-- **Enums**: Shared enumerations
-- **ValueObjects**: Domain value objects
-- **Web**: Blazor WebAssembly frontend
+1. **Domain** - Core business entities, interfaces, and domain logic
+2. **Core** - DTOs, enums, constants, and shared value objects
+3. **Application** - Business services, validators, mappings, and application logic
+4. **Infrastructure** - Data persistence, external services, EF Core implementations
+5. **Api** - REST API with Carter modules for endpoint organization
+6. **Web** - Blazor WebAssembly frontend application
 
-### Key Patterns
+## Running the Applications
 
-1. **Repository Pattern**: Generic repository with Unit of Work
-2. **Service Layer**: BaseService<T> for CRUD operations, extended for complex logic
-3. **Minimal APIs**: Using Carter for endpoint organization
-4. **Authentication Flow**: Azure AD → API validation → Database check → JWT token
-
-## Common Development Commands
-
-### Build and Run
-
+### API Backend
 ```bash
-# Build entire solution
-dotnet build
-
-# Run API (from Api directory)
 cd Api
-dotnet run
-
-# Run with specific launch profile
 dotnet run --launch-profile https
+```
+Runs on: https://localhost:7193
 
-# Run Blazor frontend (from Web directory)
+### Blazor Frontend
+```bash
 cd Web
-dotnet run
+dotnet run --launch-profile https
+```
+Runs on: https://localhost:7284
+
+## Database Operations
+
+### Create Migration
+```bash
+dotnet ef migrations add [MigrationName] -p Infrastructure -s Api
 ```
 
-### Database Operations
-
+### Update Database
 ```bash
-# Apply migrations (from Api directory)
-cd Api
-dotnet ef database update
-
-# Create new migration
-dotnet ef migrations add MigrationName -p ../Infrastructure -s .
-
-# Remove last migration
-dotnet ef migrations remove -p ../Infrastructure -s .
+dotnet ef database update -p Infrastructure -s Api
 ```
 
-### Testing
+## Build Commands
 
+### Build Solution
 ```bash
-# Run all tests
+dotnet build
+```
+
+### Run Tests
+```bash
 dotnet test
-
-# Run with coverage
-dotnet test /p:CollectCoverage=true
 ```
 
-## Key Configuration
+## Key Architectural Patterns
 
-### API Configuration (appsettings.json)
-- Azure AD settings: `AzureAd` section
-- Connection strings: `ConnectionStrings:DefaultConnection`
-- JWT settings: `Authentication:Jwt`
-- CORS origins: `CorsSettings:AllowedOrigins`
+### API Organization
+- Endpoints organized in Carter modules under `Api/Modules/`
+- Module structure: Auth, Cost, Organization, Contracts
+- Middleware pipeline: ExceptionHandling → Authentication → CurrentUser → UserValidation → Authorization
 
-### Frontend Configuration (wwwroot/appsettings.json)
-- API URL configuration
-- Azure AD client settings
+### Service Layer
+- Services registered in `Application/DependencyInjection.cs`
+- Scoped lifetime for most services
+- Key services: ICurrentUserService, IPermissionService, IProjectService
 
-## Important Services and Interfaces
+### Data Access
+- Repository pattern with IRepository<T> and IUnitOfWork
+- Entity configurations in `Infrastructure/Data/Configurations/`
+- Soft delete support via ISoftDelete interface
 
-### Authentication & Security
-- `ICurrentUserService`: Access authenticated user context
-- `IGraphApiService`: Microsoft Graph integration
-- `UserValidationMiddleware`: Validates users exist in database
+### Frontend Services
+- API communication through IApiService
+- Named HttpClient "EzProAPI" with authorization handler
+- Services organized by domain: Auth, Cost, Organization
 
-### Core Services Pattern
-- `IBaseService<TEntity, TDto, TCreateDto, TUpdateDto>`: Generic CRUD operations
-- Extend BaseService for domain-specific logic (e.g., UserService, ProjectService)
-
-### Key Endpoints
-- `/api/auth/*`: Authentication operations
-- `/api/companies/*`: Company management
-- `/api/projects/*`: Project operations
-- `/api/users/*`: User management (Admin only)
+### Authentication Flow
+- Azure AD via MSAL
+- JWT Bearer tokens for API
+- Permission-based authorization with project-level access control
+- Custom authorization handler for system admin roles
 
 ## Development Workflow
 
-1. **Adding New Entity**:
-   - Create entity in Domain/Entities
-   - Add DTOs (Dto, CreateDto, UpdateDto)
-   - Create interface in Application/Interfaces
-   - Implement service extending BaseService
-   - Add configuration in Infrastructure/Data/Configurations
-   - Register endpoints in Api/Endpoints
+### Adding New Features
+1. Define entity in `Domain/Entities/`
+2. Create DTOs in `Core/DTOs/`
+3. Add service interface in `Application/Interfaces/`
+4. Implement service in `Application/Services/`
+5. Create Carter module in `Api/Modules/`
+6. Add frontend service in `Web/Services/`
+7. Create Blazor pages/components in `Web/Pages/`
 
-2. **Authentication Required**:
-   - All endpoints require authentication by default
-   - Use `[AllowAnonymous]` sparingly
-   - User must exist in database (not just Azure AD)
+### Configuration Files
+- `Api/appsettings.json` - API configuration, Azure AD, connection strings
+- `Web/wwwroot/appsettings.json` - Frontend API endpoint configuration
+- CORS settings differ between Development (allow all) and Production (restricted)
 
-3. **Database Context**:
-   - ApplicationDbContext includes all entities
-   - Configurations use Fluent API
-   - Soft delete is implemented via ISoftDelete interface
+## Important Technical Details
 
-## Security Considerations
+### Entity Framework
+- Code-first approach
+- Automatic audit fields (CreatedBy, ModifiedBy, etc.)
+- Hierarchical entities support via IHierarchical<T>
 
-- Never commit secrets or connection strings
-- Use Azure Key Vault for production secrets
-- All API calls require HTTPS
-- JWT tokens expire after 60 minutes
-- Refresh tokens valid for 7 days
+### API Response Format
+- Consistent error handling via ExceptionHandlingMiddleware
+- ProblemDetails for error responses
+- PagedResult<T> for paginated responses
+
+### Frontend State Management
+- Scoped services for state management
+- IStateService for application state
+- Blazored.LocalStorage and SessionStorage for persistence

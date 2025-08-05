@@ -7,7 +7,6 @@
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ILoggingService Logger
-@inject IUserSyncService UserSyncService
 
 <MudThemeProvider IsDarkMode="@_isDarkMode" />
 <MudPopoverProvider />
@@ -197,13 +196,9 @@
                 
                 Logger.LogInfo($"Usuario autenticado: {_userName} ({_userEmail})");
                 
-                // Log todos los claims para debugging
-                foreach (var claim in user.Claims)
-                {
-                    Logger.LogDebug($"Claim: {claim.Type} = {claim.Value}");
-                }
-                
-                // Sincronizar información del usuario con Entra ID
+                // Temporalmente deshabilitado la sincronización con Entra ID
+                // TODO: Revisar el servicio UserSyncService
+                /*
                 try
                 {
                     var syncResult = await UserSyncService.SyncUserAsync();
@@ -236,6 +231,7 @@
                 {
                     Logger.LogError(syncEx, "Error durante la sincronización con Entra ID");
                 }
+                */
             }
             else
             {
@@ -256,61 +252,87 @@
     {
         if (firstRender)
         {
-            // Check if mobile
-            _isMobile = await JS.InvokeAsync<bool>("eval", "window.innerWidth < 992");
-            
-            // Initialize theme from localStorage
-            var savedTheme = await JS.InvokeAsync<string>("localStorage.getItem", "theme");
-            if (savedTheme == "dark")
+            try
             {
-                _isDarkMode = true;
-            }
-            
-            // Initialize sidebar state from localStorage (desktop only)
-            if (!_isMobile)
-            {
-                var savedSidebarState = await JS.InvokeAsync<string>("localStorage.getItem", "sidebarCollapsed");
-                if (savedSidebarState == "true")
-                {
-                    _sidebarCollapsed = true;
-                }
+                // Configuración inicial simplificada
                 _sidebarOpen = true;
+                _isDarkMode = false;
+                
+                // Detectar si es móvil de forma segura
+                try
+                {
+                    _isMobile = await JS.InvokeAsync<bool>("eval", "window.innerWidth < 992");
+                    if (_isMobile)
+                    {
+                        _sidebarOpen = false;
+                    }
+                }
+                catch
+                {
+                    // Si falla, asumir que no es móvil
+                    _isMobile = false;
+                }
+                
+                StateHasChanged();
             }
-            else
+            catch (Exception ex)
             {
-                _sidebarOpen = false;
+                Logger.LogError(ex, "Error en OnAfterRenderAsync");
             }
-            
-            // Listen for window resize
-            await JS.InvokeVoidAsync("eval", @"
-                window.addEventListener('resize', () => {
-                    DotNet.invokeMethodAsync('Web', 'OnWindowResize', window.innerWidth);
-                });
-            ");
-            
-            StateHasChanged();
         }
     }
 
     private async Task ToggleSidebar()
     {
-        if (_isMobile)
+        try
         {
-            // Mobile behavior - toggle open/close
-            _sidebarOpen = !_sidebarOpen;
+            if (_isMobile)
+            {
+                // Mobile behavior - toggle open/close
+                _sidebarOpen = !_sidebarOpen;
+            }
+            else
+            {
+                // Desktop behavior - toggle collapsed state
+                _sidebarCollapsed = !_sidebarCollapsed;
+                
+                // Guardar en localStorage de forma segura
+                try
+                {
+                    await JS.InvokeVoidAsync("localStorage.setItem", "sidebarCollapsed", _sidebarCollapsed.ToString().ToLower());
+                }
+                catch
+                {
+                    // Si falla localStorage, continuar sin guardar
+                }
+            }
         }
-        else
+        catch (Exception ex)
         {
-            // Desktop behavior - toggle collapsed state
-            _sidebarCollapsed = !_sidebarCollapsed;
-            await JS.InvokeVoidAsync("localStorage.setItem", "sidebarCollapsed", _sidebarCollapsed.ToString().ToLower());
+            Logger.LogError(ex, "Error al alternar sidebar");
         }
     }
 
     private async Task ToggleTheme()
     {
-        _isDarkMode = !_isDarkMode;
-        await JS.InvokeVoidAsync("localStorage.setItem", "theme", _isDarkMode ? "dark" : "light");
+        try
+        {
+            _isDarkMode = !_isDarkMode;
+            
+            // Guardar en localStorage de forma segura
+            try
+            {
+                await JS.InvokeVoidAsync("localStorage.setItem", "theme", _isDarkMode ? "dark" : "light");
+            }
+            catch
+            {
+                // Si falla localStorage, continuar sin guardar
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error al cambiar tema");
+        }
     }
 
     [JSInvokable]

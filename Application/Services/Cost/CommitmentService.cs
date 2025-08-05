@@ -1,20 +1,10 @@
 using Application.Interfaces.Cost;
-using Application.Interfaces.Common;
-using Application.Interfaces.Auth;
-using AutoMapper;
-using Core.DTOs.Common;
 using Core.DTOs.Cost.Commitments;
 using Core.DTOs.Cost.CommitmentItems;
 using Core.DTOs.Cost.CommitmentWorkPackage;
 using Domain.Entities.Cost.Commitments;
-using Domain.Entities.Projects.WBS;
-using Domain.Entities.Organization.Core;
-using Domain.Entities.Cost.Budget;
-using Domain.Entities.Cost.Control;
-using Domain.Entities.Cost.Core;
-using Microsoft.EntityFrameworkCore;
 using Core.Enums.Cost;
-using System.IO;
+
 using System.Text;
 
 namespace Application.Services.Cost

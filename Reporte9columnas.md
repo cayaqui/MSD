@@ -34,6 +34,7 @@ Las certificaciones más relevantes identificadas incluyen PMP (Project Manageme
 Para modelar este informe en un sistema web con C# y Blazor, la arquitectura recomendada incluye:
 
 ### Estructura de datos principal
+
 ```csharp
 public class CostControlRecord
 {
@@ -50,6 +51,7 @@ public class CostControlRecord
 ```
 
 ### Arquitectura del sistema
+
 - **Backend**: ASP.NET Core 8.0 con Entity Framework Core
 - **Frontend**: Blazor Server para actualizaciones en tiempo real
 - **Base de datos**: SQL Server o PostgreSQL
@@ -94,6 +96,7 @@ La frecuencia de actualización varía según el nivel: diaria para control oper
 El sistema requiere captura de datos desde múltiples fuentes:
 
 ### Datos de entrada
+
 - **Presupuestos aprobados** desde el sistema de licitación
 - **Avances físicos** desde inspección técnica de obra
 - **Costos reales** desde ERP/contabilidad
@@ -101,6 +104,7 @@ El sistema requiere captura de datos desde múltiples fuentes:
 - **Recursos** desde sistemas de RRHH y equipos
 
 ### Proceso de actualización
+
 1. Ingreso diario de avances por capataces/supervisores
 2. Validación semanal por jefes de obra
 3. Consolidación quincenal por control de proyectos
@@ -108,6 +112,7 @@ El sistema requiere captura de datos desde múltiples fuentes:
 5. Análisis trimestral estratégico
 
 ### Permisos y roles
+
 - **Ingeniero de obra**: Lectura/escritura limitada a su área
 - **Jefe de proyecto**: Acceso completo a su proyecto
 - **Controller financiero**: Lectura total, escritura en costos

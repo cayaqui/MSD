@@ -1,4 +1,6 @@
 ﻿
+using Core.DTOs.Common;
+using Core.DTOs.Cost;
 using Core.DTOs.EVM;
 using Core.DTOs.Reports;
 
@@ -12,7 +14,7 @@ public interface IEVMService
     // Query Operations
     Task<PagedResult<EVMRecordDto>> GetEVMRecordsAsync(
         Guid controlAccountId,
-        QueryParameters parameters,
+        EVMQueryParameters parameters,
         CancellationToken cancellationToken = default);
 
     Task<EVMRecordDetailDto?> GetEVMRecordByIdAsync(

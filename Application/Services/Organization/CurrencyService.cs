@@ -1,10 +1,5 @@
-    using Application.Interfaces.Organization;
-using Application.Services.Base;
-using AutoMapper;
+using Application.Interfaces.Organization;
 using Core.DTOs.Organization.Currency;
-using Domain.Entities.Organization.Core;
-using Domain.Interfaces;
-using Microsoft.Extensions.Logging;
 
 namespace Application.Services.Organization
 {

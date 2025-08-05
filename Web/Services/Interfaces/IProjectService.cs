@@ -3,6 +3,10 @@ using Core.DTOs.Common;
 
 namespace Web.Services.Interfaces;
 
+/// <summary>
+/// Service interface for project operations
+/// This is a wrapper service that uses IProjectApiService internally
+/// </summary>
 public interface IProjectService
 {
     Task<PagedResult<ProjectListDto>> GetProjectsAsync(ProjectFilterDto? filter = null);

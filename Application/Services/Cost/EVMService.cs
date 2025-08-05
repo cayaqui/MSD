@@ -5,10 +5,11 @@ using AutoMapper;
 using Core.DTOs.Common;
 using Core.DTOs.EVM;
 using Core.DTOs.Reports;
+using Core.DTOs.Cost;
 using Domain.Entities.Cost.EVM;
 using Domain.Entities.Cost.Control;
 using Domain.Entities.Organization.Core;
-using Domain.Entities.Projects.WBS;
+using Domain.Entities.WBS;
 using Domain.Entities.Auth.Security;
 using Microsoft.EntityFrameworkCore;
 using Core.Enums.Cost;
@@ -40,7 +41,7 @@ public class EVMService : IEVMService
 
     public async Task<PagedResult<EVMRecordDto>> GetEVMRecordsAsync(
         Guid controlAccountId,
-        QueryParameters parameters,
+        EVMQueryParameters parameters,
         CancellationToken cancellationToken = default)
     {
         var query = _unitOfWork.Repository<EVMRecord>()
@@ -57,35 +58,20 @@ public class EVMService : IEVMService
         }
 
         // Apply filters
-        if (parameters.Filters != null && parameters.Filters.Any())
-        {
-            foreach (var filter in parameters.Filters)
-            {
-                switch (filter.Key.ToLower())
-                {
-                    case "periodtype":
-                        if (Enum.TryParse<EVMPeriodType>(filter.Value, out var periodType))
-                            query = query.Where(e => e.PeriodType == periodType);
-                        break;
-                    case "status":
-                        if (Enum.TryParse<EVMStatus>(filter.Value, out var status))
-                            query = query.Where(e => e.Status == status);
-                        break;
-                    case "isapproved":
-                        if (bool.TryParse(filter.Value, out var isApproved))
-                            query = query.Where(e => e.IsApproved == isApproved);
-                        break;
-                    case "year":
-                        if (int.TryParse(filter.Value, out var year))
-                            query = query.Where(e => e.Year == year);
-                        break;
-                    case "month":
-                        if (int.TryParse(filter.Value, out var month))
-                            query = query.Where(e => e.DataDate.Month == month);
-                        break;
-                }
-            }
-        }
+        if (parameters.PeriodType.HasValue)
+            query = query.Where(e => e.PeriodType == parameters.PeriodType.Value);
+        
+        if (parameters.Status.HasValue)
+            query = query.Where(e => e.Status == parameters.Status.Value);
+        
+        if (parameters.IsApproved.HasValue)
+            query = query.Where(e => e.IsApproved == parameters.IsApproved.Value);
+        
+        if (parameters.Year.HasValue)
+            query = query.Where(e => e.Year == parameters.Year.Value);
+        
+        if (parameters.Month.HasValue)
+            query = query.Where(e => e.DataDate.Month == parameters.Month.Value);
 
         // Apply sorting
         if (!string.IsNullOrWhiteSpace(parameters.SortBy))

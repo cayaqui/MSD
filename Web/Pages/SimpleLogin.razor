@@ -1,0 +1,77 @@
+@page "/simple-login"
+@inject NavigationManager Navigation
+@inject IToastService ToastService
+@inject ILoggingService Logger
+
+<div class="auth-container">
+    <MudCard Class="auth-card" Elevation="8">
+        <MudCardContent Class="text-center pa-8">
+            <MudIcon Icon="@Icons.Custom.Brands.Microsoft" Color="Color.Primary" Style="font-size: 64px;" Class="mb-4" />
+            <MudText Typo="Typo.h4" Class="mb-2">Inicio de Sesión Temporal</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Default" Class="mb-4">
+                Esta es una página de login temporal mientras se configura Azure AD
+            </MudText>
+            
+            <MudTextField @bind-Value="userName" 
+                         Label="Nombre de usuario" 
+                         Variant="Variant.Outlined" 
+                         Class="mb-4" />
+            
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Primary" 
+                      Size="Size.Large" 
+                      FullWidth="true"
+                      OnClick="Login"
+                      Disabled="@string.IsNullOrWhiteSpace(userName)"
+                      Class="mb-4">
+                Iniciar Sesión
+            </MudButton>
+            
+            <MudAlert Severity="Severity.Info" Class="mt-4">
+                <MudText Typo="Typo.body2">
+                    Nota: Esta es una autenticación temporal. En producción se usará Azure AD.
+                </MudText>
+            </MudAlert>
+        </MudCardContent>
+    </MudCard>
+</div>
+
+<style>
+    .auth-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .auth-card {
+        min-width: 450px;
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(10px);
+    }
+    
+    @@media (max-width: 600px) {
+        .auth-card {
+            min-width: 90vw;
+            margin: 1rem;
+        }
+    }
+</style>
+
+@code {
+    private string userName = "";
+
+    private void Login()
+    {
+        if (!string.IsNullOrWhiteSpace(userName))
+        {
+            Logger.LogInfo($"Usuario temporal '{userName}' inició sesión");
+            ToastService.ShowSuccess($"Bienvenido {userName}!");
+            
+            // TODO: Aquí iría la lógica de autenticación real
+            // Por ahora solo redirigimos al home
+            Navigation.NavigateTo("/home");
+        }
+    }
+}

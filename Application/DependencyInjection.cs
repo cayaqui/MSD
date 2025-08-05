@@ -90,10 +90,10 @@ public static class DependencyInjection
         
         // Contract Services
         services.AddScoped<IContractService, ContractService>();
-        services.AddScoped<IChangeOrderService, ChangeOrderService>();
-        services.AddScoped<IContractMilestoneService, ContractMilestoneService>();
-        services.AddScoped<IValuationService, ValuationService>();
-        services.AddScoped<IClaimService, ClaimService>();
+        //services.AddScoped<IChangeOrderService, ChangeOrderService>();
+        //services.AddScoped<IContractMilestoneService, ContractMilestoneService>();
+        //services.AddScoped<IValuationService, ValuationService>();
+        //services.AddScoped<IClaimService, ClaimService>();
 
         // Add DateTime service - Transient (new instance each time)
         services.AddTransient<IDateTime, DateTimeService>();

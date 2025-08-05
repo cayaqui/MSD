@@ -1,4 +1,3 @@
-using Core.DTOs.Configuration.OBSTemplates;
 using Core.DTOs.Organization.OBSNode;
 
 namespace Application.Interfaces.Configuration;

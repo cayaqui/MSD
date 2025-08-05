@@ -1,4 +1,4 @@
-namespace Core.DTOs.Cost.CostControlReports;
+namespace Core.DTOs.Cost;
 
 /// <summary>
 /// DTO for cost breakdown by category

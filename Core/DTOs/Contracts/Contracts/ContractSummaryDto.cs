@@ -15,6 +15,9 @@ public class ContractSummaryDto
     public decimal TotalInvoicedAmount { get; set; }
     public decimal TotalPaidAmount { get; set; }
     public decimal TotalRetentionAmount { get; set; }
+    public decimal TotalValue { get; set; }
+    public decimal TotalPaid { get; set; }
+    public decimal TotalOutstanding { get; set; }
     
     public Dictionary<ContractType, int> ContractsByType { get; set; } = new();
     public Dictionary<ContractStatus, int> ContractsByStatus { get; set; } = new();
