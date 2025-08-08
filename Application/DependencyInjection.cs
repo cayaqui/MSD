@@ -10,6 +10,20 @@ using Application.Interfaces.Cost;
 using Application.Services.Cost;
 using Application.Interfaces.Contracts;
 using Application.Services.Contracts;
+using Application.Interfaces.Projects;
+using Application.Services.Projects;
+using Application.Interfaces.Documents;
+using Application.Services.Documents;
+using Application.Interfaces.Progress;
+using Application.Services.Progress;
+using Application.Interfaces.Reports;
+using Application.Services.Reports;
+using Application.Interfaces.Risk;
+using Application.Services.Risk;
+using Application.Interfaces.Notifications;
+using Application.Services.Notifications;
+using Application.Interfaces.Visualization;
+using Application.Services.Visualization;
 
 
 namespace Application;
@@ -51,6 +65,7 @@ public static class DependencyInjection
         services.AddScoped<ICommitmentService, CommitmentService>();
         services.AddScoped<ICostService, CostService>();
         services.AddScoped<IEVMService, EVMService>();
+        services.AddScoped<IWorkPackageService, WorkPackageService>();
         
         //services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IUserService, UserService>();
@@ -65,7 +80,7 @@ public static class DependencyInjection
         // Note: IReportExportService is registered in Infrastructure layer
         
         // Document Services
-        //services.AddScoped<IDocumentService, DocumentService>();
+        services.AddScoped<IDocumentService, DocumentService>();
         //services.AddScoped<ITransmittalService, TransmittalService>();
         //services.AddScoped<IDocumentDistributionService, DocumentDistributionService>();
         
@@ -73,9 +88,28 @@ public static class DependencyInjection
         services.AddScoped<IProjectTypeService, ProjectTypeService>();
         //services.AddScoped<ISystemParameterService, SystemParameterService>();
         //services.AddScoped<IOBSService, OBSService>();
-        services.AddScoped<IPermissionService, PermissionService>();
-        //services.AddScoped<IWBSTemplateService, WBSTemplateService>();
+        services.AddScoped<IWBSTemplateService, WBSTemplateService>();
         //services.AddScoped<ICBSTemplateService, CBSTemplateService>();
+        
+        // Project Services
+        services.AddScoped<IWBSService, WBSService>();
+        
+        // Progress Services
+        services.AddScoped<IScheduleService, ScheduleService>();
+        services.AddScoped<IActivityService, ActivityService>();
+        services.AddScoped<IMilestoneService, MilestoneService>();
+        
+        // Report Services
+        services.AddScoped<IReportService, ReportService>();
+        
+        // Risk Services
+        services.AddScoped<IRiskService, RiskService>();
+        
+        // Notification Services
+        services.AddScoped<INotificationService, NotificationService>();
+        
+        // Visualization Services
+        services.AddScoped<IVisualizationService, VisualizationService>();
         
         // Organization Services
         // TODO: Fix these services to match actual domain entity properties
@@ -90,10 +124,10 @@ public static class DependencyInjection
         
         // Contract Services
         services.AddScoped<IContractService, ContractService>();
-        //services.AddScoped<IChangeOrderService, ChangeOrderService>();
-        //services.AddScoped<IContractMilestoneService, ContractMilestoneService>();
-        //services.AddScoped<IValuationService, ValuationService>();
-        //services.AddScoped<IClaimService, ClaimService>();
+        services.AddScoped<IChangeOrderService, ChangeOrderService>();
+        services.AddScoped<IContractMilestoneService, ContractMilestoneService>();
+        services.AddScoped<IValuationService, ValuationService>();
+        services.AddScoped<IClaimService, ClaimService>();
 
         // Add DateTime service - Transient (new instance each time)
         services.AddTransient<IDateTime, DateTimeService>();
@@ -184,7 +218,19 @@ public static class ValidationExtensions
                 .First(i => i.IsGenericType &&
                            i.GetGenericTypeDefinition() == typeof(IValidator<>));
 
+            // Remove any existing registrations first
+            var existingDescriptor = services.FirstOrDefault(d => 
+                d.ServiceType == validatorInterface || 
+                d.ServiceType == validatorType);
+            
+            if (existingDescriptor != null)
+            {
+                services.Remove(existingDescriptor);
+            }
+
+            // Register both the interface and the concrete type
             services.Add(new ServiceDescriptor(validatorInterface, validatorType, lifetime));
+            services.Add(new ServiceDescriptor(validatorType, validatorType, lifetime));
         }
 
         return services;

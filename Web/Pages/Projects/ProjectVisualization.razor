@@ -1,0 +1,480 @@
+@page "/projects/{ProjectId:guid}/visualization"
+@using Core.DTOs.Visualization
+@using Web.Services.Interfaces.Visualization
+@using Web.Components.Visualization
+@inject IVisualizationApiService VisualizationService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Project Visualization</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+    <MudBreadcrumbs Items="_breadcrumbs" />
+
+    <MudText Typo="Typo.h4" Class="mb-4">Project Visualization</MudText>
+
+    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+        <MudTabPanel Text="Gantt Chart" Icon="@Icons.Material.Filled.ViewTimeline">
+            <MudCard>
+                <MudCardContent>
+                    <MudGrid>
+                        <MudItem xs="12" md="6">
+                            <MudSelect T="string" Label="Chart Type" @bind-Value="GanttType" Dense="true">
+                                <MudSelectItem Value="@("project")">Project Schedule</MudSelectItem>
+                                <MudSelectItem Value="@("wbs")">WBS Structure</MudSelectItem>
+                                <MudSelectItem Value="@("resource")">Resource Allocation</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string" Label="WBS Filter" @bind-Value="WbsFilter" 
+                                         Immediate="true" Disabled="@(GanttType != "wbs")"
+                                         Placeholder="e.g., 1.2" Dense="true" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudDivider Class="my-4" />
+
+                    @if (IsLoadingGantt)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    }
+                    else if (GanttData != null)
+                    {
+                        <GanttChart ChartData="@GanttData" 
+                                   Height="600" 
+                                   AllowEdit="false"
+                                   OnTaskClick="@HandleTaskClick" />
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Cost S-Curve" Icon="@Icons.Material.Filled.ShowChart">
+            <MudCard>
+                <MudCardContent>
+                    @if (IsLoadingCostCurve)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    }
+                    else if (CostCurveData != null)
+                    {
+                        <SCurveChart ChartData="@CostCurveData" 
+                                    Height="500" 
+                                    ShowMetrics="true"
+                                    OnDataPointClick="@HandleCostDataPointClick" />
+                    }
+
+                    <MudDivider Class="my-4" />
+
+                    <MudText Typo="Typo.h6" Class="mb-2">Cost Performance Indicators</MudText>
+                    <MudGrid>
+                        <MudItem xs="12" md="3">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.caption">Cost Performance Index (CPI)</MudText>
+                                <MudText Typo="Typo.h5" Color="@(CPI >= 1 ? Color.Success : Color.Error)">
+                                    @CPI.ToString("F2")
+                                </MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.caption">Cost Variance (CV)</MudText>
+                                <MudText Typo="Typo.h5" Color="@(CV >= 0 ? Color.Success : Color.Error)">
+                                    @CV.ToString("C")
+                                </MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.caption">Estimate at Completion (EAC)</MudText>
+                                <MudText Typo="Typo.h5">@EAC.ToString("C")</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.caption">Variance at Completion (VAC)</MudText>
+                                <MudText Typo="Typo.h5" Color="@(VAC >= 0 ? Color.Success : Color.Error)">
+                                    @VAC.ToString("C")
+                                </MudText>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Progress S-Curve" Icon="@Icons.Material.Filled.Timeline">
+            <MudCard>
+                <MudCardContent>
+                    @if (IsLoadingProgressCurve)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    }
+                    else if (ProgressCurveData != null)
+                    {
+                        <SCurveChart ChartData="@ProgressCurveData" 
+                                    Height="500" 
+                                    ShowMetrics="true" />
+                    }
+
+                    <MudDivider Class="my-4" />
+
+                    <MudText Typo="Typo.h6" Class="mb-2">Schedule Performance Indicators</MudText>
+                    <MudGrid>
+                        <MudItem xs="12" md="3">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.caption">Schedule Performance Index (SPI)</MudText>
+                                <MudText Typo="Typo.h5" Color="@(SPI >= 1 ? Color.Success : Color.Error)">
+                                    @SPI.ToString("F2")
+                                </MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.caption">Schedule Variance (SV)</MudText>
+                                <MudText Typo="Typo.h5" Color="@(SV >= 0 ? Color.Success : Color.Error)">
+                                    @SV.ToString("F0") days
+                                </MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.caption">Time Estimate at Completion</MudText>
+                                <MudText Typo="Typo.h5">@TEAC.ToString("F0") days</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.caption">Completion Date Forecast</MudText>
+                                <MudText Typo="Typo.h5">@CompletionDate.ToString("MMM dd, yyyy")</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Earned Value" Icon="@Icons.Material.Filled.Assessment">
+            <MudCard>
+                <MudCardContent>
+                    @if (IsLoadingEVM)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    }
+                    else if (EVMCurveData != null)
+                    {
+                        <SCurveChart ChartData="@EVMCurveData" 
+                                    Height="500" 
+                                    ShowMetrics="false" />
+                    }
+
+                    <MudDivider Class="my-4" />
+
+                    <MudText Typo="Typo.h6" Class="mb-2">Earned Value Metrics</MudText>
+                    <MudGrid>
+                        <MudItem xs="12" md="4">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.caption">Planned Value (PV)</MudText>
+                                <MudText Typo="Typo.h5">@PV.ToString("C")</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.caption">Earned Value (EV)</MudText>
+                                <MudText Typo="Typo.h5">@EV.ToString("C")</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.caption">Actual Cost (AC)</MudText>
+                                <MudText Typo="Typo.h5">@AC.ToString("C")</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudGrid Class="mt-3">
+                        <MudItem xs="12" md="6">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.caption">To Complete Performance Index (TCPI)</MudText>
+                                <MudText Typo="Typo.h5" Color="@(TCPI <= 1.1m ? Color.Success : Color.Warning)">
+                                    @TCPI.ToString("F2")
+                                </MudText>
+                                <MudText Typo="Typo.caption" Class="mt-1">
+                                    Required efficiency to meet budget
+                                </MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.caption">Estimate to Complete (ETC)</MudText>
+                                <MudText Typo="Typo.h5">@ETC.ToString("C")</MudText>
+                                <MudText Typo="Typo.caption" Class="mt-1">
+                                    Remaining cost to finish project
+                                </MudText>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Resource Utilization" Icon="@Icons.Material.Filled.People">
+            <MudCard>
+                <MudCardContent>
+                    <MudSelect T="string" Label="Resource Type" @bind-Value="ResourceType" 
+                              ValueChanged="@LoadResourceCurve" Dense="true" Class="mb-4">
+                        <MudSelectItem Value="@("Labor")">Labor</MudSelectItem>
+                        <MudSelectItem Value="@("Equipment")">Equipment</MudSelectItem>
+                        <MudSelectItem Value="@("Material")">Material</MudSelectItem>
+                    </MudSelect>
+
+                    @if (IsLoadingResource)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    }
+                    else if (ResourceCurveData != null)
+                    {
+                        <SCurveChart ChartData="@ResourceCurveData" 
+                                    Height="500" 
+                                    ChartType="area"
+                                    ShowMetrics="false" />
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Cash Flow" Icon="@Icons.Material.Filled.AttachMoney">
+            <MudCard>
+                <MudCardContent>
+                    @if (IsLoadingCashFlow)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    }
+                    else if (CashFlowData != null)
+                    {
+                        <SCurveChart ChartData="@CashFlowData" 
+                                    Height="500" 
+                                    ChartType="bar"
+                                    ShowMetrics="false" />
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    
+    // Gantt Data
+    private GanttChartDto? GanttData;
+    private string GanttType = "project";
+    private string? WbsFilter;
+    private bool IsLoadingGantt;
+
+    // S-Curve Data
+    private CostSCurveDto? CostCurveData;
+    private ProgressSCurveDto? ProgressCurveData;
+    private SCurveDto? EVMCurveData;
+    private SCurveDto? ResourceCurveData;
+    private SCurveDto? CashFlowData;
+    
+    // Loading states
+    private bool IsLoadingCostCurve;
+    private bool IsLoadingProgressCurve;
+    private bool IsLoadingEVM;
+    private bool IsLoadingResource;
+    private bool IsLoadingCashFlow;
+
+    // Resource parameters
+    private string ResourceType = "Labor";
+
+    // EVM Metrics
+    private decimal PV, EV, AC;
+    private decimal CPI = 1, SPI = 1;
+    private decimal CV, SV;
+    private decimal EAC, ETC, VAC;
+    private decimal TCPI = 1;
+    private int TEAC;
+    private DateTime CompletionDate = DateTime.UtcNow;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new("Projects", "/projects"),
+            new("Project Details", $"/projects/{ProjectId}"),
+            new("Visualization", null, true)
+        };
+
+        await LoadAllCharts();
+    }
+
+    private async Task LoadAllCharts()
+    {
+        await LoadGanttChart();
+        await LoadCostCurve();
+        await LoadProgressCurve();
+        await LoadEVMCurve();
+        await LoadResourceCurve();
+        await LoadCashFlow();
+    }
+
+    private async Task LoadGanttChart()
+    {
+        try
+        {
+            IsLoadingGantt = true;
+            
+            GanttData = GanttType switch
+            {
+                "wbs" => await VisualizationService.GenerateWBSGanttAsync(ProjectId, WbsFilter),
+                "resource" => await VisualizationService.GenerateResourceGanttAsync(ProjectId),
+                _ => await VisualizationService.GenerateProjectGanttAsync(ProjectId)
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading Gantt chart: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsLoadingGantt = false;
+        }
+    }
+
+    private async Task LoadCostCurve()
+    {
+        try
+        {
+            IsLoadingCostCurve = true;
+            CostCurveData = await VisualizationService.GenerateCostSCurveAsync(ProjectId);
+            
+            // Calculate EVM metrics (simplified)
+            if (CostCurveData?.Series.Any() == true)
+            {
+                var plannedSeries = CostCurveData.Series.FirstOrDefault(s => s.Name.Contains("Planned"));
+                var actualSeries = CostCurveData.Series.FirstOrDefault(s => s.Name.Contains("Actual"));
+                var earnedSeries = CostCurveData.Series.FirstOrDefault(s => s.Name.Contains("Earned"));
+
+                if (plannedSeries != null && actualSeries != null && earnedSeries != null)
+                {
+                    PV = plannedSeries.DataPoints.LastOrDefault()?.CumulativeValue ?? 0;
+                    AC = actualSeries.DataPoints.LastOrDefault()?.CumulativeValue ?? 0;
+                    EV = earnedSeries.DataPoints.LastOrDefault()?.CumulativeValue ?? 0;
+
+                    CPI = AC > 0 ? EV / AC : 1;
+                    CV = EV - AC;
+                    EAC = CostCurveData.ForecastCost;
+                    VAC = CostCurveData.TotalBudget - EAC;
+                    ETC = EAC - AC;
+                    TCPI = (CostCurveData.TotalBudget - EV) / (CostCurveData.TotalBudget - AC);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading cost curve: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsLoadingCostCurve = false;
+        }
+    }
+
+    private async Task LoadProgressCurve()
+    {
+        try
+        {
+            IsLoadingProgressCurve = true;
+            ProgressCurveData = await VisualizationService.GenerateProgressSCurveAsync(ProjectId);
+            
+            // Calculate schedule metrics
+            if (ProgressCurveData != null)
+            {
+                SPI = ProgressCurveData.PlannedProgress > 0 
+                    ? ProgressCurveData.ActualProgress / ProgressCurveData.PlannedProgress 
+                    : 1;
+                SV = (int)((ProgressCurveData.ActualProgress - ProgressCurveData.PlannedProgress) * 
+                    (ProgressCurveData.EndDate - ProgressCurveData.StartDate).Days / 100);
+                
+                var totalDuration = (ProgressCurveData.EndDate - ProgressCurveData.StartDate).Days;
+                TEAC = (int)(totalDuration / SPI);
+                CompletionDate = ProgressCurveData.StartDate.AddDays(TEAC);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading progress curve: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsLoadingProgressCurve = false;
+        }
+    }
+
+    private async Task LoadEVMCurve()
+    {
+        try
+        {
+            IsLoadingEVM = true;
+            EVMCurveData = await VisualizationService.GenerateEarnedValueSCurveAsync(ProjectId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading EVM curve: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsLoadingEVM = false;
+        }
+    }
+
+    private async Task LoadResourceCurve()
+    {
+        try
+        {
+            IsLoadingResource = true;
+            ResourceCurveData = await VisualizationService.GenerateResourceSCurveAsync(ProjectId, ResourceType);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading resource curve: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsLoadingResource = false;
+        }
+    }
+
+    private async Task LoadCashFlow()
+    {
+        try
+        {
+            IsLoadingCashFlow = true;
+            CashFlowData = await VisualizationService.GenerateCashFlowSCurveAsync(ProjectId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading cash flow: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            IsLoadingCashFlow = false;
+        }
+    }
+
+    private async Task HandleTaskClick(GanttTaskDto task)
+    {
+        // Navigate to task details or show dialog
+        Snackbar.Add($"Task clicked: {task.Name}", Severity.Info);
+    }
+
+    private async Task HandleCostDataPointClick(SCurveDataPointDto dataPoint)
+    {
+        // Show detailed cost breakdown for the selected period
+        Snackbar.Add($"Date: {dataPoint.Date:MMM yyyy}, Value: {dataPoint.Value:C}", Severity.Info);
+    }
+}

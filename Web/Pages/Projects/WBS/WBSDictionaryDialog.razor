@@ -1,0 +1,207 @@
+@using Core.DTOs.Projects.WBSElement
+@using MudBlazor
+@using Web.Services.Interfaces.Projects
+@inject IWBSApiService WBSService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Style="max-width: 800px;">
+            <MudText Typo="Typo.h6" Class="mb-2">@ElementCode - @ElementName</MudText>
+            
+            <MudForm @ref="form" @bind-IsValid="@isValid">
+                <MudGrid>
+                    <!-- Descripción del Trabajo -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="model.Description" 
+                                      Label="Descripción del Trabajo" 
+                                      Variant="Variant.Outlined"
+                                      Lines="4"
+                                      Required="true"
+                                      RequiredError="La descripción es requerida"
+                                      HelperText="Describa claramente el alcance y propósito de este elemento" />
+                    </MudItem>
+                    
+                    <!-- Entregables -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="model.Deliverables" 
+                                      Label="Entregables" 
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      Required="true"
+                                      RequiredError="Los entregables son requeridos"
+                                      HelperText="Liste los entregables específicos (uno por línea)" />
+                    </MudItem>
+                    
+                    <!-- Criterios de Aceptación -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="model.AcceptanceCriteria" 
+                                      Label="Criterios de Aceptación" 
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      Required="true"
+                                      RequiredError="Los criterios de aceptación son requeridos"
+                                      HelperText="Defina los criterios para considerar el trabajo completado (uno por línea)" />
+                    </MudItem>
+                    
+                    <!-- Responsable y Estimaciones -->
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="model.ResponsibleRole" 
+                                      Label="Rol Responsable" 
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      RequiredError="El rol responsable es requerido"
+                                      HelperText="Ej: Jefe de Proyecto, Ingeniero Civil" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" md="4">
+                        <MudNumericField @bind-Value="model.EstimatedDuration" 
+                                         Label="Duración Estimada (días)" 
+                                         Variant="Variant.Outlined"
+                                         Min="0"
+                                         HelperText="Días calendario necesarios" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" md="4">
+                        <MudNumericField @bind-Value="model.EstimatedEffort" 
+                                         Label="Esfuerzo Estimado (horas)" 
+                                         Variant="Variant.Outlined"
+                                         Min="0"
+                                         Step="0.5"
+                                         HelperText="Horas-persona totales" />
+                    </MudItem>
+                    
+                    <!-- Supuestos -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.Assumptions" 
+                                      Label="Supuestos" 
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      HelperText="Condiciones que se asumen como verdaderas" />
+                    </MudItem>
+                    
+                    <!-- Restricciones -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.Constraints" 
+                                      Label="Restricciones" 
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      HelperText="Limitaciones o condiciones que deben cumplirse" />
+                    </MudItem>
+                    
+                    <!-- Recursos -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.Resources" 
+                                      Label="Recursos Necesarios" 
+                                      Variant="Variant.Outlined"
+                                      Lines="2"
+                                      HelperText="Personal, equipos, materiales, etc." />
+                    </MudItem>
+                    
+                    <!-- Dependencias -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.Dependencies" 
+                                      Label="Dependencias" 
+                                      Variant="Variant.Outlined"
+                                      Lines="2"
+                                      HelperText="Otros elementos WBS o actividades de las que depende" />
+                    </MudItem>
+                    
+                    <!-- Métricas de Calidad -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="model.QualityMetrics" 
+                                      Label="Métricas de Calidad" 
+                                      Variant="Variant.Outlined"
+                                      Lines="2"
+                                      HelperText="Indicadores para medir la calidad del entregable" />
+                    </MudItem>
+                    
+                    <!-- Notas Adicionales -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="model.Notes" 
+                                      Label="Notas Adicionales" 
+                                      Variant="Variant.Outlined"
+                                      Lines="2"
+                                      HelperText="Cualquier información adicional relevante" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="Submit" 
+                   Disabled="@(!isValid || isSubmitting)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Guardando...</MudText>
+            }
+            else
+            {
+                <MudText>Guardar</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudBlazor.MudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public Guid ElementId { get; set; }
+    [Parameter] public string ElementCode { get; set; } = string.Empty;
+    [Parameter] public string ElementName { get; set; } = string.Empty;
+    [Parameter] public WBSDictionaryDto? Dictionary { get; set; }
+    
+    private MudForm form = null!;
+    private bool isValid;
+    private bool isSubmitting;
+    private UpdateWBSDictionaryDto model = new();
+    
+    protected override void OnInitialized()
+    {
+        if (Dictionary != null)
+        {
+            model = new UpdateWBSDictionaryDto
+            {
+                Description = Dictionary.Description,
+                Deliverables = Dictionary.Deliverables,
+                AcceptanceCriteria = Dictionary.AcceptanceCriteria,
+                ResponsibleRole = Dictionary.ResponsibleRole,
+                EstimatedDuration = Dictionary.EstimatedDuration,
+                EstimatedEffort = Dictionary.EstimatedEffort,
+                Assumptions = Dictionary.Assumptions,
+                Constraints = Dictionary.Constraints,
+                Resources = Dictionary.Resources,
+                Dependencies = Dictionary.Dependencies,
+                QualityMetrics = Dictionary.QualityMetrics,
+                Notes = Dictionary.Notes
+            };
+        }
+    }
+    
+    private void Cancel() => MudDialog.Cancel();
+    
+    private async Task Submit()
+    {
+        if (!isValid) return;
+        
+        try
+        {
+            isSubmitting = true;
+            await WBSService.UpdateWBSDictionaryAsync(ElementId, model);
+            Snackbar.Add("Diccionario actualizado exitosamente", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al actualizar diccionario: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

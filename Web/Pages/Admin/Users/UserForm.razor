@@ -1,0 +1,353 @@
+@page "/admin/users/new"
+@page "/admin/users/{userId:guid}/edit"
+@using Core.DTOs.Auth.Users
+@using Web.Services.Interfaces.Auth
+@using System.ComponentModel.DataAnnotations
+@inject IUserApiService UserApiService
+@inject INavigationService NavigationService
+@inject IToastService ToastService
+
+<PageTitle>@(_isEdit ? "Editar Usuario" : "Nuevo Usuario")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudBreadcrumbs Items="_breadcrumbs" />
+    
+    <MudCard Class="mt-4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5">@(_isEdit ? "Editar Usuario" : "Nuevo Usuario")</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudForm @ref="_form" @bind-IsValid="@_isFormValid">
+                <MudGrid>
+                    <!-- Basic Information -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.h6" Class="mb-2">Información Básica</MudText>
+                    </MudItem>
+                    
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_model.GivenName" Label="Nombre" Required="true"
+                                      RequiredError="El nombre es requerido" Variant="Variant.Outlined" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_model.Surname" Label="Apellido" Required="true"
+                                      RequiredError="El apellido es requerido" Variant="Variant.Outlined" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_model.Email" Label="Email" Required="true"
+                                      RequiredError="El email es requerido" InputType="InputType.Email"
+                                      Variant="Variant.Outlined" Disabled="@_isEdit"
+                                      Validation="@(new EmailAddressAttribute() { ErrorMessage = "Email inválido" })" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_model.JobTitle" Label="Cargo"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    
+                    <!-- Contact Information -->
+                    <MudItem xs="12" Class="mt-4">
+                        <MudText Typo="Typo.h6" Class="mb-2">Información de Contacto</MudText>
+                    </MudItem>
+                    
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_model.PhoneNumber" Label="Teléfono"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_model.MobilePhone" Label="Móvil"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_model.OfficeLocation" Label="Ubicación de Oficina"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    
+                    <!-- Organization Information -->
+                    <MudItem xs="12" Class="mt-4">
+                        <MudText Typo="Typo.h6" Class="mb-2">Información Organizacional</MudText>
+                    </MudItem>
+                    
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_model.Department" Label="Departamento"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_model.ManagerName" Label="Supervisor"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_model.EmployeeNumber" Label="ID de Empleado"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" sm="6">
+                        <MudSelect @bind-Value="_model.Role" Label="Rol del Sistema" Required="true"
+                                   RequiredError="El rol es requerido" Variant="Variant.Outlined">
+                            <MudSelectItem Value="@("User")">Usuario</MudSelectItem>
+                            <MudSelectItem Value="@("Administrator")">Administrador</MudSelectItem>
+                            <MudSelectItem Value="@("SystemAdministrator")">Administrador del Sistema</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    
+                    <!-- Azure AD Information (if editing) -->
+                    @if (_isEdit && _existingUser != null)
+                    {
+                        <MudItem xs="12" Class="mt-4">
+                            <MudText Typo="Typo.h6" Class="mb-2">Información de Azure AD</MudText>
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Value="@_existingUser.EntraId" Label="Azure AD ID" 
+                                          ReadOnly="true" Variant="Variant.Outlined" />
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Value="@_existingUser.Email" Label="UPN"
+                                          ReadOnly="true" Variant="Variant.Outlined" />
+                        </MudItem>
+                        
+                        <MudItem xs="12">
+                            <MudAlert Severity="Severity.Info" Dense="true">
+                                Usuario sincronizado con Azure AD
+                            </MudAlert>
+                        </MudItem>
+                    }
+                    
+                    <!-- Activation Status -->
+                    <MudItem xs="12" Class="mt-4">
+                        <MudSwitch @bind-Value="_isActive" Label="Usuario Activo" Color="Color.Primary" />
+                    </MudItem>
+                    
+                    @if (!_isEdit)
+                    {
+                        <MudItem xs="12">
+                            <MudAlert Severity="Severity.Info">
+                                Se enviará un email de bienvenida al usuario con las instrucciones de acceso.
+                            </MudAlert>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudForm>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton OnClick="Cancel">Cancelar</MudButton>
+            <MudSpacer />
+            @if (_isEdit && _existingUser != null)
+            {
+                <MudButton Color="Color.Secondary" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Sync"
+                           OnClick="SyncWithAzure" Class="mr-2">
+                    Sincronizar con Azure AD
+                </MudButton>
+            }
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save"
+                       Disabled="@(!_isFormValid || _isProcessing)">
+                @if (_isProcessing)
+                {
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                    <MudText Class="ms-2">Guardando...</MudText>
+                }
+                else
+                {
+                    <MudText>@(_isEdit ? "Actualizar" : "Crear") Usuario</MudText>
+                }
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+@code {
+    [Parameter] public Guid? UserId { get; set; }
+    
+    private MudForm _form = default!;
+    private bool _isFormValid;
+    private bool _isProcessing;
+    private bool _isEdit => UserId.HasValue;
+    private UserDto? _existingUser;
+    private UserFormModel _model = new();
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new("Inicio", href: "/"),
+            new("Administración", href: "/admin"),
+            new("Usuarios", href: "/admin/users"),
+            new(_isEdit ? "Editar" : "Nuevo", href: null, disabled: true)
+        };
+        
+        if (_isEdit && UserId.HasValue)
+        {
+            await LoadUser();
+        }
+        else
+        {
+            _model = new UserFormModel();
+            _isActive = true;
+        }
+    }
+    
+    private async Task LoadUser()
+    {
+        try
+        {
+            _existingUser = await UserApiService.GetUserByIdAsync(UserId!.Value);
+            if (_existingUser != null)
+            {
+                _model = new UserFormModel
+                {
+                    GivenName = _existingUser.GivenName,
+                    Surname = _existingUser.Surname,
+                    Email = _existingUser.Email,
+                    JobTitle = _existingUser.JobTitle,
+                    PhoneNumber = _existingUser.PhoneNumber,
+                    MobilePhone = _existingUser.MobilePhone,
+                    OfficeLocation = _existingUser.OfficeLocation,
+                    Department = _existingUser.Department
+                };
+                _isActive = _existingUser.IsActive;
+            }
+            else
+            {
+                ToastService.ShowError("Usuario no encontrado");
+                NavigationService.NavigateTo("/admin/users");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error al cargar usuario: {ex.Message}");
+            NavigationService.NavigateTo("/admin/users");
+        }
+    }
+    
+    private async Task Save()
+    {
+        try
+        {
+            _isProcessing = true;
+            
+            if (_isEdit && UserId.HasValue)
+            {
+                var updateDto = new UpdateUserDto
+                {
+                    GivenName = _model.GivenName,
+                    Surname = _model.Surname,
+                    JobTitle = _model.JobTitle,
+                    PhoneNumber = _model.PhoneNumber,
+                    MobilePhone = _model.MobilePhone,
+                    OfficeLocation = _model.OfficeLocation,
+                    Department = _model.Department,
+                    IsActive = _isActive
+                };
+                
+                var result = await UserApiService.UpdateUserAsync(UserId.Value, updateDto);
+                if (result != null)
+                {
+                    ToastService.ShowSuccess("Usuario actualizado exitosamente");
+                    NavigationService.NavigateTo("/admin/users");
+                }
+                else
+                {
+                    ToastService.ShowError("Error al actualizar el usuario");
+                }
+            }
+            else
+            {
+                // Check if email already exists
+                var emailExists = await UserApiService.CheckEmailExistsAsync(_model.Email);
+                if (emailExists)
+                {
+                    ToastService.ShowError("Ya existe un usuario con ese email");
+                    return;
+                }
+                
+                var createDto = new CreateUserDto
+                {
+                    GivenName = _model.GivenName,
+                    Surname = _model.Surname,
+                    Email = _model.Email,
+                    JobTitle = _model.JobTitle,
+                    PhoneNumber = _model.PhoneNumber,
+                    EntraId = "" // Will be populated by Azure AD sync
+                };
+                
+                var result = await UserApiService.CreateUserAsync(createDto);
+                if (result != null)
+                {
+                    ToastService.ShowSuccess("Usuario creado exitosamente");
+                    NavigationService.NavigateTo("/admin/users");
+                }
+                else
+                {
+                    ToastService.ShowError("Error al crear el usuario");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error al guardar: {ex.Message}");
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+    
+    private async Task SyncWithAzure()
+    {
+        if (!UserId.HasValue) return;
+        
+        try
+        {
+            _isProcessing = true;
+            var result = await UserApiService.SyncUserWithAzureAsync(UserId.Value);
+            if (result != null)
+            {
+                ToastService.ShowSuccess("Usuario sincronizado con Azure AD");
+                await LoadUser();
+            }
+            else
+            {
+                ToastService.ShowError("Error al sincronizar con Azure AD");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error al sincronizar: {ex.Message}");
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+    
+    private void Cancel()
+    {
+        NavigationService.NavigateTo("/admin/users");
+    }
+    
+    private bool _isActive = true;
+    
+    private class UserFormModel
+    {
+        public string? GivenName { get; set; }
+        public string? Surname { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string? JobTitle { get; set; }
+        public string? PhoneNumber { get; set; }
+        public string? MobilePhone { get; set; }
+        public string? OfficeLocation { get; set; }
+        public string? Department { get; set; }
+        public string? ManagerName { get; set; }
+        public string? EmployeeNumber { get; set; }
+        public string? Role { get; set; }
+    }
+}

@@ -1,5 +1,4 @@
-﻿using Domain.Entities.Auth.Permissions;
-using Domain.Entities.Auth.Security;
+﻿using Domain.Entities.Auth.Security;
 using Domain.Entities.Configuration.Core;
 using Domain.Entities.Configuration.Templates;
 using Domain.Entities.Contracts.Core;
@@ -10,6 +9,8 @@ using Domain.Entities.Cost.Core;
 using Domain.Entities.Cost.EVM;
 using Domain.Entities.Documents.Core;
 using Domain.Entities.Documents.Transmittals;
+using DocumentView = Domain.Entities.Documents.DocumentView;
+using DocumentDownload = Domain.Entities.Documents.DocumentDownload;
 using Domain.Entities.Organization.Core;
 using Domain.Entities.Progress;
 using Domain.Entities.WBS;
@@ -48,8 +49,6 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<ProjectTeamMember> TeamMembers => Set<ProjectTeamMember>();
-    public DbSet<Permission> Permissions => Set<Permission>();
-    public DbSet<UserProjectPermission> UserProjectPermissions => Set<UserProjectPermission>();
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
     #endregion
@@ -113,6 +112,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<WBSElement> WBSElements => Set<WBSElement>();
     public DbSet<WorkPackageDetails> WorkPackageDetails => Set<WorkPackageDetails>();
     public DbSet<PlanningPackage> PlanningPackages => Set<PlanningPackage>();
+    public DbSet<ScheduleVersion> ScheduleVersions => Set<ScheduleVersion>();
     public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<Milestone> Milestones => Set<Milestone>();
     public DbSet<Resource> Resources => Set<Resource>();
@@ -154,6 +154,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<DocumentPermission> DocumentPermissions => Set<DocumentPermission>();
     public DbSet<DocumentRelationship> DocumentRelationships => Set<DocumentRelationship>();
     public DbSet<DocumentVersion> DocumentVersions => Set<DocumentVersion>();
+    public DbSet<DocumentView> DocumentViews => Set<DocumentView>();
+    public DbSet<DocumentDownload> DocumentDownloads => Set<DocumentDownload>();
 
     public DbSet<Transmittal> DocumentTypes => Set<Transmittal>(); 
     public DbSet<TransmittalAttachment> TransmittalAttachments => Set<TransmittalAttachment>();
@@ -177,8 +179,6 @@ public class ApplicationDbContext : DbContext
         // Security Module
         modelBuilder.Entity<User>().ToTable("Users", "Security");
         modelBuilder.Entity<ProjectTeamMember>().ToTable("ProjectTeamMembers", "Security");
-        modelBuilder.Entity<Permission>().ToTable("Permissions", "Security");
-        modelBuilder.Entity<UserProjectPermission>().ToTable("UserProjectPermissions", "Security");
         modelBuilder.Entity<UserSession>().ToTable("UserSessions", "Security");
 
         // Setup Module
@@ -197,6 +197,10 @@ public class ApplicationDbContext : DbContext
 
         // UI Module
         modelBuilder.Entity<Notification>().ToTable("Notifications", "UI");
+        modelBuilder.Entity<NotificationDelivery>().ToTable("NotificationDeliveries", "UI");
+        modelBuilder.Entity<NotificationTemplate>().ToTable("NotificationTemplates", "UI");
+        modelBuilder.Entity<NotificationPreference>().ToTable("NotificationPreferences", "UI");
+        modelBuilder.Entity<NotificationSubscription>().ToTable("NotificationSubscriptions", "UI");
 
         // Apply global query filters for soft delete
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())

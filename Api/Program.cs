@@ -71,8 +71,12 @@ builder.Services.AddCors(options =>
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
 
-// Add Carter
-builder.Services.AddCarter();
+// Add Carter - after Application to ensure our validator registrations take precedence
+builder.Services.AddCarter(configurator: c =>
+{
+    // Disable automatic validator registration from Carter
+    c.WithEmptyValidators();
+});
 
 // Add Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -80,9 +84,9 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new()
     {
-        Title = "EzPro API",
+        Title = "API de EzPro",
         Version = "v1",
-        Description = "Project Control System API for Engineering and Construction"
+        Description = "API del Sistema de Control de Proyectos para Ingeniería y Construcción"
     });
     c.AddSecurityDefinition("oauth2", new()
     {
@@ -95,7 +99,7 @@ builder.Services.AddSwaggerGen(c =>
                 TokenUrl = new Uri($"https://login.microsoftonline.com/{builder.Configuration["AzureAd:TenantId"]}/oauth2/v2.0/token"),
                 Scopes = new Dictionary<string, string>
                 {
-                    { $"api://{builder.Configuration["AzureAd:ClientId"]}/access_as_user", "Access API as user" }
+                    { $"api://{builder.Configuration["AzureAd:ClientId"]}/access_as_user", "Acceder a la API como usuario" }
                 }
             }
         }
@@ -137,8 +141,11 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
-app.UseSerilogRequestLogging();
+
+// CORS must be early in the pipeline, before authentication
 app.UseCors("BlazorApp");
+
+app.UseSerilogRequestLogging();
 
 app.UseAuthentication();
 // Add custom middleware to populate CurrentUserService
@@ -203,6 +210,10 @@ app.MapGet("/api/test", () =>
 })
 .AllowAnonymous()
 .WithName("TestEndpoint");
+
+// Handle OPTIONS for test endpoint
+app.MapMethods("/api/test", new[] { "OPTIONS" }, () => Results.Ok())
+   .AllowAnonymous();
 
 // Test authenticated endpoint
 app.MapGet("/api/test/auth", (HttpContext context) => 

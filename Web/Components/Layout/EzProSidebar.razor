@@ -310,7 +310,9 @@
                     Icon = "fal fa-project-diagram",
                     Children = new()
                     {
-                        new NavigationItem { Text = "Proyectos Activos", Href = "/projects/active", Icon = "fal fa-circle-check" },
+                        new NavigationItem { Text = "Proyectos Activos", Href = "/projects", Icon = "fal fa-circle-check" },
+                        new NavigationItem { Text = "Dashboard de Proyecto", Href = "/projects/{projectId}/dashboard", Icon = "fal fa-tachometer-alt" },
+                        new NavigationItem { Text = "Resumen PMI", Href = "/projects/{projectId}/summary", Icon = "fal fa-file-alt" },
                         new NavigationItem { Text = "Proyectos Archivados", Href = "/projects/archived", Icon = "fal fa-archive" },
                         new NavigationItem { Text = "Crear Proyecto", Href = "/projects/new", Icon = "fal fa-plus-circle" }
                     }
@@ -322,8 +324,8 @@
                     Icon = "fal fa-sitemap",
                     Children = new()
                     {
-                        new NavigationItem { Text = "Editor EDT", Href = "/wbs/editor", Icon = "fal fa-edit" },
-                        new NavigationItem { Text = "Diccionario EDT", Href = "/wbs/dictionary", Icon = "fal fa-book" },
+                        new NavigationItem { Text = "Editor EDT", Href = "/projects/{projectId}/wbs", Icon = "fal fa-edit" },
+                        new NavigationItem { Text = "Diccionario EDT", Href = "/projects/{projectId}/wbs/dictionary", Icon = "fal fa-book" },
                         new NavigationItem { Text = "Plantillas", Href = "/wbs/templates", Icon = "fal fa-layer-group" }
                     }
                 },
@@ -359,6 +361,18 @@
                         new NavigationItem { Text = "Órdenes de Compra", Href = "/commitments/po", Icon = "fal fa-file-invoice" },
                         new NavigationItem { Text = "Subcontratos", Href = "/commitments/subcontracts", Icon = "fal fa-handshake" },
                         new NavigationItem { Text = "Órdenes de Cambio", Href = "/commitments/changes", Icon = "fal fa-exchange-alt" }
+                    }
+                },
+                new NavigationItem 
+                { 
+                    Text = "WBS", 
+                    Href = "/wbs", 
+                    Icon = "fal fa-sitemap",
+                    Children = new()
+                    {
+                        new NavigationItem { Text = "Estructura WBS", Href = "/projects/{projectId}/wbs", Icon = "fal fa-folder-tree" },
+                        new NavigationItem { Text = "Paquetes de Trabajo", Href = "/projects/{projectId}/work-packages", Icon = "fal fa-tasks" },
+                        new NavigationItem { Text = "Paquetes de Planificación", Href = "/projects/{projectId}/planning-packages", Icon = "fal fa-calendar-alt" }
                     }
                 },
                 new NavigationItem { Text = "Reportes de Costos", Href = "/costs", Icon = "fal fa-chart-line" },
@@ -398,22 +412,22 @@
                     Icon = "fal fa-sitemap",
                     Children = new()
                     {
-                        new NavigationItem { Text = "Compañías", Href = "/companies", Icon = "fal fa-building" },
-                        new NavigationItem { Text = "Operaciones", Href = "/operations", Icon = "fal fa-network-wired" },
+                        new NavigationItem { Text = "MSD", Href = "/msd", Icon = "fal fa-building" },
                         new NavigationItem { Text = "Contratistas", Href = "/contractors", Icon = "fal fa-hard-hat" },
                         new NavigationItem { Text = "Disciplinas", Href = "/disciplines", Icon = "fal fa-layer-group" }
                     }
                 },
                 new NavigationItem 
                 { 
-                    Text = "Usuarios y Roles", 
-                    Href = "/users", 
+                    Text = "Usuarios y Accesos", 
+                    Href = "/admin", 
                     Icon = "fal fa-users-cog",
                     Children = new()
                     {
-                        new NavigationItem { Text = "Gestión de Usuarios", Href = "/users/manage", Icon = "fal fa-user-edit" },
-                        new NavigationItem { Text = "Roles y Permisos", Href = "/users/roles", Icon = "fal fa-shield-alt" },
-                        new NavigationItem { Text = "Registro de Auditoría", Href = "/users/audit", Icon = "fal fa-history" }
+                        new NavigationItem { Text = "Administración de Usuarios", Href = "/admin/users", Icon = "fal fa-user-edit" },
+                        new NavigationItem { Text = "Accesos a Proyectos", Href = "/admin/project-access", Icon = "fal fa-key" },
+                        new NavigationItem { Text = "Roles y Permisos", Href = "/admin/roles", Icon = "fal fa-shield-alt" },
+                        new NavigationItem { Text = "Registro de Auditoría", Href = "/admin/audit", Icon = "fal fa-history" }
                     }
                 },
                 new NavigationItem { Text = "Configuración", Href = "/settings", Icon = "fal fa-cog" }

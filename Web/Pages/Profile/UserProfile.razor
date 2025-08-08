@@ -1,0 +1,411 @@
+@page "/profile"
+@using Core.DTOs.Auth.Users
+@using Core.DTOs.Auth.ProjectTeamMembers
+@using Core.DTOs.Auth.Permissions
+@using Core.Constants
+@using Web.Components.Common
+@using Web.Components.Profile
+@using Web.Services.Interfaces.Auth
+@using Web.Services.Implementation
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IUserApiService UserApiService
+@inject IProjectTeamMemberApiService TeamMemberService
+@inject UserPhotoService UserPhotoService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IToastService ToastService
+@inject INavigationService NavigationService
+
+<PageTitle>Mi Perfil | EzPro</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
+    
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_currentUser != null)
+    {
+        <MudGrid>
+            <!-- Información del Perfil -->
+            <MudItem xs="12" md="4">
+                <MudCard>
+                    <MudCardContent>
+                        <div class="text-center mb-4">
+                            <UserAvatar PhotoUrl="@_currentUser.PhotoUrl" 
+                                       UserName="@_currentUser.DisplayName" 
+                                       Size="Size.Large" 
+                                       Class="mx-auto mb-3" />
+                            <MudText Typo="Typo.h5">@_currentUser.DisplayName</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@_currentUser.Email</MudText>
+                        </div>
+                        
+                        <MudDivider Class="my-3" />
+                        
+                        <MudList T="string" Dense="true">
+                            @if (!string.IsNullOrEmpty(_currentUser.JobTitle))
+                            {
+                                <MudListItem T="string" Icon="@Icons.Material.Filled.Work">
+                                    <MudText Typo="Typo.body2">@_currentUser.JobTitle</MudText>
+                                </MudListItem>
+                            }
+                            @if (!string.IsNullOrEmpty(_currentUser.Department))
+                            {
+                                <MudListItem T="string" Icon="@Icons.Material.Filled.Business">
+                                    <MudText Typo="Typo.body2">@_currentUser.Department</MudText>
+                                </MudListItem>
+                            }
+                            @if (!string.IsNullOrEmpty(_currentUser.OfficeLocation))
+                            {
+                                <MudListItem T="string" Icon="@Icons.Material.Filled.LocationOn">
+                                    <MudText Typo="Typo.body2">@_currentUser.OfficeLocation</MudText>
+                                </MudListItem>
+                            }
+                            @if (!string.IsNullOrEmpty(_currentUser.MobilePhone))
+                            {
+                                <MudListItem T="string" Icon="@Icons.Material.Filled.Phone">
+                                    <MudText Typo="Typo.body2">@_currentUser.MobilePhone</MudText>
+                                </MudListItem>
+                            }
+                            <MudListItem T="string" Icon="@Icons.Material.Filled.Login">
+                                <MudText Typo="Typo.body2">
+                                    Último acceso: @(_currentUser.LastLoginAt?.ToString("dd/MM/yyyy HH:mm") ?? "Primera vez")
+                                </MudText>
+                            </MudListItem>
+                            <MudListItem T="string" Icon="@Icons.Material.Filled.Numbers">
+                                <MudText Typo="Typo.body2">
+                                    Total de accesos: @_currentUser.LoginCount
+                                </MudText>
+                            </MudListItem>
+                        </MudList>
+                        
+                        <MudDivider Class="my-3" />
+                        
+                        <MudButton Variant="Variant.Filled" 
+                                   Color="Color.Primary" 
+                                   StartIcon="@Icons.Material.Filled.Sync"
+                                   FullWidth="true"
+                                   Disabled="@_isSyncing"
+                                   OnClick="SyncWithAzureAD">
+                            @if (_isSyncing)
+                            {
+                                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                <MudText Class="ms-2">Sincronizando...</MudText>
+                            }
+                            else
+                            {
+                                <MudText>Sincronizar con Azure AD</MudText>
+                            }
+                        </MudButton>
+                        
+                        @if (_lastSyncTime != null)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="text-center mt-2">
+                                Última sincronización: @_lastSyncTime.Value.ToString("HH:mm:ss")
+                            </MudText>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            
+            <!-- Accesos y Permisos -->
+            <MudItem xs="12" md="8">
+                <MudCard Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.Security" Class="mr-2" />
+                                Mis Accesos y Permisos
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+                            <MudTabPanel Text="Proyectos Asignados" Icon="@Icons.Material.Filled.Folder">
+                                @if (_projectAssignments.Any())
+                                {
+                                    <MudGrid>
+                                        @foreach (var assignment in _projectAssignments)
+                                        {
+                                            var isActive = assignment.IsActive && assignment.StartDate <= DateTime.Today;
+                                            <MudItem xs="12" sm="6">
+                                                <MudCard Outlined="true" Class="@(isActive ? "active-project-card" : "")">
+                                                    <MudCardHeader>
+                                                        <CardHeaderContent>
+                                                            <div class="d-flex justify-space-between align-center">
+                                                                <MudText Typo="Typo.subtitle1">
+                                                                    @assignment.ProjectName
+                                                                    @if (isActive)
+                                                                    {
+                                                                        <MudIcon Icon="@Icons.Material.Filled.Star" 
+                                                                                 Color="Color.Warning" 
+                                                                                 Size="Size.Small" 
+                                                                                 Style="margin-left: 4px;" />
+                                                                    }
+                                                                </MudText>
+                                                                <MudChip T="string" 
+                                                                         Size="Size.Small" 
+                                                                         Color="@GetRoleColor(assignment.Role)">
+                                                                    @SimplifiedRoles.GetDisplayName(assignment.Role)
+                                                                </MudChip>
+                                                            </div>
+                                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                                @assignment.ProjectCode
+                                                            </MudText>
+                                                        </CardHeaderContent>
+                                                    </MudCardHeader>
+                                                    <MudCardContent>
+                                                        <MudGrid>
+                                                            <MudItem xs="6">
+                                                                <MudText Typo="Typo.caption">Asignación</MudText>
+                                                                <MudText Typo="Typo.body2">@(assignment.AllocationPercentage ?? 100)%</MudText>
+                                                            </MudItem>
+                                                            <MudItem xs="6">
+                                                                <MudText Typo="Typo.caption">Estado</MudText>
+                                                                <MudText Typo="Typo.body2">
+                                                                    @(isActive ? "Activo" : "Inactivo")
+                                                                </MudText>
+                                                            </MudItem>
+                                                            <MudItem xs="12">
+                                                                <MudText Typo="Typo.caption">Período</MudText>
+                                                                <MudText Typo="Typo.body2">
+                                                                    @assignment.StartDate.ToString("dd/MM/yyyy")
+                                                                    @if (assignment.EndDate.HasValue)
+                                                                    {
+                                                                        <span> - @assignment.EndDate.Value.ToString("dd/MM/yyyy")</span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span> - Sin fecha fin</span>
+                                                                    }
+                                                                </MudText>
+                                                            </MudItem>
+                                                        </MudGrid>
+                                                    </MudCardContent>
+                                                    <MudCardActions>
+                                                        <MudButton Color="Color.Primary" 
+                                                                   Variant="Variant.Text" 
+                                                                   Size="Size.Small"
+                                                                   StartIcon="@Icons.Material.Filled.Dashboard"
+                                                                   OnClick="@(() => NavigationService.NavigateTo($"/projects/{assignment.ProjectId}/dashboard"))">
+                                                            Ver Proyecto
+                                                        </MudButton>
+                                                    </MudCardActions>
+                                                </MudCard>
+                                            </MudItem>
+                                        }
+                                    </MudGrid>
+                                }
+                                else
+                                {
+                                    <MudAlert Severity="Severity.Info">
+                                        No tienes proyectos asignados actualmente.
+                                    </MudAlert>
+                                }
+                            </MudTabPanel>
+                            
+                            <MudTabPanel Text="Permisos del Sistema" Icon="@Icons.Material.Filled.VpnKey">
+                                @if (_userPermissions != null)
+                                {
+                                    @if (_userPermissions.GlobalPermissions.Any())
+                                    {
+                                        <MudText Typo="Typo.subtitle1" Class="mb-3">Permisos Globales</MudText>
+                                        <MudGrid>
+                                            @foreach (var permission in _userPermissions.GlobalPermissions)
+                                            {
+                                                <MudItem xs="12" sm="6" md="4">
+                                                    <PermissionChip Permission="@permission" />
+                                                </MudItem>
+                                            }
+                                        </MudGrid>
+                                    }
+                                    
+                                    @if (_userPermissions.ProjectPermissions.Any())
+                                    {
+                                        <MudDivider Class="my-4" />
+                                        <MudText Typo="Typo.subtitle1" Class="mb-3">Permisos por Proyecto</MudText>
+                                        @foreach (var projectPerm in _userPermissions.ProjectPermissions)
+                                        {
+                                            <MudExpansionPanels Class="mb-2">
+                                                <MudExpansionPanel Text="@projectPerm.ProjectName">
+                                                    <MudGrid>
+                                                        <MudItem xs="12">
+                                                            <MudText Typo="Typo.caption">
+                                                                Rol: <strong>@SimplifiedRoles.GetDisplayName(projectPerm.Role)</strong>
+                                                            </MudText>
+                                                        </MudItem>
+                                                        @foreach (var permission in projectPerm.Permissions)
+                                                        {
+                                                            <MudItem xs="12" sm="6" md="4">
+                                                                <PermissionChip Permission="@permission" />
+                                                            </MudItem>
+                                                        }
+                                                    </MudGrid>
+                                                </MudExpansionPanel>
+                                            </MudExpansionPanels>
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    <MudAlert Severity="Severity.Info">
+                                        Cargando permisos...
+                                    </MudAlert>
+                                }
+                            </MudTabPanel>
+                            
+                            <MudTabPanel Text="Información de Cuenta" Icon="@Icons.Material.Filled.AccountCircle">
+                                <MudSimpleTable Dense="true" Hover="true">
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>ID de Usuario</strong></td>
+                                            <td>@_currentUser.Id</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>ID de Azure AD</strong></td>
+                                            <td>@_currentUser.EntraId</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Nombre Completo</strong></td>
+                                            <td>@_currentUser.DisplayName</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Nombre</strong></td>
+                                            <td>@(_currentUser.GivenName ?? "-")</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Apellido</strong></td>
+                                            <td>@(_currentUser.Surname ?? "-")</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Correo Electrónico</strong></td>
+                                            <td>@_currentUser.Email</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Idioma Preferido</strong></td>
+                                            <td>@(_currentUser.PreferredLanguage ?? "es-ES")</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Estado de la Cuenta</strong></td>
+                                            <td>
+                                                @if (_currentUser.IsActive)
+                                                {
+                                                    <MudChip T="string" Color="Color.Success" Size="Size.Small">Activa</MudChip>
+                                                }
+                                                else
+                                                {
+                                                    <MudChip T="string" Color="Color.Error" Size="Size.Small">Inactiva</MudChip>
+                                                }
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </MudSimpleTable>
+                            </MudTabPanel>
+                        </MudTabs>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Error">
+            No se pudo cargar la información del usuario.
+        </MudAlert>
+    }
+</MudContainer>
+
+<style>
+    .active-project-card {
+        border: 2px solid var(--mud-palette-warning) !important;
+        background-color: var(--mud-palette-warning-lighten);
+    }
+</style>
+
+@code {
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    private UserDto? _currentUser;
+    private List<ProjectTeamMemberDetailDto> _projectAssignments = new();
+    private UserPermissionsDto? _userPermissions;
+    private bool _isLoading = true;
+    private bool _isSyncing = false;
+    private DateTime? _lastSyncTime;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new("Inicio", href: "/"),
+            new("Mi Perfil", href: null, disabled: true)
+        };
+
+        await LoadUserProfile();
+    }
+
+    private async Task LoadUserProfile()
+    {
+        try
+        {
+            _isLoading = true;
+
+            // Obtener el usuario actual desde la API
+            _currentUser = await UserApiService.GetCurrentUserAsync();
+            
+            if (_currentUser != null)
+            {
+                // Cargar asignaciones de proyectos
+                _projectAssignments = await TeamMemberService.GetUserProjectsAsync(_currentUser.Id) ?? new List<ProjectTeamMemberDetailDto>();
+                
+                // Cargar permisos
+                _userPermissions = await UserApiService.GetCurrentUserPermissionsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error al cargar el perfil: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SyncWithAzureAD()
+    {
+        try
+        {
+            _isSyncing = true;
+            
+            var (success, updatedUser) = await UserPhotoService.SyncUserWithPhotoAsync();
+            
+            if (success && updatedUser != null)
+            {
+                _currentUser = updatedUser;
+                _lastSyncTime = DateTime.Now;
+                ToastService.ShowSuccess("Perfil sincronizado exitosamente con Azure AD");
+                StateHasChanged();
+            }
+            else
+            {
+                ToastService.ShowWarning("No se pudo sincronizar con Azure AD");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error al sincronizar: {ex.Message}");
+        }
+        finally
+        {
+            _isSyncing = false;
+        }
+    }
+
+    private Color GetRoleColor(string role) => SimplifiedRoles.GetProjectRoleLevel(role) switch
+    {
+        4 => Color.Error,      // Project Manager
+        3 => Color.Warning,    // Team Lead
+        2 => Color.Primary,    // Team Member
+        1 => Color.Info,       // Viewer
+        _ => Color.Default
+    };
+}

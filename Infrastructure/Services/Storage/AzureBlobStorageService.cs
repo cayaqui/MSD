@@ -1,5 +1,6 @@
 using Application.Interfaces.Storage;
 using Azure;
+using Azure.Identity;
 using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -21,7 +22,8 @@ public class AzureBlobStorageService : IBlobStorageService
     private readonly BlobServiceClient _blobServiceClient;
     private readonly ILogger<AzureBlobStorageService> _logger;
     private readonly string _storageAccountName;
-    private readonly string _storageAccountKey;
+    private readonly StorageSharedKeyCredential? _storageSharedKeyCredential;
+    private readonly bool _useManagedIdentity;
 
     public AzureBlobStorageService(
         IConfiguration configuration,
@@ -30,22 +32,69 @@ public class AzureBlobStorageService : IBlobStorageService
     {
         _logger = logger;
 
-        var connectionString = configuration.GetConnectionString("AzureStorage");
-        if (string.IsNullOrEmpty(connectionString))
+        // Get storage account name from configuration
+        _storageAccountName = configuration["AzureStorage:AccountName"] 
+            ?? throw new InvalidOperationException("Azure Storage account name not configured");
+
+        // Check if we should use Managed Identity or connection string
+        var useManagedIdentity = configuration.GetValue<bool>("AzureStorage:UseManagedIdentity", true);
+        _useManagedIdentity = useManagedIdentity;
+
+        if (useManagedIdentity)
         {
-            throw new InvalidOperationException("Azure Storage connection string not configured");
+            // Use DefaultAzureCredential which works for both local development and production
+            // Local: Uses Azure CLI, Visual Studio, VS Code, or Azure PowerShell credentials
+            // Production: Uses Managed Identity
+            var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+            {
+                // Exclude credentials that might cause issues
+                ExcludeEnvironmentCredential = false,
+                ExcludeInteractiveBrowserCredential = true,
+                ExcludeAzureCliCredential = false,
+                ExcludeAzurePowerShellCredential = false,
+                ExcludeSharedTokenCacheCredential = false,
+                ExcludeVisualStudioCodeCredential = false,
+                ExcludeVisualStudioCredential = false,
+                ExcludeManagedIdentityCredential = false,
+                
+                // Set tenant ID if specified
+                TenantId = configuration["AzureStorage:TenantId"]
+            });
+
+            var blobServiceUri = new Uri($"https://{_storageAccountName}.blob.core.windows.net");
+            _blobServiceClient = new BlobServiceClient(blobServiceUri, credential);
+            
+            _logger.LogInformation("Initialized Azure Blob Storage with Managed Identity for account: {AccountName}", _storageAccountName);
         }
-
-        _blobServiceClient = new BlobServiceClient(connectionString);
-
-        // Extract account name and key for SAS token generation
-        var parts = connectionString.Split(';');
-        foreach (var part in parts)
+        else
         {
-            if (part.StartsWith("AccountName="))
-                _storageAccountName = part.Substring("AccountName=".Length);
-            else if (part.StartsWith("AccountKey="))
-                _storageAccountKey = part.Substring("AccountKey=".Length);
+            // Fall back to connection string if specified
+            var connectionString = configuration.GetConnectionString("AzureStorage");
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException("Azure Storage connection string not configured");
+            }
+
+            _blobServiceClient = new BlobServiceClient(connectionString);
+
+            // Extract account key for SAS token generation
+            var parts = connectionString.Split(';');
+            string? accountKey = null;
+            foreach (var part in parts)
+            {
+                if (part.StartsWith("AccountKey="))
+                {
+                    accountKey = part.Substring("AccountKey=".Length);
+                    break;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(accountKey))
+            {
+                _storageSharedKeyCredential = new StorageSharedKeyCredential(_storageAccountName, accountKey);
+            }
+            
+            _logger.LogInformation("Initialized Azure Blob Storage with connection string for account: {AccountName}", _storageAccountName);
         }
     }
 
@@ -612,33 +661,42 @@ public class AzureBlobStorageService : IBlobStorageService
     {
         try
         {
-            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
-            var blobClient = containerClient.GetBlobClient(blobName);
-
-            if (!blobClient.CanGenerateSasUri)
+            if (_useManagedIdentity)
             {
-                throw new InvalidOperationException(
-                    "Cannot generate SAS token. Check if StorageSharedKeyCredential is used."
-                );
+                // When using Managed Identity, we need to use User Delegation SAS
+                return await GenerateUserDelegationSasAsync(containerName, blobName, permissions, expiresOn);
             }
-
-            var sasBuilder = new BlobSasBuilder
+            else
             {
-                BlobContainerName = containerName,
-                BlobName = blobName,
-                Resource = "b",
-                ExpiresOn = expiresOn,
-            };
+                // Use account key based SAS
+                var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+                var blobClient = containerClient.GetBlobClient(blobName);
 
-            // Set permissions
-            if (permissions.HasFlag(BlobSasPermissions.Read))
-                sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Read);
-            if (permissions.HasFlag(BlobSasPermissions.Write))
-                sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Write);
-            if (permissions.HasFlag(BlobSasPermissions.Delete))
-                sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Delete);
+                if (!blobClient.CanGenerateSasUri)
+                {
+                    throw new InvalidOperationException(
+                        "Cannot generate SAS token. Check if StorageSharedKeyCredential is used."
+                    );
+                }
 
-            return blobClient.GenerateSasUri(sasBuilder).Query;
+                var sasBuilder = new BlobSasBuilder
+                {
+                    BlobContainerName = containerName,
+                    BlobName = blobName,
+                    Resource = "b",
+                    ExpiresOn = expiresOn,
+                };
+
+                // Set permissions
+                if (permissions.HasFlag(BlobSasPermissions.Read))
+                    sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Read);
+                if (permissions.HasFlag(BlobSasPermissions.Write))
+                    sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Write);
+                if (permissions.HasFlag(BlobSasPermissions.Delete))
+                    sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Delete);
+
+                return blobClient.GenerateSasUri(sasBuilder).Query;
+            }
         }
         catch (Exception ex)
         {
@@ -651,6 +709,45 @@ public class AzureBlobStorageService : IBlobStorageService
             throw;
         }
     }
+    
+    private async Task<string> GenerateUserDelegationSasAsync(
+        string containerName,
+        string blobName,
+        BlobSasPermissions permissions,
+        DateTimeOffset expiresOn
+    )
+    {
+        // Get a user delegation key
+        var startsOn = DateTimeOffset.UtcNow.AddMinutes(-5); // Account for clock skew
+        var userDelegationKey = await _blobServiceClient.GetUserDelegationKeyAsync(startsOn, expiresOn);
+
+        var sasBuilder = new BlobSasBuilder
+        {
+            BlobContainerName = containerName,
+            BlobName = blobName,
+            Resource = "b",
+            StartsOn = startsOn,
+            ExpiresOn = expiresOn,
+        };
+
+        // Set permissions
+        if (permissions.HasFlag(BlobSasPermissions.Read))
+            sasBuilder.SetPermissions(Azure.Storage.Sas.BlobSasPermissions.Read);
+        if (permissions.HasFlag(BlobSasPermissions.Write))
+            sasBuilder.SetPermissions(Azure.Storage.Sas.BlobSasPermissions.Write);
+        if (permissions.HasFlag(BlobSasPermissions.Delete))
+            sasBuilder.SetPermissions(Azure.Storage.Sas.BlobSasPermissions.Delete);
+
+        // Create the SAS token
+        var blobUriBuilder = new BlobUriBuilder(_blobServiceClient.Uri)
+        {
+            BlobContainerName = containerName,
+            BlobName = blobName,
+            Sas = sasBuilder.ToSasQueryParameters(userDelegationKey.Value, _storageAccountName)
+        };
+
+        return blobUriBuilder.ToUri().Query;
+    }
 
     public async Task<string> GenerateContainerSasTokenAsync(
         string containerName,
@@ -660,33 +757,42 @@ public class AzureBlobStorageService : IBlobStorageService
     {
         try
         {
-            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
-
-            if (!containerClient.CanGenerateSasUri)
+            if (_useManagedIdentity)
             {
-                throw new InvalidOperationException(
-                    "Cannot generate SAS token. Check if StorageSharedKeyCredential is used."
-                );
+                // When using Managed Identity, we need to use User Delegation SAS
+                return await GenerateUserDelegationContainerSasAsync(containerName, permissions, expiresOn);
             }
-
-            var sasBuilder = new BlobSasBuilder
+            else
             {
-                BlobContainerName = containerName,
-                Resource = "c",
-                ExpiresOn = expiresOn,
-            };
+                // Use account key based SAS
+                var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
 
-            // Set permissions
-            if (permissions.HasFlag(BlobContainerSasPermissions.Read))
-                sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Read);
-            if (permissions.HasFlag(BlobContainerSasPermissions.Write))
-                sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Write);
-            if (permissions.HasFlag(BlobContainerSasPermissions.Delete))
-                sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Delete);
-            if (permissions.HasFlag(BlobContainerSasPermissions.List))
-                sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.List);
+                if (!containerClient.CanGenerateSasUri)
+                {
+                    throw new InvalidOperationException(
+                        "Cannot generate SAS token. Check if StorageSharedKeyCredential is used."
+                    );
+                }
 
-            return containerClient.GenerateSasUri(sasBuilder).Query;
+                var sasBuilder = new BlobSasBuilder
+                {
+                    BlobContainerName = containerName,
+                    Resource = "c",
+                    ExpiresOn = expiresOn,
+                };
+
+                // Set permissions
+                if (permissions.HasFlag(BlobContainerSasPermissions.Read))
+                    sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Read);
+                if (permissions.HasFlag(BlobContainerSasPermissions.Write))
+                    sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Write);
+                if (permissions.HasFlag(BlobContainerSasPermissions.Delete))
+                    sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Delete);
+                if (permissions.HasFlag(BlobContainerSasPermissions.List))
+                    sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.List);
+
+                return containerClient.GenerateSasUri(sasBuilder).Query;
+            }
         }
         catch (Exception ex)
         {
@@ -697,6 +803,44 @@ public class AzureBlobStorageService : IBlobStorageService
             );
             throw;
         }
+    }
+    
+    private async Task<string> GenerateUserDelegationContainerSasAsync(
+        string containerName,
+        BlobContainerSasPermissions permissions,
+        DateTimeOffset expiresOn
+    )
+    {
+        // Get a user delegation key
+        var startsOn = DateTimeOffset.UtcNow.AddMinutes(-5); // Account for clock skew
+        var userDelegationKey = await _blobServiceClient.GetUserDelegationKeyAsync(startsOn, expiresOn);
+
+        var sasBuilder = new BlobSasBuilder
+        {
+            BlobContainerName = containerName,
+            Resource = "c",
+            StartsOn = startsOn,
+            ExpiresOn = expiresOn,
+        };
+
+        // Set permissions
+        if (permissions.HasFlag(BlobContainerSasPermissions.Read))
+            sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Read);
+        if (permissions.HasFlag(BlobContainerSasPermissions.Write))
+            sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Write);
+        if (permissions.HasFlag(BlobContainerSasPermissions.Delete))
+            sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.Delete);
+        if (permissions.HasFlag(BlobContainerSasPermissions.List))
+            sasBuilder.SetPermissions(Azure.Storage.Sas.BlobContainerSasPermissions.List);
+
+        // Create the SAS token
+        var blobUriBuilder = new BlobUriBuilder(_blobServiceClient.Uri)
+        {
+            BlobContainerName = containerName,
+            Sas = sasBuilder.ToSasQueryParameters(userDelegationKey.Value, _storageAccountName)
+        };
+
+        return blobUriBuilder.ToUri().Query;
     }
 
     #endregion

@@ -14,7 +14,7 @@ public interface IProjectApiService
     /// <summary>
     /// Get all projects with pagination
     /// </summary>
-    Task<PagedResult<ProjectListDto>> GetProjectsAsync(ProjectFilterDto? filter = null, int pageNumber = 1, int pageSize = 10, string? sortBy = null, bool isAscending = true, CancellationToken cancellationToken = default);
+    Task<PagedResult<ProjectListDto>> GetProjectsAsync(ProjectFilterDto? filter = null, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Get project by ID

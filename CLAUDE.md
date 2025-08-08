@@ -1,122 +1,159 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Este archivo proporciona orientación a Claude Code (claude.ai/code) cuando trabaje con el código en este repositorio.
 
-## Project Overview
+## Resumen del Proyecto
 
-EzPro is a Project Control System for Engineering and Construction, built with:
-- .NET 9.0 following Clean Architecture principles
-- Blazor WebAssembly frontend with MudBlazor UI components
-- Entity Framework Core with SQL Server
-- Azure AD authentication using MSAL
-- Carter for minimal API endpoints
+EzPro es un Sistema de Control de Proyectos para Ingeniería y Construcción, construido con:
+- .NET 9.0 siguiendo principios de Clean Architecture
+- Frontend Blazor WebAssembly con componentes UI MudBlazor
+- Entity Framework Core con SQL Server
+- Autenticación Azure AD usando MSAL
+- Carter para endpoints de API minimalistas
 
-## Architecture Layers
+## Capas de Arquitectura
 
-1. **Domain** - Core business entities, interfaces, and domain logic
-2. **Core** - DTOs, enums, constants, and shared value objects
-3. **Application** - Business services, validators, mappings, and application logic
-4. **Infrastructure** - Data persistence, external services, EF Core implementations
-5. **Api** - REST API with Carter modules for endpoint organization
-6. **Web** - Blazor WebAssembly frontend application
+1. **Domain** - Entidades de negocio principales, interfaces y lógica del dominio
+2. **Core** - DTOs, enums, constantes y objetos de valor compartidos
+3. **Application** - Servicios de negocio, validadores, mapeos y lógica de aplicación
+4. **Infrastructure** - Persistencia de datos, servicios externos, implementaciones de EF Core
+5. **Api** - API REST con módulos Carter para organización de endpoints
+6. **Web** - Aplicación frontend Blazor WebAssembly
 
-## Running the Applications
+## Ejecutar las Aplicaciones
 
-### API Backend
+### Backend API
 ```bash
 cd Api
 dotnet run --launch-profile https
 ```
-Runs on: https://localhost:7193
+Se ejecuta en: https://localhost:7193
 
-### Blazor Frontend
+### Frontend Blazor
 ```bash
 cd Web
 dotnet run --launch-profile https
 ```
-Runs on: https://localhost:7284
+Se ejecuta en: https://localhost:7284
 
-## Database Operations
+## Operaciones de Base de Datos
 
-### Create Migration
+### Crear Migración
 ```bash
-dotnet ef migrations add [MigrationName] -p Infrastructure -s Api
+dotnet ef migrations add [NombreMigracion] -p Infrastructure -s Api
 ```
 
-### Update Database
+### Actualizar Base de Datos
 ```bash
 dotnet ef database update -p Infrastructure -s Api
 ```
 
-## Build Commands
+## Comandos de Compilación
 
-### Build Solution
+### Compilar Solución
 ```bash
 dotnet build
 ```
 
-### Run Tests
+### Ejecutar Pruebas
 ```bash
 dotnet test
 ```
 
-## Key Architectural Patterns
+## Patrones Arquitectónicos Clave
 
-### API Organization
-- Endpoints organized in Carter modules under `Api/Modules/`
-- Module structure: Auth, Cost, Organization, Contracts
-- Middleware pipeline: ExceptionHandling → Authentication → CurrentUser → UserValidation → Authorization
+### Organización de la API
+- Endpoints organizados en módulos Carter bajo `Api/Modules/`
+- Estructura de módulos: Auth, Cost, Organization, Contracts, Projects
+- Pipeline de middleware: ExceptionHandling → Authentication → CurrentUser → UserValidation → Authorization
 
-### Service Layer
-- Services registered in `Application/DependencyInjection.cs`
-- Scoped lifetime for most services
-- Key services: ICurrentUserService, IPermissionService, IProjectService
+### Capa de Servicios
+- Servicios registrados en `Application/DependencyInjection.cs`
+- Tiempo de vida Scoped para la mayoría de servicios
+- Servicios clave: ICurrentUserService, IPermissionService, IProjectService, IWBSService
 
-### Data Access
-- Repository pattern with IRepository<T> and IUnitOfWork
-- Entity configurations in `Infrastructure/Data/Configurations/`
-- Soft delete support via ISoftDelete interface
+### Acceso a Datos
+- Patrón Repository con IRepository<T> e IUnitOfWork
+- Configuraciones de entidades en `Infrastructure/Data/Configurations/`
+- Soporte para eliminación lógica vía interfaz ISoftDelete
 
-### Frontend Services
-- API communication through IApiService
-- Named HttpClient "EzProAPI" with authorization handler
-- Services organized by domain: Auth, Cost, Organization
+### Servicios Frontend
+- Comunicación API a través de IApiService
+- HttpClient nombrado "EzProAPI" con handler de autorización
+- Servicios organizados por dominio: Auth, Cost, Organization, Projects
 
-### Authentication Flow
-- Azure AD via MSAL
-- JWT Bearer tokens for API
-- Permission-based authorization with project-level access control
-- Custom authorization handler for system admin roles
+### Flujo de Autenticación
+- Azure AD vía MSAL
+- Tokens JWT Bearer para API
+- Autorización basada en permisos con control de acceso a nivel de proyecto
+- Handler de autorización personalizado para roles de administrador del sistema
 
-## Development Workflow
+## Flujo de Trabajo de Desarrollo
 
-### Adding New Features
-1. Define entity in `Domain/Entities/`
-2. Create DTOs in `Core/DTOs/`
-3. Add service interface in `Application/Interfaces/`
-4. Implement service in `Application/Services/`
-5. Create Carter module in `Api/Modules/`
-6. Add frontend service in `Web/Services/`
-7. Create Blazor pages/components in `Web/Pages/`
+### Agregar Nuevas Características
+1. Definir entidad en `Domain/Entities/`
+2. Crear DTOs en `Core/DTOs/`
+3. Agregar interfaz de servicio en `Application/Interfaces/`
+4. Implementar servicio en `Application/Services/`
+5. Crear módulo Carter en `Api/Modules/`
+6. Agregar servicio frontend en `Web/Services/`
+7. Crear páginas/componentes Blazor en `Web/Pages/`
 
-### Configuration Files
-- `Api/appsettings.json` - API configuration, Azure AD, connection strings
-- `Web/wwwroot/appsettings.json` - Frontend API endpoint configuration
-- CORS settings differ between Development (allow all) and Production (restricted)
+### Archivos de Configuración
+- `Api/appsettings.json` - Configuración de API, Azure AD, cadenas de conexión
+- `Web/wwwroot/appsettings.json` - Configuración del endpoint de API del frontend
+- Configuración CORS difiere entre Desarrollo (permitir todo) y Producción (restringido)
 
-## Important Technical Details
+## Detalles Técnicos Importantes
 
 ### Entity Framework
-- Code-first approach
-- Automatic audit fields (CreatedBy, ModifiedBy, etc.)
-- Hierarchical entities support via IHierarchical<T>
+- Enfoque code-first
+- Campos de auditoría automáticos (CreatedBy, ModifiedBy, etc.)
+- Soporte de entidades jerárquicas vía IHierarchical<T>
 
-### API Response Format
-- Consistent error handling via ExceptionHandlingMiddleware
-- ProblemDetails for error responses
-- PagedResult<T> for paginated responses
+### Formato de Respuesta de API
+- Manejo de errores consistente vía ExceptionHandlingMiddleware
+- ProblemDetails para respuestas de error
+- PagedResult<T> para respuestas paginadas
 
-### Frontend State Management
-- Scoped services for state management
-- IStateService for application state
-- Blazored.LocalStorage and SessionStorage for persistence
+### Gestión de Estado Frontend
+- Servicios con ámbito para gestión de estado
+- IStateService para estado de aplicación
+- Blazored.LocalStorage y SessionStorage para persistencia
+
+## Idioma y Mensajes
+
+### IMPORTANTE: Idioma Español
+- **Toda la documentación del código debe estar en español**
+- **Los mensajes de error deben estar en español**
+- **Los mensajes de validación deben estar en español**
+- **Los comentarios en el código deben estar en español**
+- **Los mensajes de usuario en la interfaz deben estar en español**
+
+### Convenciones de Mensajes
+- Mensajes de error: Claros y específicos sobre el problema
+- Mensajes de éxito: Confirmar la acción completada
+- Mensajes de validación: Indicar qué campo y qué regla no se cumple
+- Mensajes de confirmación: Preguntar claramente la acción a realizar
+
+### Ejemplos de Mensajes
+```csharp
+// Mensajes de error
+"Error al cargar los datos del proyecto"
+"No se pudo conectar con el servidor"
+"El usuario no tiene permisos para realizar esta acción"
+
+// Mensajes de validación
+"El campo nombre es requerido"
+"El presupuesto debe ser mayor a cero"
+"La fecha de fin debe ser posterior a la fecha de inicio"
+
+// Mensajes de éxito
+"Proyecto creado exitosamente"
+"Cambios guardados correctamente"
+"Paquete de trabajo actualizado"
+
+// Mensajes de confirmación
+"¿Está seguro que desea eliminar este elemento?"
+"Esta acción no se puede deshacer. ¿Desea continuar?"
+```

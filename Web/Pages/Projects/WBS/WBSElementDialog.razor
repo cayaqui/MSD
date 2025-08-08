@@ -1,0 +1,224 @@
+@using Core.DTOs.Projects.WBSElement
+@using Core.Enums.Projects
+@using MudBlazor
+@using Web.Services.Interfaces.Projects
+@inject IWBSApiService WBSService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="@isFormValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="model.Code" 
+                                  Label="Código WBS" 
+                                  Required="true"
+                                  RequiredError="El código es requerido"
+                                  Variant="Variant.Outlined"
+                                  Disabled="@IsEdit"
+                                  HelperText="Formato: 1.2.3" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="model.Name" 
+                                  Label="Nombre" 
+                                  Required="true"
+                                  RequiredError="El nombre es requerido"
+                                  Variant="Variant.Outlined"
+                                  Counter="200"
+                                  MaxLength="200" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="model.Description" 
+                                  Label="Descripción" 
+                                  Variant="Variant.Outlined"
+                                  Lines="3"
+                                  Counter="500"
+                                  MaxLength="500" />
+                </MudItem>
+
+                @if (!IsEdit)
+                {
+                    <MudItem xs="12">
+                        <MudSelect @bind-Value="model.ElementType" 
+                                   Label="Tipo de Elemento"
+                                   Required="true"
+                                   RequiredError="El tipo es requerido"
+                                   Variant="Variant.Outlined">
+                            <MudSelectItem Value="WBSElementType.Summary">Elemento Resumen</MudSelectItem>
+                            @if (ParentId.HasValue)
+                            {
+                                <MudSelectItem Value="WBSElementType.WorkPackage">Paquete de Trabajo</MudSelectItem>
+                                <MudSelectItem Value="WBSElementType.PlanningPackage">Paquete de Planificación</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                }
+
+                @if (IsEdit && element != null)
+                {
+                    <MudItem xs="12">
+                        <MudExpansionPanels>
+                            <MudExpansionPanel Text="Diccionario WBS" Icon="@Icons.Material.Filled.Description">
+                                <MudGrid>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="dictionaryModel.DeliverableDescription" 
+                                                      Label="Descripción del Entregable" 
+                                                      Variant="Variant.Outlined"
+                                                      Lines="3" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="dictionaryModel.AcceptanceCriteria" 
+                                                      Label="Criterios de Aceptación" 
+                                                      Variant="Variant.Outlined"
+                                                      Lines="3" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="dictionaryModel.Assumptions" 
+                                                      Label="Supuestos" 
+                                                      Variant="Variant.Outlined"
+                                                      Lines="2" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="dictionaryModel.Constraints" 
+                                                      Label="Restricciones" 
+                                                      Variant="Variant.Outlined"
+                                                      Lines="2" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="dictionaryModel.ExclusionsInclusions" 
+                                                      Label="Exclusiones/Inclusiones" 
+                                                      Variant="Variant.Outlined"
+                                                      Lines="2" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="Submit"
+                   Disabled="@(!isFormValid || isProcessing)">
+            @if (isProcessing)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Procesando...</MudText>
+            }
+            else
+            {
+                <MudText>@(IsEdit ? "Actualizar" : "Crear")</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public Guid ProjectId { get; set; }
+    [Parameter] public Guid? ParentId { get; set; }
+    [Parameter] public Guid? ElementId { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+
+    private MudForm form = default!;
+    private bool isFormValid;
+    private bool isProcessing;
+    
+    private CreateWBSElementDto model = new();
+    private UpdateWBSElementDto updateModel = new();
+    private UpdateWBSDictionaryDto dictionaryModel = new();
+    private WBSElementDetailDto? element;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEdit && ElementId.HasValue)
+        {
+            await LoadElement();
+        }
+        else
+        {
+            model.ProjectId = ProjectId;
+            model.ParentId = ParentId;
+            model.ElementType = WBSElementType.Summary;
+        }
+    }
+
+    private async Task LoadElement()
+    {
+        try
+        {
+            element = await WBSService.GetWBSElementByIdAsync(ElementId!.Value);
+            if (element != null)
+            {
+                updateModel.Name = element.Name;
+                updateModel.Description = element.Description;
+                
+                var dictionary = await WBSService.GetWBSDictionaryAsync(ElementId!.Value);
+                if (dictionary != null)
+                {
+                    dictionaryModel.DeliverableDescription = dictionary.DeliverableDescription;
+                    dictionaryModel.AcceptanceCriteria = dictionary.AcceptanceCriteria;
+                    dictionaryModel.Assumptions = dictionary.Assumptions;
+                    dictionaryModel.Constraints = dictionary.Constraints;
+                    dictionaryModel.ExclusionsInclusions = dictionary.ExclusionsInclusions;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar elemento: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Submit()
+    {
+        try
+        {
+            isProcessing = true;
+            
+            if (IsEdit && ElementId.HasValue)
+            {
+                await WBSService.UpdateWBSElementAsync(ElementId.Value, updateModel);
+                
+                // Update dictionary if any field has value
+                if (!string.IsNullOrWhiteSpace(dictionaryModel.DeliverableDescription) ||
+                    !string.IsNullOrWhiteSpace(dictionaryModel.AcceptanceCriteria) ||
+                    !string.IsNullOrWhiteSpace(dictionaryModel.Assumptions) ||
+                    !string.IsNullOrWhiteSpace(dictionaryModel.Constraints) ||
+                    !string.IsNullOrWhiteSpace(dictionaryModel.ExclusionsInclusions))
+                {
+                    await WBSService.UpdateWBSDictionaryAsync(ElementId.Value, dictionaryModel);
+                }
+                
+                Snackbar.Add("Elemento WBS actualizado exitosamente", Severity.Success);
+            }
+            else
+            {
+                var result = await WBSService.CreateWBSElementAsync(model);
+                if (result != Guid.Empty)
+                {
+                    Snackbar.Add("Elemento WBS creado exitosamente", Severity.Success);
+                }
+            }
+            
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

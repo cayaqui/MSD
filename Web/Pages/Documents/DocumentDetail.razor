@@ -1,0 +1,628 @@
+@page "/documents/{DocumentId:guid}"
+@using Core.DTOs.Documents.Document
+@using Core.DTOs.Documents.DocumentComment
+@using Core.DTOs.Documents.DocumentVersion
+@using Core.Enums.Documents
+@using Web.Services.Interfaces.Documents
+@using Web.Services.Interfaces.Organization
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.JSInterop
+@attribute [Authorize]
+@inject IDocumentApiService DocumentService
+@inject IProjectApiService ProjectService
+@inject INavigationService NavigationService
+@inject IToastService ToastService
+@inject ILoggingService Logger
+@inject IJSRuntime JSRuntime
+@inject IDialogService DialogService
+
+<PageTitle>@(_document?.DocumentNumber ?? "Document Detail")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
+    
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_document == null)
+    {
+        <MudAlert Severity="Severity.Error">Document not found</MudAlert>
+    }
+    else
+    {
+        <MudGrid>
+            <!-- Document Header -->
+            <MudItem xs="12">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@GetDocumentIcon(_document.Type)" Size="Size.Large" Class="mr-3" />
+                                <div>
+                                    <MudText Typo="Typo.h5">@_document.DocumentNumber</MudText>
+                                    <MudText Typo="Typo.subtitle1">@_document.Title</MudText>
+                                </div>
+                            </div>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudTooltip Text="Download">
+                                <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color.Primary" 
+                                             OnClick="DownloadDocument" />
+                            </MudTooltip>
+                            <MudTooltip Text="Edit">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Default"
+                                             OnClick="@(() => NavigationService.NavigateTo($"/documents/{DocumentId}/edit"))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Share">
+                                <MudIconButton Icon="@Icons.Material.Filled.Share" Color="Color.Default"
+                                             OnClick="ShowShareDialog" />
+                            </MudTooltip>
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" AnchorOrigin="Origin.BottomRight">
+                                <MudMenuItem Icon="@Icons.Material.Filled.History" 
+                                           OnClick="@(() => NavigationService.NavigateTo($"/documents/{DocumentId}/versions"))">
+                                    Version History
+                                </MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.Link"
+                                           OnClick="@(() => NavigationService.NavigateTo($"/documents/{DocumentId}/related"))">
+                                    Related Documents
+                                </MudMenuItem>
+                                <MudMenuItem Icon="@(_document.IsLocked ? Icons.Material.Filled.LockOpen : Icons.Material.Filled.Lock)"
+                                           OnClick="ToggleLock">
+                                    @(_document.IsLocked ? "Unlock" : "Lock")
+                                </MudMenuItem>
+                                <MudDivider />
+                                <MudMenuItem Icon="@Icons.Material.Filled.Delete" Color="Color.Error"
+                                           OnClick="DeleteDocument">
+                                    Delete
+                                </MudMenuItem>
+                            </MudMenu>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="12" md="8">
+                                <!-- Status Chips -->
+                                <div class="mb-4">
+                                    <MudChip T="string" Color="GetStatusColor(_document.Status)" Size="Size.Small">
+                                        @_document.Status
+                                    </MudChip>
+                                    <MudChip T="string" Color="GetTypeColor(_document.Type)" Size="Size.Small">
+                                        @_document.Type
+                                    </MudChip>
+                                    @if (_document.Category.HasValue)
+                                    {
+                                        <MudChip T="string" Color="Color.Default" Size="Size.Small">
+                                            @_document.Category
+                                        </MudChip>
+                                    }
+                                    @if (_document.IsLocked)
+                                    {
+                                        <MudChip T="string" Color="Color.Warning" Size="Size.Small" Icon="@Icons.Material.Filled.Lock">
+                                            Locked by @_document.LockedByName
+                                        </MudChip>
+                                    }
+                                </div>
+                                
+                                <!-- Description -->
+                                @if (!string.IsNullOrEmpty(_document.Description))
+                                {
+                                    <MudText Typo="Typo.body1" Class="mb-4">@_document.Description</MudText>
+                                }
+                                
+                                <!-- Document Properties -->
+                                <MudSimpleTable Hover="true" Dense="true">
+                                    <tbody>
+                                        <tr>
+                                            <td style="width: 200px;"><strong>Project</strong></td>
+                                            <td>@_document.ProjectName</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Current Version</strong></td>
+                                            <td>@_document.CurrentVersion (Rev. @_document.RevisionNumber)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Author</strong></td>
+                                            <td>@_document.AuthorName</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Created Date</strong></td>
+                                            <td>@_document.CreatedDate.ToString("MMM dd, yyyy HH:mm")</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Last Modified</strong></td>
+                                            <td>@_document.ModifiedDate?.ToString("MMM dd, yyyy HH:mm")</td>
+                                        </tr>
+                                        @if (!string.IsNullOrEmpty(_document.DisciplineName))
+                                        {
+                                            <tr>
+                                                <td><strong>Discipline</strong></td>
+                                                <td>@_document.DisciplineName</td>
+                                            </tr>
+                                        }
+                                        @if (!string.IsNullOrEmpty(_document.PhaseName))
+                                        {
+                                            <tr>
+                                                <td><strong>Phase</strong></td>
+                                                <td>@_document.PhaseName</td>
+                                            </tr>
+                                        }
+                                        @if (!string.IsNullOrEmpty(_document.ClientDocumentNumber))
+                                        {
+                                            <tr>
+                                                <td><strong>Client Doc Number</strong></td>
+                                                <td>@_document.ClientDocumentNumber</td>
+                                            </tr>
+                                        }
+                                        @if (!string.IsNullOrEmpty(_document.ContractorDocumentNumber))
+                                        {
+                                            <tr>
+                                                <td><strong>Contractor Doc Number</strong></td>
+                                                <td>@_document.ContractorDocumentNumber</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </MudSimpleTable>
+                            </MudItem>
+                            
+                            <MudItem xs="12" md="4">
+                                <!-- File Information -->
+                                <MudCard Elevation="0" Class="pa-4" Style="background-color: var(--mud-palette-background-grey);">
+                                    <MudText Typo="Typo.h6" Class="mb-3">File Information</MudText>
+                                    <MudSimpleTable Dense="true">
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>File Name</strong></td>
+                                                <td>@_document.FileName</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>File Size</strong></td>
+                                                <td>@FormatFileSize(_document.FileSize)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>File Type</strong></td>
+                                                <td>@_document.FileExtension?.ToUpper()</td>
+                                            </tr>
+                                        </tbody>
+                                    </MudSimpleTable>
+                                    
+                                    <!-- Statistics -->
+                                    <MudDivider Class="my-3" />
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2">Statistics</MudText>
+                                    <MudSimpleTable Dense="true">
+                                        <tbody>
+                                            <tr>
+                                                <td><MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" /></td>
+                                                <td>@_document.ViewCount views</td>
+                                            </tr>
+                                            <tr>
+                                                <td><MudIcon Icon="@Icons.Material.Filled.Download" Size="Size.Small" /></td>
+                                                <td>@_document.DownloadCount downloads</td>
+                                            </tr>
+                                            @if (_document.LastViewDate.HasValue)
+                                            {
+                                                <tr>
+                                                    <td><strong>Last View</strong></td>
+                                                    <td>@_document.LastViewDate.Value.ToString("MMM dd, yyyy")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </MudSimpleTable>
+                                    
+                                    <!-- Tags -->
+                                    @if (!string.IsNullOrEmpty(_document.Tags))
+                                    {
+                                        <MudDivider Class="my-3" />
+                                        <MudText Typo="Typo.subtitle2" Class="mb-2">Tags</MudText>
+                                        <div>
+                                            @foreach (var tag in _document.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                                            {
+                                                <MudChip T="string" Color="Color.Primary" Size="Size.Small">@tag.Trim()</MudChip>
+                                            }
+                                        </div>
+                                    }
+                                </MudCard>
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            
+            <!-- Document Preview (if applicable) -->
+            @if (CanPreview(_document.FileExtension))
+            {
+                <MudItem xs="12">
+                    <MudCard>
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Preview</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" 
+                                             OnClick="OpenInNewTab" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            @if (_document.FileExtension?.ToLower() == ".pdf")
+                            {
+                                <iframe src="@_previewUrl" style="width: 100%; height: 600px; border: none;"></iframe>
+                            }
+                            else if (IsImage(_document.FileExtension))
+                            {
+                                <div class="text-center">
+                                    <img src="@_previewUrl" style="max-width: 100%; height: auto;" />
+                                </div>
+                            }
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+            
+            <!-- Comments Section -->
+            <MudItem xs="12">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Comments (@_comments.Count)</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                                     OnClick="ShowAddCommentDialog">
+                                Add Comment
+                            </MudButton>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_comments.Any())
+                        {
+                            <MudTimeline TimelineOrientation="TimelineOrientation.Vertical">
+                                @foreach (var comment in _comments.OrderByDescending(c => c.CreatedDate))
+                                {
+                                    <MudTimelineItem Color="@GetCommentColor(comment.Type)" Size="Size.Small">
+                                        <ItemContent>
+                                            <MudCard Elevation="0">
+                                                <MudCardContent>
+                                                    <div class="d-flex justify-space-between align-center mb-2">
+                                                        <div>
+                                                            <MudText Typo="Typo.subtitle2">@comment.AuthorName</MudText>
+                                                            <MudText Typo="Typo.caption">
+                                                                @comment.CreatedDate.ToString("MMM dd, yyyy HH:mm")
+                                                            </MudText>
+                                                        </div>
+                                                        <div>
+                                                            <MudChip T="string" Color="@GetCommentColor(comment.Type)" Size="Size.Small">
+                                                                @comment.Type
+                                                            </MudChip>
+                                                            @if (comment.IsResolved)
+                                                            {
+                                                                <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.Check">
+                                                                    Resolved
+                                                                </MudChip>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                    <MudText>@comment.Comment</MudText>
+                                                    @if (!comment.IsResolved && CanResolveComment(comment))
+                                                    {
+                                                        <MudButton Class="mt-2" Size="Size.Small" Variant="Variant.Text" 
+                                                                 Color="Color.Primary" OnClick="@(() => ResolveComment(comment.Id))">
+                                                            Resolve
+                                                        </MudButton>
+                                                    }
+                                                    @if (comment.IsResolved && !string.IsNullOrEmpty(comment.Resolution))
+                                                    {
+                                                        <MudAlert Severity="Severity.Success" Dense="true" Class="mt-2">
+                                                            <strong>Resolution:</strong> @comment.Resolution
+                                                        </MudAlert>
+                                                    }
+                                                </MudCardContent>
+                                            </MudCard>
+                                        </ItemContent>
+                                    </MudTimelineItem>
+                                }
+                            </MudTimeline>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Tertiary" Align="Align.Center">
+                                No comments yet. Be the first to add a comment!
+                            </MudText>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid DocumentId { get; set; }
+    
+    private DocumentDto? _document;
+    private List<DocumentCommentDto> _comments = new();
+    private bool _loading = true;
+    private string? _previewUrl;
+    
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDocument();
+        await RecordView();
+    }
+
+    private async Task LoadDocument()
+    {
+        try
+        {
+            _loading = true;
+            _document = await DocumentService.GetDocumentByIdAsync(DocumentId);
+            
+            if (_document != null)
+            {
+                UpdateBreadcrumbs();
+                await LoadComments();
+                
+                if (CanPreview(_document.FileExtension))
+                {
+                    _previewUrl = await DocumentService.GetDownloadUrlAsync(DocumentId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error loading document {DocumentId}");
+            ToastService.ShowError("Failed to load document");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void UpdateBreadcrumbs()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Documents", href: "/documents"),
+            new BreadcrumbItem(_document?.DocumentNumber ?? "Document", href: null, disabled: true)
+        };
+    }
+
+    private async Task LoadComments()
+    {
+        try
+        {
+            var comments = await DocumentService.GetCommentsAsync(DocumentId);
+            _comments = comments?.ToList() ?? new List<DocumentCommentDto>();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading comments");
+        }
+    }
+
+    private async Task RecordView()
+    {
+        try
+        {
+            await DocumentService.RecordViewAsync(DocumentId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error recording view");
+        }
+    }
+
+    private async Task DownloadDocument()
+    {
+        try
+        {
+            var url = await DocumentService.GetDownloadUrlAsync(DocumentId);
+            if (!string.IsNullOrEmpty(url))
+            {
+                await JSRuntime.InvokeVoidAsync("open", url, "_blank");
+                ToastService.ShowSuccess("Download started");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error downloading document");
+            ToastService.ShowError("Failed to download document");
+        }
+    }
+
+    private async Task ToggleLock()
+    {
+        try
+        {
+            if (_document == null) return;
+
+            bool success;
+            if (_document.IsLocked)
+            {
+                success = await DocumentService.UnlockDocumentAsync(DocumentId);
+                if (success)
+                {
+                    _document.IsLocked = false;
+                    ToastService.ShowSuccess("Document unlocked");
+                }
+            }
+            else
+            {
+                success = await DocumentService.LockDocumentAsync(DocumentId);
+                if (success)
+                {
+                    _document.IsLocked = true;
+                    ToastService.ShowSuccess("Document locked");
+                }
+            }
+
+            if (!success)
+            {
+                ToastService.ShowError("Failed to change lock status");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error toggling lock");
+            ToastService.ShowError("Failed to change lock status");
+        }
+    }
+
+    private async Task DeleteDocument()
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Delete Document",
+            $"Are you sure you want to delete '{_document?.DocumentNumber}'? This action cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (result == true)
+        {
+            try
+            {
+                var success = await DocumentService.DeleteDocumentAsync(DocumentId);
+                if (success)
+                {
+                    ToastService.ShowSuccess("Document deleted");
+                    NavigationService.NavigateTo("/documents");
+                }
+                else
+                {
+                    ToastService.ShowError("Failed to delete document");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting document");
+                ToastService.ShowError("Failed to delete document");
+            }
+        }
+    }
+
+    private void ShowShareDialog()
+    {
+        ToastService.ShowInfo("Share functionality coming soon");
+    }
+
+    private void ShowAddCommentDialog()
+    {
+        ToastService.ShowInfo("Add comment functionality coming soon");
+    }
+
+    private async Task ResolveComment(Guid commentId)
+    {
+        try
+        {
+            var success = await DocumentService.ResolveCommentAsync(commentId);
+            if (success)
+            {
+                ToastService.ShowSuccess("Comment resolved");
+                await LoadComments();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error resolving comment {commentId}");
+            ToastService.ShowError("Failed to resolve comment");
+        }
+    }
+
+    private async Task OpenInNewTab()
+    {
+        if (!string.IsNullOrEmpty(_previewUrl))
+        {
+            await JSRuntime.InvokeVoidAsync("open", _previewUrl, "_blank");
+        }
+    }
+
+    private bool CanPreview(string? extension)
+    {
+        if (string.IsNullOrEmpty(extension)) return false;
+        var ext = extension.ToLower();
+        return ext == ".pdf" || IsImage(ext);
+    }
+
+    private bool IsImage(string? extension)
+    {
+        if (string.IsNullOrEmpty(extension)) return false;
+        var ext = extension.ToLower();
+        return ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif" || ext == ".bmp";
+    }
+
+    private bool CanResolveComment(DocumentCommentDto comment)
+    {
+        // TODO: Implement proper permission check
+        return true;
+    }
+
+    private string GetDocumentIcon(DocumentType type)
+    {
+        return type switch
+        {
+            DocumentType.Drawing => Icons.Material.Filled.Architecture,
+            DocumentType.Specification => Icons.Material.Filled.Description,
+            DocumentType.Report => Icons.Material.Filled.Assessment,
+            DocumentType.Procedure => Icons.Material.Filled.ListAlt,
+            DocumentType.Form => Icons.Material.Filled.Assignment,
+            DocumentType.Letter => Icons.Material.Filled.Email,
+            _ => Icons.Material.Filled.InsertDriveFile
+        };
+    }
+
+    private Color GetTypeColor(DocumentType type)
+    {
+        return type switch
+        {
+            DocumentType.Drawing => Color.Primary,
+            DocumentType.Specification => Color.Secondary,
+            DocumentType.Report => Color.Info,
+            DocumentType.Procedure => Color.Warning,
+            DocumentType.Form => Color.Success,
+            DocumentType.Letter => Color.Tertiary,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetStatusColor(DocumentStatus status)
+    {
+        return status switch
+        {
+            DocumentStatus.Draft => Color.Default,
+            DocumentStatus.InReview => Color.Warning,
+            DocumentStatus.Approved => Color.Success,
+            DocumentStatus.Superseded => Color.Dark,
+            DocumentStatus.Obsolete => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetCommentColor(CommentType type)
+    {
+        return type switch
+        {
+            CommentType.General => Color.Default,
+            CommentType.Technical => Color.Primary,
+            CommentType.Review => Color.Warning,
+            CommentType.Approval => Color.Success,
+            CommentType.Rejection => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        int order = 0;
+        double size = bytes;
+        
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+        
+        return $"{size:0.##} {sizes[order]}";
+    }
+}

@@ -1,0 +1,91 @@
+@using Core.DTOs.Progress.Schedules
+@using MudBlazor
+@inject Web.Services.Interfaces.Progress.IScheduleApiService ScheduleService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="model.Version" Label="Versión" Required="true" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="model.Name" Label="Nombre" Required="true" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="model.Description" Label="Descripción" Lines="3" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudDatePicker Label="Fecha Inicio" @bind-Date="startDate" Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudDatePicker Label="Fecha Fin" @bind-Date="endDate" Required="true" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="isSubmitting">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+            else
+            {
+                <text>Crear</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudBlazor.MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Guid ProjectId { get; set; }
+
+    private CreateScheduleVersionDto model = new();
+    private DateTime? startDate;
+    private DateTime? endDate;
+    private bool isSubmitting;
+
+    protected override void OnInitialized()
+    {
+        model.ProjectId = ProjectId;
+        startDate = DateTime.Today;
+        endDate = DateTime.Today.AddMonths(6);
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(model.Version) || string.IsNullOrWhiteSpace(model.Name) ||
+            !startDate.HasValue || !endDate.HasValue)
+        {
+            Snackbar.Add("Por favor complete todos los campos requeridos", Severity.Warning);
+            return;
+        }
+
+        if (endDate.Value <= startDate.Value)
+        {
+            Snackbar.Add("La fecha fin debe ser posterior a la fecha inicio", Severity.Warning);
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            model.StartDate = startDate.Value;
+            model.EndDate = endDate.Value;
+            
+            var result = await ScheduleService.CreateScheduleVersionAsync(model);
+            Snackbar.Add("Versión de cronograma creada exitosamente", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al crear la versión: {ex.Message}", Severity.Error);
+            isSubmitting = false;
+        }
+    }
+}

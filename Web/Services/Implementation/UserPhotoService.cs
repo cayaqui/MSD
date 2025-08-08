@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Core.DTOs.Auth.Users;
 using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
+using Core.DTOs.Auth.Users;
 using Web.Services.Interfaces;
 
 namespace Web.Services.Implementation;

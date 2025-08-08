@@ -7,6 +7,7 @@
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ILoggingService Logger
+@inject UserPhotoService UserPhotoService
 
 <MudThemeProvider IsDarkMode="@_isDarkMode" />
 <MudPopoverProvider />
@@ -196,27 +197,29 @@
                 
                 Logger.LogInfo($"Usuario autenticado: {_userName} ({_userEmail})");
                 
-                // Temporalmente deshabilitado la sincronización con Entra ID
-                // TODO: Revisar el servicio UserSyncService
-                /*
+                // Sincronizar con Azure AD para obtener la foto
                 try
                 {
-                    var syncResult = await UserSyncService.SyncUserAsync();
-                    if (syncResult.Success && syncResult.UserInfo != null)
+                    var (success, userInfo) = await UserPhotoService.SyncUserWithPhotoAsync();
+                    if (success && userInfo != null)
                     {
-                        Logger.LogInfo("Sincronización con Entra ID exitosa");
+                        Logger.LogInfo("Sincronización con Azure AD exitosa");
                         
                         // Actualizar información del usuario si está disponible
-                        if (!string.IsNullOrEmpty(syncResult.UserInfo.DisplayName))
-                            _userName = syncResult.UserInfo.DisplayName;
+                        if (!string.IsNullOrEmpty(userInfo.DisplayName))
+                            _userName = userInfo.DisplayName;
                             
-                        if (!string.IsNullOrEmpty(syncResult.UserInfo.Email))
-                            _userEmail = syncResult.UserInfo.Email;
+                        if (!string.IsNullOrEmpty(userInfo.Email))
+                            _userEmail = userInfo.Email;
                             
-                        if (!string.IsNullOrEmpty(syncResult.UserInfo.PhotoBase64))
+                        if (!string.IsNullOrEmpty(userInfo.PhotoUrl))
                         {
-                            _userAvatar = syncResult.UserInfo.PhotoBase64;
-                            Logger.LogInfo("Foto del usuario cargada desde Entra ID");
+                            _userAvatar = userInfo.PhotoUrl;
+                            Logger.LogInfo($"Foto del usuario cargada desde Azure AD. URL: {userInfo.PhotoUrl.Substring(0, Math.Min(50, userInfo.PhotoUrl.Length))}...");
+                        }
+                        else
+                        {
+                            Logger.LogInfo("El usuario no tiene foto disponible en Azure AD");
                         }
                         
                         // Actualizar UI
@@ -224,14 +227,13 @@
                     }
                     else
                     {
-                        Logger.LogWarning($"No se pudo sincronizar con Entra ID: {syncResult.Message}");
+                        Logger.LogWarning("No se pudo sincronizar con Azure AD");
                     }
                 }
                 catch (Exception syncEx)
                 {
-                    Logger.LogError(syncEx, "Error durante la sincronización con Entra ID");
+                    Logger.LogError(syncEx, "Error durante la sincronización con Azure AD");
                 }
-                */
             }
             else
             {

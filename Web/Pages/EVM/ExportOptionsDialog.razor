@@ -1,0 +1,50 @@
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudRadioGroup T="string" @bind-SelectedOption="_selectedFormat">
+            <MudRadio T="string" Option="@("excel")" Color="Color.Primary">
+                <MudGrid AlignItems="Center">
+                    <MudItem xs="2">
+                        <MudIcon Icon="@Icons.Custom.FileFormats.FileExcel" Color="Color.Success" />
+                    </MudItem>
+                    <MudItem xs="10">
+                        <MudText>Excel (.xlsx)</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Formato compatible con Microsoft Excel
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudRadio>
+            <MudRadio T="string" Option="@("pdf")" Color="Color.Primary">
+                <MudGrid AlignItems="Center">
+                    <MudItem xs="2">
+                        <MudIcon Icon="@Icons.Custom.FileFormats.FilePdf" Color="Color.Error" />
+                    </MudItem>
+                    <MudItem xs="10">
+                        <MudText>PDF</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Documento portátil para impresión
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudRadio>
+        </MudRadioGroup>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Export">
+            Exportar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    
+    private string _selectedFormat = "excel";
+    
+    private void Cancel() => MudDialog.Cancel();
+    
+    private void Export() => MudDialog.Close(DialogResult.Ok(_selectedFormat));
+}

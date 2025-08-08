@@ -1,0 +1,389 @@
+@page "/admin/users/{userId:guid}/projects"
+@using Core.DTOs.Auth.ProjectTeamMembers
+@using Core.DTOs.Auth.Users
+@using Core.Constants
+@using Web.Services.Interfaces.Auth
+@inject IUserApiService UserApiService
+@inject IProjectTeamMemberApiService TeamMemberApiService
+@inject INavigationService NavigationService
+@inject IToastService ToastService
+@inject IDialogService DialogService
+
+<PageTitle>Proyectos del Usuario</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudBreadcrumbs Items="_breadcrumbs" />
+    
+    @if (_user != null)
+    {
+        <MudCard Class="mt-4">
+            <MudCardContent>
+                <MudGrid AlignItems="Center">
+                    <MudItem xs="12" sm="8">
+                        <MudStack Row="true" Spacing="3">
+                            <MudAvatar Size="Size.Large">
+                                @if (!string.IsNullOrEmpty(_user.PhotoUrl))
+                                {
+                                    <MudImage Src="@_user.PhotoUrl" />
+                                }
+                                else
+                                {
+                                    @_user.DisplayName.Substring(0, 1).ToUpper()
+                                }
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.h5">@_user.DisplayName</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@_user.Email</MudText>
+                                <MudText Typo="Typo.caption">@_user.JobTitle - @_user.Department</MudText>
+                            </div>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem xs="12" sm="4" Class="text-right">
+                        <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="AddToProject">
+                            Asignar a Proyecto
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+        
+        <!-- User Availability Summary -->
+        @if (_availability != null)
+        {
+            <MudCard Class="mt-4">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Class="mb-3">Resumen de Disponibilidad</MudText>
+                    <MudGrid>
+                        <MudItem xs="6" sm="3">
+                            <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
+                                <MudText Typo="Typo.caption">Asignación Total</MudText>
+                                <MudText Typo="Typo.h4" Color="@GetAvailabilityColor(_availability.TotalAllocation)">
+                                    @_availability.TotalAllocation%
+                                </MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
+                                <MudText Typo="Typo.caption">Proyectos Activos</MudText>
+                                <MudText Typo="Typo.h4">@_availability.ProjectAllocations.Count</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
+                                <MudText Typo="Typo.caption">Disponibilidad</MudText>
+                                <MudText Typo="Typo.h4">@_availability.AvailableCapacity%</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
+                                <MudText Typo="Typo.caption">Estado</MudText>
+                                <MudChip T="string" Color="@GetAvailabilityColor(_availability.TotalAllocation)">
+                                    @GetAvailabilityStatus(_availability.TotalAllocation)
+                                </MudChip>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        }
+        
+        <!-- Projects Table -->
+        <MudCard Class="mt-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-3">Proyectos Asignados</MudText>
+                
+                <!-- Filter Tabs -->
+                <MudTabs @bind-ActivePanelIndex="_activeTab" Class="mb-4">
+                    <MudTabPanel Text="Activos" Icon="@Icons.Material.Filled.CheckCircle" />
+                    <MudTabPanel Text="Próximos" Icon="@Icons.Material.Filled.Schedule" />
+                    <MudTabPanel Text="Finalizados" Icon="@Icons.Material.Filled.Archive" />
+                    <MudTabPanel Text="Todos" Icon="@Icons.Material.Filled.List" />
+                </MudTabs>
+                
+                @if (_isLoading)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                }
+                else if (!GetFilteredProjects().Any())
+                {
+                    <MudAlert Severity="Severity.Info">
+                        No hay proyectos @GetTabDescription()
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudTable Items="GetFilteredProjects()" Dense="true" Hover="true">
+                        <HeaderContent>
+                            <MudTh>Proyecto</MudTh>
+                            <MudTh>Empresa</MudTh>
+                            <MudTh>Rol</MudTh>
+                            <MudTh>Asignación</MudTh>
+                            <MudTh>Período</MudTh>
+                            <MudTh>Estado</MudTh>
+                            <MudTh>Acciones</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Proyecto">
+                                <MudLink Href="@($"/projects/{context.ProjectId}")">
+                                    <MudText>@context.ProjectName</MudText>
+                                </MudLink>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@context.ProjectCode</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Empresa">-</MudTd>
+                            <MudTd DataLabel="Rol">
+                                <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(context.Role)">
+                                    @SimplifiedRoles.GetDisplayName(context.Role)
+                                </MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Asignación">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudProgressLinear Color="@GetAllocationColor(context.AllocationPercentage ?? 100)" 
+                                                       Value="@((double)(context.AllocationPercentage ?? 100))" 
+                                                       Size="Size.Small" Style="width: 60px;" />
+                                    <MudText Typo="Typo.caption">@(context.AllocationPercentage ?? 100)%</MudText>
+                                </MudStack>
+                            </MudTd>
+                            <MudTd DataLabel="Período">
+                                <MudText Typo="Typo.body2">@context.StartDate.ToString("dd/MM/yyyy")</MudText>
+                                @if (context.EndDate.HasValue)
+                                {
+                                    <MudText Typo="Typo.caption">hasta @context.EndDate.Value.ToString("dd/MM/yyyy")</MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Sin fecha fin</MudText>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Estado">
+                                @if (context.IsActive)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Activo</MudChip>
+                                }
+                                else if (context.StartDate > DateTime.Today)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Info">Próximo</MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Default">Finalizado</MudChip>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Acciones">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                               Color="Color.Primary" Title="Editar asignación"
+                                               OnClick="@(() => EditAssignment(context))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small"
+                                               Color="Color.Secondary" Title="Transferir"
+                                               OnClick="@(() => TransferAssignment(context))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                               Color="Color.Error" Title="Remover"
+                                               OnClick="@(() => RemoveFromProject(context))" />
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudCardContent>
+        </MudCard>
+        
+        <!-- Allocation Timeline -->
+        <MudCard Class="mt-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-3">Línea de Tiempo de Asignaciones</MudText>
+                <MudTimeline TimelineOrientation="TimelineOrientation.Horizontal">
+                    @foreach (var project in _projects.OrderBy(p => p.StartDate))
+                    {
+                        <MudTimelineItem Color="@(project.IsActive ? Color.Success : Color.Default)" Size="Size.Small">
+                            <ItemContent>
+                                <MudText Typo="Typo.body2">@project.ProjectName</MudText>
+                                <MudText Typo="Typo.caption">@project.StartDate.ToString("MMM yyyy")</MudText>
+                            </ItemContent>
+                        </MudTimelineItem>
+                    }
+                </MudTimeline>
+            </MudCardContent>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid UserId { get; set; }
+    
+    private UserDto? _user;
+    private List<ProjectTeamMemberDetailDto> _projects = new();
+    private UserAvailabilityDto? _availability;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    private bool _isLoading = true;
+    private int _activeTab = 0;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new("Inicio", href: "/"),
+            new("Administración", href: "/admin"),
+            new("Usuarios", href: "/admin/users"),
+            new("Proyectos", href: null, disabled: true)
+        };
+        
+        await LoadData();
+    }
+    
+    private async Task LoadData()
+    {
+        try
+        {
+            _isLoading = true;
+            
+            // Load user details
+            _user = await UserApiService.GetUserByIdAsync(UserId);
+            if (_user == null)
+            {
+                ToastService.ShowError("Usuario no encontrado");
+                NavigationService.NavigateTo("/admin/users");
+                return;
+            }
+            
+            // Load user projects
+            var projects = await TeamMemberApiService.GetUserProjectsAsync(UserId);
+            _projects = projects ?? new List<ProjectTeamMemberDetailDto>();
+            
+            // Load availability
+            _availability = await TeamMemberApiService.GetUserAvailabilityAsync(UserId);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error al cargar datos: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+    
+    private List<ProjectTeamMemberDetailDto> GetFilteredProjects()
+    {
+        return _activeTab switch
+        {
+            0 => _projects.Where(p => p.IsActive && p.StartDate <= DateTime.Today).ToList(),
+            1 => _projects.Where(p => p.StartDate > DateTime.Today).ToList(),
+            2 => _projects.Where(p => !p.IsActive || (p.EndDate.HasValue && p.EndDate.Value < DateTime.Today)).ToList(),
+            _ => _projects
+        };
+    }
+    
+    private string GetTabDescription()
+    {
+        return _activeTab switch
+        {
+            0 => "activos",
+            1 => "próximos",
+            2 => "finalizados",
+            _ => "asignados"
+        };
+    }
+    
+    private async Task AddToProject()
+    {
+        if (_user == null) return;
+        
+        var dialog = await DialogService.ShowAsync<UserProjectAccessDialog>("Gestionar Accesos a Proyectos",
+            new DialogParameters { ["UserId"] = UserId, ["UserName"] = _user.DisplayName },
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+            
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await LoadData();
+        }
+    }
+    
+    private async Task EditAssignment(ProjectTeamMemberDetailDto member)
+    {
+        var parameters = new DialogParameters
+        {
+            ["TeamMember"] = member
+        };
+        
+        var dialog = await DialogService.ShowAsync<EditTeamMemberDialog>("Editar Asignación", parameters);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled)
+        {
+            await LoadData();
+        }
+    }
+    
+    private async Task TransferAssignment(ProjectTeamMemberDetailDto member)
+    {
+        var parameters = new DialogParameters
+        {
+            ["TeamMember"] = member,
+            ["CurrentProjectName"] = member.ProjectName
+        };
+        
+        var dialog = await DialogService.ShowAsync<TransferTeamMemberDialog>("Transferir a Otro Proyecto", parameters);
+        var result = await dialog.Result;
+        
+        if (!result.Canceled)
+        {
+            await LoadData();
+        }
+    }
+    
+    private async Task RemoveFromProject(ProjectTeamMemberDetailDto member)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Confirmar Eliminación",
+            $"¿Está seguro de remover al usuario del proyecto '{member.ProjectName}'?",
+            yesText: "Remover", cancelText: "Cancelar");
+            
+        if (confirm == true)
+        {
+            try
+            {
+                var success = await TeamMemberApiService.RemoveTeamMemberAsync(member.Id);
+                if (success)
+                {
+                    ToastService.ShowSuccess($"Usuario removido de {member.ProjectName}");
+                    await LoadData();
+                }
+            }
+            catch (Exception ex)
+            {
+                ToastService.ShowError($"Error al remover del proyecto: {ex.Message}");
+            }
+        }
+    }
+    
+    private Color GetAvailabilityColor(decimal allocation) => allocation switch
+    {
+        <= 80 => Color.Success,
+        <= 100 => Color.Warning,
+        _ => Color.Error
+    };
+    
+    private Color GetAllocationColor(decimal allocation) => allocation switch
+    {
+        <= 50 => Color.Info,
+        <= 80 => Color.Primary,
+        <= 100 => Color.Warning,
+        _ => Color.Error
+    };
+    
+    private string GetAvailabilityStatus(decimal allocation) => allocation switch
+    {
+        <= 80 => "Disponible",
+        <= 100 => "Asignado",
+        _ => "Sobreasignado"
+    };
+    
+    private Color GetRoleColor(string role) => SimplifiedRoles.GetProjectRoleLevel(role) switch
+    {
+        4 => Color.Error,      // Project Manager
+        3 => Color.Warning,    // Team Lead
+        2 => Color.Primary,    // Team Member
+        1 => Color.Info,       // Viewer
+        _ => Color.Default
+    };
+}

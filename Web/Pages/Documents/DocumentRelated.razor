@@ -1,0 +1,498 @@
+@page "/documents/{DocumentId:guid}/related"
+@using Core.DTOs.Documents.Document
+@using Core.Enums.Documents
+@using Web.Services.Interfaces.Documents
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IDocumentApiService DocumentService
+@inject INavigationService NavigationService
+@inject IToastService ToastService
+@inject ILoggingService Logger
+@inject IDialogService DialogService
+
+<PageTitle>Related Documents - @(_document?.DocumentNumber ?? "Document")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
+    
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_document == null)
+    {
+        <MudAlert Severity="Severity.Error">Document not found</MudAlert>
+    }
+    else
+    {
+        <MudCard Class="mb-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h5">Related Documents</MudText>
+                    <MudText Typo="Typo.subtitle1">@_document.DocumentNumber - @_document.Title</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                             OnClick="ShowLinkDocumentDialog">
+                        Link Document
+                    </MudButton>
+                </CardHeaderActions>
+            </MudCardHeader>
+        </MudCard>
+
+        @if (_relatedDocuments.Any())
+        {
+            <MudGrid>
+                @foreach (var group in _relatedDocuments.GroupBy(d => d.RelationshipType))
+                {
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.h6" Class="mb-3">
+                            <MudIcon Icon="@GetRelationshipIcon(group.Key)" Class="mr-2" />
+                            @GetRelationshipTitle(group.Key)
+                        </MudText>
+                        <MudGrid>
+                            @foreach (var doc in group)
+                            {
+                                <MudItem xs="12" md="6" lg="4">
+                                    <MudCard>
+                                        <MudCardHeader>
+                                            <CardHeaderContent>
+                                                <MudLink Href="@($"/documents/{doc.Id}")" Typo="Typo.subtitle1">
+                                                    @doc.DocumentNumber
+                                                </MudLink>
+                                                <MudText Typo="Typo.body2">@doc.Title</MudText>
+                                            </CardHeaderContent>
+                                            <CardHeaderActions>
+                                                <MudIconButton Icon="@Icons.Material.Filled.RemoveCircle" 
+                                                             Color="Color.Error" Size="Size.Small"
+                                                             OnClick="@(() => UnlinkDocument(doc.Id))" />
+                                            </CardHeaderActions>
+                                        </MudCardHeader>
+                                        <MudCardContent>
+                                            <div class="d-flex justify-space-between align-center mb-2">
+                                                <MudChip T="string" Color="GetTypeColor(doc.Type)" Size="Size.Small">@doc.Type</MudChip>
+                                                <MudChip T="string" Color="GetStatusColor(doc.Status)" Size="Size.Small">@doc.Status</MudChip>
+                                            </div>
+                                            <MudText Typo="Typo.caption">Version: @doc.CurrentVersion</MudText>
+                                            <MudText Typo="Typo.caption">Author: @doc.AuthorName</MudText>
+                                            <MudText Typo="Typo.caption">Date: @doc.CreatedDate.ToString("MMM dd, yyyy")</MudText>
+                                        </MudCardContent>
+                                    </MudCard>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudDivider Class="my-4" />
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info">
+                No related documents found. Click "Link Document" to add relationships.
+            </MudAlert>
+        }
+
+        <!-- Document Hierarchy Visualization -->
+        @if (_relatedDocuments.Any(d => d.RelationshipType == DocumentRelationshipType.Parent || 
+                                       d.RelationshipType == DocumentRelationshipType.Child))
+        {
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Document Hierarchy</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudTreeView Items="_hierarchyItems" Width="100%">
+                        <ItemTemplate>
+                            <MudTreeViewItem Value="@context" Items="@context.Children">
+                                <Content>
+                                    <div class="d-flex align-center">
+                                        <MudIcon Icon="@GetDocumentIcon(context.Type)" Class="mr-2" />
+                                        <MudLink Href="@($"/documents/{context.Id}")">
+                                            @context.DocumentNumber - @context.Title
+                                        </MudLink>
+                                    </div>
+                                </Content>
+                            </MudTreeViewItem>
+                        </ItemTemplate>
+                    </MudTreeView>
+                </MudCardContent>
+            </MudCard>
+        }
+    }
+</MudContainer>
+
+<!-- Link Document Dialog -->
+<MudDialog @bind-IsVisible="_showLinkDialog" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true }">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Link Related Document</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudAutocomplete T="DocumentDto" Label="Search Document *" 
+                               @bind-Value="_selectedDocument"
+                               SearchFunc="@SearchDocuments"
+                               ToStringFunc="@(e => e?.DocumentNumber + " - " + e?.Title)"
+                               Variant="Variant.Outlined"
+                               ShowProgressIndicator="true"
+                               MinCharacters="2" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudSelect @bind-Value="_selectedRelationshipType" Label="Relationship Type *" 
+                         Variant="Variant.Outlined">
+                    @foreach (DocumentRelationshipType type in Enum.GetValues(typeof(DocumentRelationshipType)))
+                    {
+                        <MudSelectItem Value="@type">@GetRelationshipDescription(type)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            @if (_selectedDocument != null)
+            {
+                <MudItem xs="12">
+                    <MudCard Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-background-grey);">
+                        <MudText Typo="Typo.subtitle2">Selected Document</MudText>
+                        <MudText>@_selectedDocument.DocumentNumber - @_selectedDocument.Title</MudText>
+                        <MudText Typo="Typo.caption">Type: @_selectedDocument.Type | Status: @_selectedDocument.Status</MudText>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _showLinkDialog = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="LinkDocument" 
+                 Disabled="@(_selectedDocument == null || _linking)">
+            @if (_linking)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Link
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public Guid DocumentId { get; set; }
+    
+    private DocumentDto? _document;
+    private List<RelatedDocumentDto> _relatedDocuments = new();
+    private List<TreeItemData> _hierarchyItems = new();
+    private bool _loading = true;
+    private bool _showLinkDialog = false;
+    private bool _linking = false;
+    
+    private DocumentDto? _selectedDocument;
+    private DocumentRelationshipType _selectedRelationshipType = DocumentRelationshipType.Related;
+    
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDocument();
+        await LoadRelatedDocuments();
+    }
+
+    private async Task LoadDocument()
+    {
+        try
+        {
+            _document = await DocumentService.GetDocumentByIdAsync(DocumentId);
+            if (_document != null)
+            {
+                UpdateBreadcrumbs();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error loading document {DocumentId}");
+        }
+    }
+
+    private async Task LoadRelatedDocuments()
+    {
+        try
+        {
+            _loading = true;
+            var related = await DocumentService.GetRelatedDocumentsAsync(DocumentId);
+            if (related != null)
+            {
+                _relatedDocuments = related.Select(d => new RelatedDocumentDto
+                {
+                    Id = d.Id,
+                    DocumentNumber = d.DocumentNumber,
+                    Title = d.Title,
+                    Type = d.Type,
+                    Status = d.Status,
+                    CurrentVersion = d.CurrentVersion,
+                    AuthorName = d.AuthorName,
+                    CreatedDate = d.CreatedDate,
+                    RelationshipType = DocumentRelationshipType.Related // TODO: Get actual relationship type
+                }).ToList();
+                
+                BuildHierarchy();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading related documents");
+            ToastService.ShowError("Failed to load related documents");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void UpdateBreadcrumbs()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Documents", href: "/documents"),
+            new BreadcrumbItem(_document?.DocumentNumber ?? "Document", href: $"/documents/{DocumentId}"),
+            new BreadcrumbItem("Related", href: null, disabled: true)
+        };
+    }
+
+    private void BuildHierarchy()
+    {
+        // Build document hierarchy tree
+        _hierarchyItems.Clear();
+        
+        if (_document != null)
+        {
+            var rootItem = new TreeItemData
+            {
+                Id = _document.Id,
+                DocumentNumber = _document.DocumentNumber,
+                Title = _document.Title,
+                Type = _document.Type,
+                Children = new List<TreeItemData>()
+            };
+            
+            // Add children
+            foreach (var child in _relatedDocuments.Where(d => d.RelationshipType == DocumentRelationshipType.Child))
+            {
+                rootItem.Children.Add(new TreeItemData
+                {
+                    Id = child.Id,
+                    DocumentNumber = child.DocumentNumber,
+                    Title = child.Title,
+                    Type = child.Type,
+                    Children = new List<TreeItemData>()
+                });
+            }
+            
+            _hierarchyItems.Add(rootItem);
+        }
+    }
+
+    private void ShowLinkDocumentDialog()
+    {
+        _selectedDocument = null;
+        _selectedRelationshipType = DocumentRelationshipType.Related;
+        _showLinkDialog = true;
+    }
+
+    private async Task<IEnumerable<DocumentDto>> SearchDocuments(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length < 2)
+            return new List<DocumentDto>();
+
+        try
+        {
+            var filter = new DocumentFilterDto
+            {
+                SearchTerm = value,
+                ProjectId = _document?.ProjectId,
+                PageSize = 10
+            };
+            
+            var result = await DocumentService.SearchDocumentsAsync(filter);
+            return result?.Documents.Where(d => d.Id != DocumentId) ?? new List<DocumentDto>();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error searching documents");
+            return new List<DocumentDto>();
+        }
+    }
+
+    private async Task LinkDocument()
+    {
+        if (_selectedDocument == null) return;
+
+        try
+        {
+            _linking = true;
+            var success = await DocumentService.LinkDocumentsAsync(DocumentId, _selectedDocument.Id, _selectedRelationshipType);
+            
+            if (success)
+            {
+                ToastService.ShowSuccess("Document linked successfully");
+                _showLinkDialog = false;
+                await LoadRelatedDocuments();
+            }
+            else
+            {
+                ToastService.ShowError("Failed to link document");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error linking document");
+            ToastService.ShowError("Failed to link document");
+        }
+        finally
+        {
+            _linking = false;
+        }
+    }
+
+    private async Task UnlinkDocument(Guid relatedDocumentId)
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Unlink Document",
+            "Are you sure you want to remove this relationship?",
+            yesText: "Unlink", cancelText: "Cancel");
+
+        if (result == true)
+        {
+            try
+            {
+                var success = await DocumentService.UnlinkDocumentsAsync(DocumentId, relatedDocumentId);
+                if (success)
+                {
+                    ToastService.ShowSuccess("Document unlinked");
+                    await LoadRelatedDocuments();
+                }
+                else
+                {
+                    ToastService.ShowError("Failed to unlink document");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, $"Error unlinking document {relatedDocumentId}");
+                ToastService.ShowError("Failed to unlink document");
+            }
+        }
+    }
+
+    private string GetRelationshipIcon(DocumentRelationshipType type)
+    {
+        return type switch
+        {
+            DocumentRelationshipType.Reference => Icons.Material.Filled.Link,
+            DocumentRelationshipType.Attachment => Icons.Material.Filled.AttachFile,
+            DocumentRelationshipType.Parent => Icons.Material.Filled.AccountTree,
+            DocumentRelationshipType.Child => Icons.Material.Filled.Subdirectory,
+            DocumentRelationshipType.Related => Icons.Material.Filled.SwapHoriz,
+            DocumentRelationshipType.Supersedes => Icons.Material.Filled.Update,
+            DocumentRelationshipType.SupersededBy => Icons.Material.Filled.History,
+            DocumentRelationshipType.Supports => Icons.Material.Filled.Support,
+            DocumentRelationshipType.ConflictsWith => Icons.Material.Filled.Warning,
+            DocumentRelationshipType.Updates => Icons.Material.Filled.Refresh,
+            DocumentRelationshipType.UpdatedBy => Icons.Material.Filled.UpdateDisabled,
+            _ => Icons.Material.Filled.Link
+        };
+    }
+
+    private string GetRelationshipTitle(DocumentRelationshipType type)
+    {
+        return type switch
+        {
+            DocumentRelationshipType.Reference => "References",
+            DocumentRelationshipType.Attachment => "Attachments",
+            DocumentRelationshipType.Parent => "Parent Documents",
+            DocumentRelationshipType.Child => "Child Documents",
+            DocumentRelationshipType.Related => "Related Documents",
+            DocumentRelationshipType.Supersedes => "Supersedes",
+            DocumentRelationshipType.SupersededBy => "Superseded By",
+            DocumentRelationshipType.Supports => "Supporting Documents",
+            DocumentRelationshipType.ConflictsWith => "Conflicts With",
+            DocumentRelationshipType.Updates => "Updates",
+            DocumentRelationshipType.UpdatedBy => "Updated By",
+            _ => "Related"
+        };
+    }
+
+    private string GetRelationshipDescription(DocumentRelationshipType type)
+    {
+        return type switch
+        {
+            DocumentRelationshipType.Reference => "This document references",
+            DocumentRelationshipType.Attachment => "Attached to this document",
+            DocumentRelationshipType.Parent => "Parent of this document",
+            DocumentRelationshipType.Child => "Child of this document",
+            DocumentRelationshipType.Related => "Related to this document",
+            DocumentRelationshipType.Supersedes => "This document supersedes",
+            DocumentRelationshipType.SupersededBy => "Superseded by",
+            DocumentRelationshipType.Supports => "Supports this document",
+            DocumentRelationshipType.ConflictsWith => "Conflicts with this document",
+            DocumentRelationshipType.Updates => "This document updates",
+            DocumentRelationshipType.UpdatedBy => "Updated by",
+            _ => type.ToString()
+        };
+    }
+
+    private string GetDocumentIcon(DocumentType type)
+    {
+        return type switch
+        {
+            DocumentType.Drawing => Icons.Material.Filled.Architecture,
+            DocumentType.Specification => Icons.Material.Filled.Description,
+            DocumentType.Report => Icons.Material.Filled.Assessment,
+            DocumentType.Procedure => Icons.Material.Filled.ListAlt,
+            DocumentType.Form => Icons.Material.Filled.Assignment,
+            DocumentType.Letter => Icons.Material.Filled.Email,
+            _ => Icons.Material.Filled.InsertDriveFile
+        };
+    }
+
+    private Color GetTypeColor(DocumentType type)
+    {
+        return type switch
+        {
+            DocumentType.Drawing => Color.Primary,
+            DocumentType.Specification => Color.Secondary,
+            DocumentType.Report => Color.Info,
+            DocumentType.Procedure => Color.Warning,
+            DocumentType.Form => Color.Success,
+            DocumentType.Letter => Color.Tertiary,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetStatusColor(DocumentStatus status)
+    {
+        return status switch
+        {
+            DocumentStatus.Draft => Color.Default,
+            DocumentStatus.InReview => Color.Warning,
+            DocumentStatus.Approved => Color.Success,
+            DocumentStatus.Superseded => Color.Dark,
+            DocumentStatus.Obsolete => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private class RelatedDocumentDto : DocumentDto
+    {
+        public DocumentRelationshipType RelationshipType { get; set; }
+    }
+
+    private class TreeItemData
+    {
+        public Guid Id { get; set; }
+        public string DocumentNumber { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public DocumentType Type { get; set; }
+        public List<TreeItemData> Children { get; set; } = new();
+    }
+}

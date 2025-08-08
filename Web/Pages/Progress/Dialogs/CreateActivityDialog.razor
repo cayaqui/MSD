@@ -1,0 +1,114 @@
+@using Core.DTOs.Progress.Activities
+@using Core.DTOs.Projects.WBSElement
+@using Core.Enums
+@using MudBlazor
+@inject Web.Services.Interfaces.Progress.IActivityApiService ActivityService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="model.ActivityCode" Label="Código" Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="model.Name" Label="Nombre" Required="true" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="model.Description" Label="Descripción" Lines="2" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect @bind-Value="model.WBSElementId" Label="Elemento WBS" Required="true">
+                    @foreach (var wbs in WBSElements)
+                    {
+                        <MudSelectItem Value="@wbs.Id">@wbs.Code - @wbs.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect @bind-Value="model.ActivityType" Label="Tipo">
+                    @foreach (ActivityType type in Enum.GetValues(typeof(ActivityType)))
+                    {
+                        <MudSelectItem Value="@type">@type</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudDatePicker Label="Inicio Planificado" @bind-Date="plannedStartDate" Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudDatePicker Label="Fin Planificado" @bind-Date="plannedEndDate" Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudNumericField @bind-Value="model.DurationDays" Label="Duración (días)" Min="1" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudNumericField @bind-Value="model.PlannedEffortHours" Label="Esfuerzo (horas)" Min="0" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSwitch @bind-Value="model.IsCritical" Label="Actividad Crítica" Color="Color.Error" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="isSubmitting">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+            else
+            {
+                <text>Crear</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudBlazor.MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Guid ProjectId { get; set; }
+    [Parameter] public List<WBSElementDto> WBSElements { get; set; } = new();
+
+    private CreateActivityDto model = new();
+    private DateTime? plannedStartDate;
+    private DateTime? plannedEndDate;
+    private bool isSubmitting;
+
+    protected override void OnInitialized()
+    {
+        plannedStartDate = DateTime.Today;
+        plannedEndDate = DateTime.Today.AddDays(5);
+        model.DurationDays = 5;
+        model.ActivityType = ActivityType.TaskDependent;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(model.ActivityCode) || string.IsNullOrWhiteSpace(model.Name) ||
+            model.WBSElementId == Guid.Empty || !plannedStartDate.HasValue || !plannedEndDate.HasValue)
+        {
+            Snackbar.Add("Por favor complete todos los campos requeridos", Severity.Warning);
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            model.PlannedStartDate = plannedStartDate.Value;
+            model.PlannedEndDate = plannedEndDate.Value;
+            
+            var result = await ActivityService.CreateActivityAsync(model);
+            Snackbar.Add("Actividad creada exitosamente", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al crear la actividad: {ex.Message}", Severity.Error);
+            isSubmitting = false;
+        }
+    }
+}

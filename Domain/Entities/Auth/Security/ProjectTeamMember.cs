@@ -1,7 +1,4 @@
-﻿using Domain.Common;
-using Domain.Entities.Organization.Core;
-using System;
-
+﻿
 namespace Domain.Entities.Auth.Security
 {
     public class ProjectTeamMember : BaseEntity, IAuditable

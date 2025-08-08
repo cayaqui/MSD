@@ -5,6 +5,15 @@ namespace Core.DTOs.Common;
 /// </summary>
 public class SimpleQueryParameters
 {
+    public SimpleQueryParameters(int pageNumber = 1, int pageSize = 20, string? searchTerm = null, string sortDirection = "asc", bool includeInactive = false, bool includeDeleted = false)
+    {
+        PageNumber=pageNumber;
+        PageSize=pageSize;
+        IncludeInactive=includeInactive;
+        IncludeDeleted=includeDeleted;
+        SortDirection = sortDirection;
+        SearchTerm=searchTerm;
+    }
     private const int MaxPageSize = 100;
     private int _pageSize = 20;
     private string? _searchTerm;

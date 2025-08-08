@@ -1,0 +1,165 @@
+@using Core.DTOs.Cost.CostItems
+@using Core.DTOs.Cost
+@using Web.Services.Interfaces.Cost
+@inject ICostApiService CostApiService
+@inject IToastService ToastService
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudText Typo="Typo.subtitle1">@CostItem.Description</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@CostItem.ItemCode</MudText>
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudRadioGroup T="string" @bind-SelectedOption="_recordType">
+                    <MudRadio T="string" Option="@("actual")" Color="Color.Primary">Costo Real</MudRadio>
+                    <MudRadio T="string" Option="@("commitment")" Color="Color.Secondary">Compromiso</MudRadio>
+                </MudRadioGroup>
+            </MudItem>
+            
+            @if (_recordType == "actual")
+            {
+                <MudItem xs="12">
+                    <MudNumericField @bind-Value="_actualAmount" Label="Monto Real" Format="C" 
+                                     Variant="Variant.Outlined" Required="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudDatePicker @bind-Date="_actualDate" Label="Fecha" Variant="Variant.Outlined" Required="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_actualDescription" Label="Descripción" 
+                                  Variant="Variant.Outlined" Lines="3" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_invoiceNumber" Label="Número de Factura" Variant="Variant.Outlined" />
+                </MudItem>
+            }
+            else
+            {
+                <MudItem xs="12">
+                    <MudNumericField @bind-Value="_commitmentAmount" Label="Monto Comprometido" Format="C" 
+                                     Variant="Variant.Outlined" Required="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_commitmentDescription" Label="Descripción del Compromiso" 
+                                  Variant="Variant.Outlined" Lines="3" Required="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_poNumber" Label="Número de Orden de Compra" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_vendor" Label="Proveedor" Variant="Variant.Outlined" />
+                </MudItem>
+            }
+            
+            <MudItem xs="12">
+                <MudGrid>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.body2">Presupuesto:</MudText>
+                        <MudText Typo="Typo.subtitle2">@CostItem.PlannedCost.ToString("C")</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.body2">Disponible:</MudText>
+                        <MudText Typo="Typo.subtitle2" Color="@GetAvailableColor()">
+                            @GetAvailableAmount().ToString("C")
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@(!IsValid())">
+            Registrar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public CostItemDto CostItem { get; set; } = default!;
+    
+    private string _recordType = "actual";
+    private decimal _actualAmount;
+    private DateTime? _actualDate = DateTime.Today;
+    private string _actualDescription = string.Empty;
+    private string _invoiceNumber = string.Empty;
+    
+    private decimal _commitmentAmount;
+    private string _commitmentDescription = string.Empty;
+    private string _poNumber = string.Empty;
+    private string _vendor = string.Empty;
+    
+    private void Cancel() => MudDialog.Cancel();
+    
+    private async Task Submit()
+    {
+        try
+        {
+            bool success;
+            
+            if (_recordType == "actual")
+            {
+                var dto = new RecordActualCostDto
+                {
+                    ActualCost = _actualAmount,
+                    TransactionDate = _actualDate!.Value,
+                    Comments = _actualDescription,
+                    ReferenceNumber = _invoiceNumber
+                };
+                success = await CostApiService.RecordActualCostAsync(CostItem.Id, dto);
+            }
+            else
+            {
+                var dto = new RecordCommitmentDto
+                {
+                    CommittedCost = _commitmentAmount,
+                    Comments = _commitmentDescription,
+                    ReferenceNumber = _poNumber,
+                    VendorId = _vendor
+                };
+                success = await CostApiService.RecordCommitmentAsync(CostItem.Id, dto);
+            }
+            
+            if (success)
+            {
+                ToastService.ShowSuccess($"{(_recordType == "actual" ? "Costo real" : "Compromiso")} registrado exitosamente");
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                ToastService.ShowError("Error al registrar el costo");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error: {ex.Message}");
+        }
+    }
+    
+    private bool IsValid()
+    {
+        if (_recordType == "actual")
+        {
+            return _actualAmount > 0 && _actualDate.HasValue;
+        }
+        else
+        {
+            return _commitmentAmount > 0 && !string.IsNullOrWhiteSpace(_commitmentDescription);
+        }
+    }
+    
+    private decimal GetAvailableAmount()
+    {
+        return CostItem.PlannedCost - CostItem.CommittedCost - CostItem.ActualCost;
+    }
+    
+    private Color GetAvailableColor()
+    {
+        var available = GetAvailableAmount();
+        return available >= 0 ? Color.Success : Color.Error;
+    }
+}

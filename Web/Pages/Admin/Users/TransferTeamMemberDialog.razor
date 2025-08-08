@@ -1,0 +1,204 @@
+@using Core.DTOs.Auth.ProjectTeamMembers
+@using Core.DTOs.Organization.Project
+@using Core.Constants
+@using Web.Services.Interfaces.Auth
+@using Web.Services.Interfaces.Organization
+@inject IProjectTeamMemberApiService TeamMemberApiService
+@inject IProjectApiService ProjectApiService
+@inject IToastService ToastService
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="@_isFormValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.h6">Transferir Asignación</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Desde: @CurrentProjectName
+                    </MudText>
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudAutocomplete T="ProjectDto" @bind-Value="_selectedProject"
+                                     Label="Proyecto Destino" Required="true"
+                                     RequiredError="Seleccione un proyecto destino"
+                                     SearchFunc="@SearchProjects"
+                                     ToStringFunc="@(p => p?.Name ?? string.Empty)"
+                                     Variant="Variant.Outlined">
+                        <ItemTemplate Context="project">
+                            <MudText>@project.Name</MudText>
+                            <MudText Typo="Typo.caption">@project.Code</MudText>
+                        </ItemTemplate>
+                    </MudAutocomplete>
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudDatePicker @bind-Date="_transferDate" Label="Fecha de Transferencia"
+                                   Required="true" RequiredError="La fecha es requerida"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudSwitch @bind-Value="_keepOriginalRole" Label="Mantener rol original"
+                               Color="Color.Primary" />
+                </MudItem>
+                
+                @if (!_keepOriginalRole)
+                {
+                    <MudItem xs="12">
+                        <MudSelect @bind-Value="_newRole" Label="Nuevo Rol"
+                                   Required="true" RequiredError="El rol es requerido"
+                                   Variant="Variant.Outlined">
+                            @foreach (var role in SimplifiedRoles.Project.All)
+                            {
+                                <MudSelectItem Value="@role">@SimplifiedRoles.GetDisplayName(role)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                }
+                
+                <MudItem xs="12">
+                    <MudSwitch @bind-Value="_keepOriginalAllocation" 
+                               Label="Mantener porcentaje de asignación original"
+                               Color="Color.Primary" />
+                </MudItem>
+                
+                @if (!_keepOriginalAllocation)
+                {
+                    <MudItem xs="12">
+                        <MudNumericField @bind-Value="_newAllocation"
+                                         Label="Nueva Asignación %" Min="0" Max="100" Step="5"
+                                         Required="true" RequiredError="La asignación es requerida"
+                                         Variant="Variant.Outlined" Adornment="Adornment.End"
+                                         AdornmentText="%" />
+                    </MudItem>
+                }
+                
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_notes" Label="Razón de Transferencia"
+                                  Lines="3" Variant="Variant.Outlined" />
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        La asignación al proyecto original finalizará en la fecha de transferencia.
+                        Se creará una nueva asignación en el proyecto destino a partir de esa fecha.
+                    </MudAlert>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Transfer"
+                   Disabled="@(!CanTransfer() || _isProcessing)">
+            @if (_isProcessing)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Transfiriendo...</MudText>
+            }
+            else
+            {
+                <MudText>Transferir</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public ProjectTeamMemberDetailDto TeamMember { get; set; } = null!;
+    [Parameter] public string CurrentProjectName { get; set; } = string.Empty;
+    
+    private MudForm _form = default!;
+    private bool _isFormValid;
+    private bool _isProcessing;
+    
+    private ProjectDto? _selectedProject;
+    private DateTime? _transferDate = DateTime.Today;
+    private bool _keepOriginalRole = true;
+    private string _newRole = string.Empty;
+    private bool _keepOriginalAllocation = true;
+    private decimal _newAllocation = 100;
+    private string _notes = string.Empty;
+    
+    protected override void OnInitialized()
+    {
+        _newRole = TeamMember.Role;
+        _newAllocation = TeamMember.AllocationPercentage ?? 100;
+    }
+    
+    private async Task<IEnumerable<ProjectDto>> SearchProjects(string value, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var filter = new ProjectFilterDto
+            {
+                SearchTerm = value,
+                PageSize = 10
+            };
+            
+            var result = await ProjectApiService.GetProjectsAsync(filter);
+            // Filter out current project and convert to ProjectDto
+            return result.Items
+                .Where(p => p.Id != TeamMember.ProjectId)
+                .Select(p => new ProjectDto
+                {
+                    Id = p.Id,
+                    Code = p.Code,
+                    Name = p.Name
+                });
+        }
+        catch
+        {
+            return new List<ProjectDto>();
+        }
+    }
+    
+    private async Task Transfer()
+    {
+        if (!CanTransfer()) return;
+        
+        try
+        {
+            _isProcessing = true;
+            
+            var dto = new TransferTeamMemberDto
+            {
+                NewProjectId = _selectedProject!.Id,
+                TransferDate = _transferDate!.Value,
+                NewRole = _keepOriginalRole ? TeamMember.Role : _newRole,
+                TransferReason = _notes
+            };
+            
+            var result = await TeamMemberApiService.TransferTeamMemberAsync(TeamMember.Id, dto);
+            if (result != null)
+            {
+                ToastService.ShowSuccess($"Asignación transferida a {_selectedProject.Name}");
+                MudDialog.Close(DialogResult.Ok(result));
+            }
+            else
+            {
+                ToastService.ShowError("Error al transferir la asignación");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+    
+    private bool CanTransfer()
+    {
+        return _selectedProject != null &&
+               _transferDate.HasValue &&
+               (_keepOriginalRole || !string.IsNullOrWhiteSpace(_newRole)) &&
+               (_keepOriginalAllocation || _newAllocation > 0);
+    }
+    
+    private void Cancel() => MudDialog.Cancel();
+}

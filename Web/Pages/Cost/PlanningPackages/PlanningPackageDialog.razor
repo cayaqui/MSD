@@ -1,0 +1,345 @@
+@using Core.DTOs.Cost.PlanningPackages
+@using Core.DTOs.Cost.ControlAccounts
+@using Core.DTOs.Projects.WBSElement
+@using Core.Enums.Projects
+@using MudBlazor
+@using Web.Services.Interfaces.Projects
+@using Web.Services.Interfaces.Cost
+@inject IPlanningPackageApiService PlanningPackageService
+@inject IControlAccountApiService ControlAccountService
+@inject IWBSApiService WBSService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="@isFormValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudAutocomplete T="WBSElementDto"
+                                     @bind-Value="selectedWBSElement"
+                                     Label="Elemento WBS"
+                                     Required="true"
+                                     RequiredError="El elemento WBS es requerido"
+                                     SearchFunc="@SearchWBSElements"
+                                     ToStringFunc="@(e => e?.Code + " - " + e?.Name)"
+                                     Variant="Variant.Outlined"
+                                     Disabled="@(Mode == DialogMode.Edit)"
+                                     CoerceText="true">
+                        <ItemTemplate Context="element">
+                            <MudText>@element.Code - @element.Name</MudText>
+                        </ItemTemplate>
+                    </MudAutocomplete>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudAutocomplete T="ControlAccountDto"
+                                     @bind-Value="selectedControlAccount"
+                                     Label="Cuenta de Control"
+                                     Required="true"
+                                     RequiredError="La cuenta de control es requerida"
+                                     SearchFunc="@SearchControlAccounts"
+                                     ToStringFunc="@(ca => ca?.Code + " - " + ca?.Name)"
+                                     Variant="Variant.Outlined"
+                                     CoerceText="true">
+                        <ItemTemplate Context="ca">
+                            <MudText>@ca.Code - @ca.Name</MudText>
+                        </ItemTemplate>
+                    </MudAutocomplete>
+                </MudItem>
+
+                <MudItem xs="12">
+                    @if (Mode == DialogMode.Create)
+                    {
+                        <MudTextField T="string"
+                                      @bind-Value="createDto.Description"
+                                      Label="Descripción"
+                                      Lines="3"
+                                      Variant="Variant.Outlined" />
+                    }
+                    else
+                    {
+                        <MudTextField T="string"
+                                      @bind-Value="updateDto.Description"
+                                      Label="Descripción"
+                                      Lines="3"
+                                      Variant="Variant.Outlined" />
+                    }
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    @if (Mode == DialogMode.Create)
+                    {
+                        <MudNumericField T="decimal"
+                                         @bind-Value="createDto.Budget"
+                                         Label="Presupuesto"
+                                         Format="C"
+                                         Required="true"
+                                         RequiredError="El presupuesto es requerido"
+                                         Min="0"
+                                         Variant="Variant.Outlined" />
+                    }
+                    else
+                    {
+                        <MudNumericField T="decimal?"
+                                         @bind-Value="budgetNullable"
+                                         Label="Presupuesto"
+                                         Format="C"
+                                         Required="true"
+                                         RequiredError="El presupuesto es requerido"
+                                         Min="0"
+                                         Variant="Variant.Outlined" />
+                    }
+                </MudItem>
+
+                @* EstimatedHours not available in DTOs
+                <MudItem xs="12" md="6">
+                    <MudNumericField T="decimal"
+                                     @bind-Value="dto.EstimatedHours"
+                                     Label="Horas Estimadas"
+                                     Min="0"
+                                     Variant="Variant.Outlined" />
+                </MudItem> *@
+
+                <MudItem xs="12" md="6">
+                    <MudDatePicker Label="Fecha Inicio Planificada"
+                                   @bind-Date="plannedStartDate"
+                                   Variant="Variant.Outlined"
+                                   Editable="true"
+                                   DateFormat="dd/MM/yyyy" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudDatePicker Label="Fecha Fin Planificada"
+                                   @bind-Date="plannedEndDate"
+                                   Variant="Variant.Outlined"
+                                   Editable="true"
+                                   DateFormat="dd/MM/yyyy"
+                                   MinDate="@plannedStartDate" />
+                </MudItem>
+
+                @* Notes property not available in DTO
+                <MudItem xs="12">
+                    <MudTextField T="string"
+                                  @bind-Value="dto.Notes"
+                                  Label="Notas"
+                                  Lines="3"
+                                  Variant="Variant.Outlined" />
+                </MudItem> *@
+
+                @if (Mode == DialogMode.Edit && budgetSummary != null)
+                {
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            <MudText Typo="Typo.body2">
+                                Presupuesto disponible en cuenta de control: @budgetSummary.UnallocatedBudget.ToString("C")
+                            </MudText>
+                        </MudAlert>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="Submit"
+                   Disabled="@(!isFormValid || isProcessing)">
+            @if (isProcessing)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Guardando...</MudText>
+            }
+            else
+            {
+                <MudText>@(Mode == DialogMode.Create ? "Crear" : "Guardar")</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public Guid ProjectId { get; set; }
+    [Parameter] public Guid? PlanningPackageId { get; set; }
+    [Parameter] public DialogMode Mode { get; set; } = DialogMode.Create;
+
+    private MudForm form = default!;
+    private bool isFormValid;
+    private bool isProcessing;
+    
+    private CreatePlanningPackageDto createDto = new();
+    private UpdatePlanningPackageDto updateDto = new();
+    // Don't use dynamic for binding
+    
+    private WBSElementDto? selectedWBSElement;
+    private ControlAccountDto? selectedControlAccount;
+    private DateTime? plannedStartDate;
+    private DateTime? plannedEndDate;
+    private Core.DTOs.Cost.PlanningPackages.PlanningPackageBudgetSummaryDto? budgetSummary;
+    private decimal? budgetNullable;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Mode == DialogMode.Edit && PlanningPackageId.HasValue)
+        {
+            await LoadPlanningPackage();
+        }
+    }
+
+    private async Task LoadPlanningPackage()
+    {
+        try
+        {
+            var planningPackage = await PlanningPackageService.GetPlanningPackageByIdAsync(PlanningPackageId!.Value);
+            if (planningPackage != null)
+            {
+                // Cargar el elemento WBS
+                // selectedWBSElement = await WBSService.GetWBSElementByIdAsync(planningPackage.WBSElementId); // Property not available
+                
+                // Cargar la cuenta de control
+                var controlAccounts = await ControlAccountService.GetControlAccountsAsync(
+                    new ControlAccountFilterDto 
+                    { 
+                        ProjectId = ProjectId,
+                        PageSize = 100 
+                    });
+                
+                selectedControlAccount = controlAccounts.Items
+                    .FirstOrDefault(ca => ca.Id == planningPackage.ControlAccountId);
+                
+                // Cargar datos del DTO
+                updateDto.Budget = planningPackage.Budget;
+                budgetNullable = planningPackage.Budget;
+                // updateDto.EstimatedHours = planningPackage.EstimatedHours; // Property not available
+                updateDto.Description = planningPackage.Description;
+                // updateDto.Notes = planningPackage.Notes; // Property not available
+                plannedStartDate = planningPackage.PlannedStartDate;
+                plannedEndDate = planningPackage.PlannedEndDate;
+                
+                // Cargar resumen de presupuesto
+                if (selectedControlAccount != null)
+                {
+                    budgetSummary = await PlanningPackageService.GetPlanningPackageBudgetSummaryAsync(selectedControlAccount.Id);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar el paquete de planificación: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task<IEnumerable<WBSElementDto>> SearchWBSElements(string value, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var allElements = await WBSService.GetWBSHierarchyAsync(ProjectId);
+            
+            // Filtrar solo elementos que pueden convertirse en planning packages
+            var filteredElements = allElements
+                .Where(e => e.ElementType == WBSElementType.Summary && 
+                           e.ChildrenCount == 0 &&
+                           (string.IsNullOrWhiteSpace(value) || 
+                            e.Code.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                            e.Name.Contains(value, StringComparison.OrdinalIgnoreCase)))
+                .Take(10)
+                .ToList();
+            
+            return filteredElements;
+        }
+        catch
+        {
+            return new List<WBSElementDto>();
+        }
+    }
+
+    private async Task<IEnumerable<ControlAccountDto>> SearchControlAccounts(string value, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var filter = new ControlAccountFilterDto
+            {
+                ProjectId = ProjectId,
+                SearchTerm = value,
+                PageSize = 10,
+                OnlyActive = true
+            };
+            
+            var result = await ControlAccountService.GetControlAccountsAsync(filter);
+            return result?.Items ?? new List<ControlAccountDto>();
+        }
+        catch
+        {
+            return new List<ControlAccountDto>();
+        }
+    }
+
+    private async Task Submit()
+    {
+        try
+        {
+            isProcessing = true;
+            
+            if (Mode == DialogMode.Create)
+            {
+                if (selectedWBSElement == null || selectedControlAccount == null)
+                {
+                    Snackbar.Add("Debe seleccionar un elemento WBS y una cuenta de control", Severity.Warning);
+                    return;
+                }
+                
+                // createDto.WBSElementId = selectedWBSElement.Id; // Property not available
+                createDto.ControlAccountId = selectedControlAccount.Id;
+                createDto.PlannedStartDate = plannedStartDate ?? DateTime.Today;
+                createDto.PlannedEndDate = plannedEndDate ?? DateTime.Today.AddDays(30);
+                
+                var id = await PlanningPackageService.CreatePlanningPackageAsync(createDto);
+                if (id.HasValue)
+                {
+                    Snackbar.Add("Paquete de planificación creado exitosamente", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(id.Value));
+                }
+                else
+                {
+                    Snackbar.Add("Error al crear el paquete de planificación", Severity.Error);
+                }
+            }
+            else
+            {
+                updateDto.Budget = budgetNullable ?? 0;
+                updateDto.PlannedStartDate = plannedStartDate;
+                updateDto.PlannedEndDate = plannedEndDate;
+                
+                var success = await PlanningPackageService.UpdatePlanningPackageAsync(PlanningPackageId!.Value, updateDto);
+                if (success)
+                {
+                    Snackbar.Add("Paquete de planificación actualizado exitosamente", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    Snackbar.Add("Error al actualizar el paquete de planificación", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    // Enumeración para el modo del diálogo
+    public enum DialogMode
+    {
+        Create,
+        Edit
+    }
+}

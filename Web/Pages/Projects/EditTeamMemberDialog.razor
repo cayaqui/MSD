@@ -1,0 +1,113 @@
+@using Core.DTOs.Auth.ProjectTeamMembers
+@using Web.Services.Interfaces.Auth
+@using Web.Services.Interfaces
+@using MudBlazor
+@inject IProjectTeamMemberApiService TeamMemberService
+@inject IToastService Toast
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudText Class="mb-4">
+                    Edit team member: @TeamMember.UserName
+                </MudText>
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudSelect @bind-Value="_role" Label="Role" Variant="Variant.Outlined" Required="true">
+                    <MudSelectItem Value="@("PROJECT_MANAGER")">Project Manager</MudSelectItem>
+                    <MudSelectItem Value="@("TEAM_LEAD")">Team Lead</MudSelectItem>
+                    <MudSelectItem Value="@("TEAM_MEMBER")">Team Member</MudSelectItem>
+                    <MudSelectItem Value="@("VIEWER")">Viewer</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            
+            <MudItem xs="12" md="6">
+                <MudDatePicker @bind-Date="_startDate" Label="Start Date" 
+                               Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" />
+            </MudItem>
+            
+            <MudItem xs="12" md="6">
+                <MudDatePicker @bind-Date="_endDate" Label="End Date" 
+                               Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" />
+            </MudItem>
+            
+            <MudItem xs="12">
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Current Allocation: @TeamMember.AllocationPercentage%</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    To update allocation, use the allocation update option from the team list.
+                </MudText>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" 
+                   OnClick="Submit" Disabled="@_processing">
+            @if (_processing)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ms-2" />
+            }
+            else
+            {
+                <span>Update</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public ProjectTeamMemberDetailDto TeamMember { get; set; } = null!;
+    
+    private string _role = string.Empty;
+    private DateTime? _startDate;
+    private DateTime? _endDate;
+    private bool _processing = false;
+
+    protected override void OnInitialized()
+    {
+        _role = TeamMember.Role;
+        _startDate = TeamMember.StartDate;
+        _endDate = TeamMember.EndDate;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (!_startDate.HasValue) return;
+
+        _processing = true;
+        try
+        {
+            var dto = new UpdateProjectTeamMemberDto
+            {
+                Role = _role,
+                StartDate = _startDate.Value,
+                EndDate = _endDate
+            };
+            
+            var result = await TeamMemberService.UpdateTeamMemberAsync(TeamMember.Id, dto);
+            if (result != null)
+            {
+                Toast.ShowSuccess("Team member updated successfully");
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Toast.ShowError("Failed to update team member");
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error updating team member");
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+}

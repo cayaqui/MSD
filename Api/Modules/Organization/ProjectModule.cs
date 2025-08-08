@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Modules.Organization;
 
 /// <summary>
-/// Endpoints for project management
+/// Endpoints para gestión de proyectos
 /// </summary>
 public class ProjectModule : CarterModule
 {
@@ -25,57 +25,57 @@ public class ProjectModule : CarterModule
         // Query endpoints
         app.MapGet("/", GetProjectsAsync)
             .WithName("GetProjects")
-            .WithSummary("Get all projects with pagination")
-            .WithDescription("Returns a paginated list of projects based on user permissions")
-            .WithTags("Projects")
+            .WithSummary("Obtener todos los proyectos con paginación")
+            .WithDescription("Retorna una lista paginada de proyectos basada en permisos del usuario")
+            .WithTags("Proyectos")
             .Produces<PagedResult<ProjectListDto>>();
 
         app.MapGet("/{id:guid}", GetProjectByIdAsync)
             .WithName("GetProjectById")
-            .WithSummary("Get project by ID")
-            .WithDescription("Returns a specific project by ID with full details")
-            .WithTags("Projects")
+            .WithSummary("Obtener proyecto por ID")
+            .WithDescription("Retorna un proyecto específico por ID con detalles completos")
+            .WithTags("Proyectos")
             .Produces<ProjectDto>()
             .Produces(404);
 
         app.MapGet("/summary", GetProjectsSummaryAsync)
             .WithName("GetProjectsSummary")
-            .WithSummary("Get projects summary")
-            .WithDescription("Returns a summary of all projects accessible to the user")
-            .WithTags("Projects")
+            .WithSummary("Obtener resumen de proyectos")
+            .WithDescription("Retorna un resumen de todos los proyectos accesibles para el usuario")
+            .WithTags("Proyectos")
             .Produces<List<ProjectSummaryDto>>();
 
         app.MapGet("/{id:guid}/team", GetProjectTeamAsync)
             .WithName("GetProjectTeam")
-            .WithSummary("Get project team members")
-            .WithDescription("Returns all team members assigned to a project")
-            .WithTags("Projects")
+            .WithSummary("Obtener miembros del equipo del proyecto")
+            .WithDescription("Retorna todos los miembros del equipo asignados a un proyecto")
+            .WithTags("Proyectos")
             .Produces<List<ProjectTeamMemberDetailDto>>()
             .Produces(404);
 
         app.MapGet("/{id:guid}/status-history", GetProjectStatusHistoryAsync)
             .WithName("GetProjectStatusHistory")
-            .WithSummary("Get project status history")
-            .WithDescription("Returns the status change history of a project")
-            .WithTags("Projects")
+            .WithSummary("Obtener historial de estado del proyecto")
+            .WithDescription("Retorna el historial de cambios de estado de un proyecto")
+            .WithTags("Proyectos")
             .Produces<List<ProjectStatusHistoryDto>>()
             .Produces(404);
 
         // Command endpoints
         app.MapPost("/", CreateProjectAsync)
             .WithName("CreateProject")
-            .WithSummary("Create a new project")
-            .WithDescription("Creates a new project")
-            .WithTags("Projects")
+            .WithSummary("Crear un nuevo proyecto")
+            .WithDescription("Crea un nuevo proyecto")
+            .WithTags("Proyectos")
             .RequireAuthorization("ProjectCreate")
             .Produces<Result<Guid>>(201)
             .Produces<Result>(400);
 
         app.MapPut("/{id:guid}", UpdateProjectAsync)
             .WithName("UpdateProject")
-            .WithSummary("Update project")
-            .WithDescription("Updates an existing project")
-            .WithTags("Projects")
+            .WithSummary("Actualizar proyecto")
+            .WithDescription("Actualiza un proyecto existente")
+            .WithTags("Proyectos")
             .RequireAuthorization("ProjectEdit")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -83,9 +83,9 @@ public class ProjectModule : CarterModule
 
         app.MapPut("/{id:guid}/status", ChangeProjectStatusAsync)
             .WithName("ChangeProjectStatus")
-            .WithSummary("Change project status")
-            .WithDescription("Changes the status of a project")
-            .WithTags("Projects")
+            .WithSummary("Cambiar estado del proyecto")
+            .WithDescription("Cambia el estado de un proyecto")
+            .WithTags("Proyectos")
             .RequireAuthorization("ProjectStatusChange")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -93,9 +93,9 @@ public class ProjectModule : CarterModule
 
         app.MapPost("/{id:guid}/hold", HoldProjectAsync)
             .WithName("HoldProject")
-            .WithSummary("Put project on hold")
-            .WithDescription("Puts a project on hold with a reason")
-            .WithTags("Projects")
+            .WithSummary("Poner proyecto en espera")
+            .WithDescription("Pone un proyecto en espera con una razón")
+            .WithTags("Proyectos")
             .RequireAuthorization("ProjectStatusChange")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -103,9 +103,9 @@ public class ProjectModule : CarterModule
 
         app.MapPost("/{id:guid}/cancel", CancelProjectAsync)
             .WithName("CancelProject")
-            .WithSummary("Cancel project")
-            .WithDescription("Cancels a project with a reason")
-            .WithTags("Projects")
+            .WithSummary("Cancelar proyecto")
+            .WithDescription("Cancela un proyecto con una razón")
+            .WithTags("Proyectos")
             .RequireAuthorization("ProjectCancel")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -113,9 +113,9 @@ public class ProjectModule : CarterModule
 
         app.MapPost("/{id:guid}/complete", CompleteProjectAsync)
             .WithName("CompleteProject")
-            .WithSummary("Complete project")
-            .WithDescription("Marks a project as completed")
-            .WithTags("Projects")
+            .WithSummary("Completar proyecto")
+            .WithDescription("Marca un proyecto como completado")
+            .WithTags("Proyectos")
             .RequireAuthorization("ProjectComplete")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -123,9 +123,9 @@ public class ProjectModule : CarterModule
 
         app.MapPut("/{id:guid}/progress", UpdateProjectProgressAsync)
             .WithName("UpdateProjectProgress")
-            .WithSummary("Update project progress")
-            .WithDescription("Updates the overall progress of a project")
-            .WithTags("Projects")
+            .WithSummary("Actualizar progreso del proyecto")
+            .WithDescription("Actualiza el progreso general de un proyecto")
+            .WithTags("Proyectos")
             .RequireAuthorization("ProjectEdit")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -133,9 +133,9 @@ public class ProjectModule : CarterModule
 
         app.MapDelete("/{id:guid}", DeleteProjectAsync)
             .WithName("DeleteProject")
-            .WithSummary("Delete project")
-            .WithDescription("Soft deletes a project")
-            .WithTags("Projects")
+            .WithSummary("Eliminar proyecto")
+            .WithDescription("Elimina lógicamente un proyecto")
+            .WithTags("Proyectos")
             .RequireAuthorization("ProjectDelete")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -190,7 +190,7 @@ public class ProjectModule : CarterModule
         [FromServices] IProjectService projectService,
         CancellationToken cancellationToken)
     {
-        // This would need to be implemented in the service
+        // Esto necesitaría ser implementado en el servicio
         return Results.Ok(new List<ProjectTeamMemberDetailDto>());
     }
 
@@ -199,7 +199,7 @@ public class ProjectModule : CarterModule
         [FromServices] IProjectService projectService,
         CancellationToken cancellationToken)
     {
-        // This would need to be implemented in the service
+        // Esto necesitaría ser implementado en el servicio
         return Results.Ok(new List<ProjectStatusHistoryDto>());
     }
 
@@ -209,12 +209,12 @@ public class ProjectModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await projectService.CreateAsync(dto, userId, cancellationToken);
         
         return result != null 
             ? Results.CreatedAtRoute("GetProjectById", new { id = result.Id }, result)
-            : Results.BadRequest("Failed to create project");
+            : Results.BadRequest("Error al crear el proyecto");
     }
 
     private static async Task<IResult> UpdateProjectAsync(
@@ -224,7 +224,7 @@ public class ProjectModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await projectService.UpdateAsync(id, dto, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -237,9 +237,9 @@ public class ProjectModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         if (!Enum.TryParse<ProjectStatus>(dto.Status, out var status))
-            return Results.BadRequest($"Invalid status: {dto.Status}");
+            return Results.BadRequest($"Estado inválido: {dto.Status}");
         
         var result = await projectService.UpdateStatusAsync(id, status, userId, cancellationToken);
         
@@ -253,7 +253,7 @@ public class ProjectModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await projectService.UpdateStatusAsync(id, ProjectStatus.OnHold, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -266,7 +266,7 @@ public class ProjectModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await projectService.UpdateStatusAsync(id, ProjectStatus.Cancelled, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -278,7 +278,7 @@ public class ProjectModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await projectService.UpdateStatusAsync(id, ProjectStatus.Completed, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -291,7 +291,7 @@ public class ProjectModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await projectService.UpdateProgressAsync(id, dto, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -303,9 +303,9 @@ public class ProjectModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await projectService.DeleteAsync(id, cancellationToken);
         
-        return result ? Results.Ok("Project deleted successfully") : Results.BadRequest("Failed to delete project");
+        return result ? Results.Ok("Proyecto eliminado exitosamente") : Results.BadRequest("Error al eliminar el proyecto");
     }
 }

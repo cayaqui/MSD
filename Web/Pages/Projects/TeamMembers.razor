@@ -1,0 +1,439 @@
+@page "/projects/{ProjectId:guid}/team"
+@using Core.DTOs.Auth.ProjectTeamMembers
+@using Core.DTOs.Auth.Users
+@using Core.DTOs.Common
+@using Web.Services.Interfaces.Auth
+@using Web.Services.Interfaces.Organization
+@using Web.Services.Interfaces
+@using Web.Pages.Cost
+@inject IProjectTeamMemberApiService TeamMemberService
+@inject IUserApiService UserService
+@inject IProjectApiService ProjectService
+@inject INavigationService Navigation
+@inject IToastService Toast
+@inject IDialogService DialogService
+
+<PageTitle>Project Team Members</PageTitle>
+
+<MudBreadcrumbs Items="_breadcrumbs" />
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (_project != null)
+    {
+        <MudGrid>
+            <MudItem xs="12" Class="d-flex justify-space-between align-center mb-4">
+                <div>
+                    <MudText Typo="Typo.h4">@_project.Name - Team Members</MudText>
+                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Manage project team and assignments</MudText>
+                </div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="AddTeamMember">
+                    Add Team Member
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="8">
+                <MudPaper Elevation="2">
+                    @if (_loading)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    }
+                    
+                    <MudTable Items="@_teamMembers" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info">
+                        <ToolBarContent>
+                            <MudText Typo="Typo.h6">Team Members</MudText>
+                            <MudSpacer />
+                            <MudTextField @bind-Value="_searchTerm" Placeholder="Search team members" Adornment="Adornment.Start" 
+                                         AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"
+                                         DebounceInterval="300" OnDebounceIntervalElapsed="SearchTeamMembers" />
+                        </ToolBarContent>
+                        <HeaderContent>
+                            <MudTh>Name</MudTh>
+                            <MudTh>Email</MudTh>
+                            <MudTh>Role</MudTh>
+                            <MudTh>Allocation</MudTh>
+                            <MudTh>Start Date</MudTh>
+                            <MudTh>End Date</MudTh>
+                            <MudTh></MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Name">
+                                <div class="d-flex align-center">
+                                    <MudAvatar Color="Color.Primary" Size="Size.Small" Class="mr-2">
+                                        @(context.UserName?.FirstOrDefault() ?? 'U')
+                                    </MudAvatar>
+                                    <MudText>@context.UserName</MudText>
+                                </div>
+                            </MudTd>
+                            <MudTd DataLabel="Email">@context.UserEmail</MudTd>
+                            <MudTd DataLabel="Role">
+                                <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(context.Role)" Variant="Variant.Text">
+                                    @context.Role
+                                </MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Allocation">
+                                <MudStack Spacing="1">
+                                    <MudProgressLinear Value="@((double)(context.AllocationPercentage ?? 0))" Color="@GetAllocationColor(context.AllocationPercentage ?? 0)" Size="Size.Small" />
+                                    <MudText Typo="Typo.caption">@context.AllocationPercentage%</MudText>
+                                </MudStack>
+                            </MudTd>
+                            <MudTd DataLabel="Start Date">@context.StartDate.ToString("yyyy-MM-dd")</MudTd>
+                            <MudTd DataLabel="End Date">
+                                @context.EndDate?.ToString("yyyy-MM-dd")
+                                @if (context.EndDate.HasValue && context.EndDate < DateTime.Today)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Text">Expired</MudChip>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Actions">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Secondary" Size="Size.Small" 
+                                               OnClick="@(() => EditTeamMember(context))" Title="Edit" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Percent" Color="Color.Info" Size="Size.Small" 
+                                               OnClick="@(() => UpdateAllocation(context))" Title="Update Allocation" />
+                                <MudIconButton Icon="@Icons.Material.Filled.DateRange" Color="Color.Warning" Size="Size.Small" 
+                                               OnClick="@(() => ExtendAssignment(context))" Title="Extend Assignment" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" 
+                                               OnClick="@(() => RemoveTeamMember(context))" Title="Remove" />
+                            </MudTd>
+                        </RowTemplate>
+                        <PagerContent>
+                            <MudTablePager />
+                        </PagerContent>
+                    </MudTable>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.h6" Class="mb-4">Team Summary</MudText>
+                    
+                    <MudSimpleTable Dense="true">
+                        <tbody>
+                            <tr>
+                                <td>Total Members</td>
+                                <td class="text-right"><strong>@_teamMembers.Count</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Project Managers</td>
+                                <td class="text-right">@_teamMembers.Count(m => m.Role == "PROJECT_MANAGER")</td>
+                            </tr>
+                            <tr>
+                                <td>Team Leads</td>
+                                <td class="text-right">@_teamMembers.Count(m => m.Role == "TEAM_LEAD")</td>
+                            </tr>
+                            <tr>
+                                <td>Team Members</td>
+                                <td class="text-right">@_teamMembers.Count(m => m.Role == "TEAM_MEMBER")</td>
+                            </tr>
+                            <tr>
+                                <td>Viewers</td>
+                                <td class="text-right">@_teamMembers.Count(m => m.Role == "VIEWER")</td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+
+                    <MudDivider Class="my-4" />
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Allocation Overview</MudText>
+                    @if (_teamMembers.Any())
+                    {
+                        <MudChart ChartType="ChartType.Donut" InputData="@GetAllocationData()" 
+                                  InputLabels="@GetAllocationLabels()" Width="200px" Height="200px" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">No team members assigned</MudText>
+                    }
+                </MudPaper>
+
+                <MudPaper Elevation="2" Class="pa-4 mt-4">
+                    <MudText Typo="Typo.h6" Class="mb-4">Quick Actions</MudText>
+                    
+                    <MudStack Spacing="2">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth
+                                   StartIcon="@Icons.Material.Filled.Groups" OnClick="BulkAssign">
+                            Bulk Assign Members
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" FullWidth
+                                   StartIcon="@Icons.Material.Filled.Assessment" OnClick="ViewAllocationReport">
+                            View Allocation Report
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Warning" FullWidth
+                                   StartIcon="@Icons.Material.Filled.SwapHoriz" OnClick="TransferMembers">
+                            Transfer Members
+                        </MudButton>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+    else if (_loading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Error">Project not found</MudAlert>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    private Core.DTOs.Organization.Project.ProjectDto? _project;
+    private List<ProjectTeamMemberDetailDto> _teamMembers = new();
+    private bool _loading = false;
+    private string _searchTerm = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProject();
+        await LoadTeamMembers();
+    }
+
+    private async Task LoadProject()
+    {
+        try
+        {
+            _project = await ProjectService.GetProjectByIdAsync(ProjectId);
+            if (_project != null)
+            {
+                _breadcrumbs = new()
+                {
+                    new BreadcrumbItem("Home", href: "/", icon: Icons.Material.Filled.Home),
+                    new BreadcrumbItem("Projects", href: "/projects"),
+                    new BreadcrumbItem(_project.Name, href: $"/projects/{ProjectId}"),
+                    new BreadcrumbItem("Team Members", href: $"/projects/{ProjectId}/team", disabled: true)
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error loading project details");
+        }
+    }
+
+    private async Task LoadTeamMembers()
+    {
+        _loading = true;
+        try
+        {
+            var members = await TeamMemberService.GetProjectTeamAsync(ProjectId);
+            _teamMembers = members ?? new List<ProjectTeamMemberDetailDto>();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error loading team members");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SearchTeamMembers(string searchTerm)
+    {
+        _searchTerm = searchTerm;
+        // In a real implementation, you would filter the team members
+        await LoadTeamMembers();
+    }
+
+    private async Task AddTeamMember()
+    {
+        var parameters = new DialogParameters<AddTeamMemberDialog>
+        {
+            { x => x.ProjectId, ProjectId },
+            { x => x.ProjectName, _project?.Name ?? "" }
+        };
+
+        var dialog = await DialogService.ShowAsync<AddTeamMemberDialog>("Add Team Member", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadTeamMembers();
+        }
+    }
+
+    private async Task EditTeamMember(ProjectTeamMemberDetailDto member)
+    {
+        var parameters = new DialogParameters<EditTeamMemberDialog>
+        {
+            { x => x.TeamMember, member }
+        };
+
+        var dialog = await DialogService.ShowAsync<EditTeamMemberDialog>("Edit Team Member", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadTeamMembers();
+        }
+    }
+
+    private async Task UpdateAllocation(ProjectTeamMemberDetailDto member)
+    {
+        var parameters = new DialogParameters
+        {
+            { "ItemName", member.UserName },
+            { "CurrentProgress", member.AllocationPercentage ?? 0 }
+        };
+
+        var dialog = await DialogService.ShowAsync<ProgressUpdateDialog>("Update Allocation", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is decimal newAllocation)
+        {
+            _loading = true;
+            try
+            {
+                var updated = await TeamMemberService.UpdateAllocationAsync(member.Id, newAllocation);
+                if (updated != null)
+                {
+                    Toast.ShowSuccess("Allocation updated successfully");
+                    await LoadTeamMembers();
+                }
+                else
+                {
+                    Toast.ShowError("Failed to update allocation");
+                }
+            }
+            catch (Exception ex)
+            {
+                Toast.ShowError("Error updating allocation");
+            }
+            finally
+            {
+                _loading = false;
+            }
+        }
+    }
+
+    private async Task ExtendAssignment(ProjectTeamMemberDetailDto member)
+    {
+        var parameters = new DialogParameters<DateExtensionDialog>
+        {
+            { x => x.ItemName, member.UserName },
+            { x => x.CurrentDate, member.EndDate ?? DateTime.Today.AddMonths(3) }
+        };
+
+        var dialog = await DialogService.ShowAsync<DateExtensionDialog>("Extend Assignment", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is DateTime newEndDate)
+        {
+            _loading = true;
+            try
+            {
+                var extended = await TeamMemberService.ExtendAssignmentAsync(member.Id, newEndDate);
+                if (extended != null)
+                {
+                    Toast.ShowSuccess("Assignment extended successfully");
+                    await LoadTeamMembers();
+                }
+                else
+                {
+                    Toast.ShowError("Failed to extend assignment");
+                }
+            }
+            catch (Exception ex)
+            {
+                Toast.ShowError("Error extending assignment");
+            }
+            finally
+            {
+                _loading = false;
+            }
+        }
+    }
+
+    private async Task RemoveTeamMember(ProjectTeamMemberDetailDto member)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Remove Team Member",
+            $"Are you sure you want to remove {member.UserName} from the project team?",
+            yesText: "Remove", cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            _loading = true;
+            try
+            {
+                var success = await TeamMemberService.RemoveTeamMemberAsync(member.Id);
+                if (success)
+                {
+                    Toast.ShowSuccess("Team member removed successfully");
+                    await LoadTeamMembers();
+                }
+                else
+                {
+                    Toast.ShowError("Failed to remove team member");
+                }
+            }
+            catch (Exception ex)
+            {
+                Toast.ShowError("Error removing team member");
+            }
+            finally
+            {
+                _loading = false;
+            }
+        }
+    }
+
+    private void BulkAssign()
+    {
+        Navigation.NavigateTo($"/projects/{ProjectId}/team/bulk-assign");
+    }
+
+    private void ViewAllocationReport()
+    {
+        Navigation.NavigateTo($"/projects/{ProjectId}/team/allocation-report");
+    }
+
+    private void TransferMembers()
+    {
+        Navigation.NavigateTo($"/projects/{ProjectId}/team/transfer");
+    }
+
+    private Color GetRoleColor(string role)
+    {
+        return role switch
+        {
+            "PROJECT_MANAGER" => Color.Primary,
+            "TEAM_LEAD" => Color.Secondary,
+            "TEAM_MEMBER" => Color.Success,
+            "VIEWER" => Color.Info,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetAllocationColor(decimal allocation)
+    {
+        return allocation switch
+        {
+            > 100 => Color.Error,
+            > 80 => Color.Warning,
+            > 50 => Color.Success,
+            _ => Color.Info
+        };
+    }
+
+    private double[] GetAllocationData()
+    {
+        var groups = _teamMembers.GroupBy(m => m.Role)
+            .Select(g => (double)g.Sum(m => m.AllocationPercentage ?? 0))
+            .ToArray();
+        return groups;
+    }
+
+    private string[] GetAllocationLabels()
+    {
+        var labels = _teamMembers.GroupBy(m => m.Role)
+            .Select(g => g.Key)
+            .ToArray();
+        return labels;
+    }
+}

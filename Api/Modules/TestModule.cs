@@ -7,7 +7,7 @@ public class TestModule : ICarterModule
     public void AddRoutes(IEndpointRouteBuilder app)
     {
         var test = app.MapGroup("/api/debug")
-            .WithTags("Debug & Testing");
+            .WithTags("Depuración y Pruebas");
 
         // Simple test - no dependencies
         test.MapGet("/ping", () => 
@@ -15,16 +15,18 @@ public class TestModule : ICarterModule
             return Results.Ok(new { message = "pong", timestamp = DateTime.UtcNow });
         })
         .AllowAnonymous()
-        .WithName("Ping");
+        .WithName("Ping")
+        .WithSummary("Verificar conectividad del API");
 
         // Test with logger
         test.MapGet("/log", (ILogger<TestModule> logger) => 
         {
-            logger.LogInformation("Test log endpoint called at {Time}", DateTime.UtcNow);
+            logger.LogInformation("Endpoint de prueba de log llamado a las {Time}", DateTime.UtcNow);
             return Results.Ok(new { message = "logged", logged = true });
         })
         .AllowAnonymous()
-        .WithName("TestLog");
+        .WithName("TestLog")
+        .WithSummary("Probar funcionalidad de logging");
 
         // Test with DI
         test.MapGet("/services", (IServiceProvider services) => 
@@ -39,7 +41,8 @@ public class TestModule : ICarterModule
             return Results.Ok(registeredServices);
         })
         .AllowAnonymous()
-        .WithName("TestServices");
+        .WithName("TestServices")
+        .WithSummary("Verificar servicios registrados en DI");
 
         // Test middleware order
         test.MapGet("/middleware", (HttpContext context) => 
@@ -56,6 +59,7 @@ public class TestModule : ICarterModule
             return Results.Ok(info);
         })
         .RequireAuthorization()
-        .WithName("TestMiddleware");
+        .WithName("TestMiddleware")
+        .WithSummary("Verificar orden y funcionamiento del middleware");
     }
 }

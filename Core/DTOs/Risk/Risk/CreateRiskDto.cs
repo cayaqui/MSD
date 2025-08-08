@@ -28,4 +28,9 @@ public class CreateRiskDto
     // Monitoring
     public string? TriggerIndicators { get; set; }
     public DateTime? NextReviewDate { get; set; }
+    
+    // Identification
+    public Guid IdentifiedById { get; set; }
+    public string? IdentifiedByName { get; set; }
+    public DateTime? IdentifiedDate { get; set; }
 }

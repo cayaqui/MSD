@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Modules.Organization;
 
 /// <summary>
-/// Endpoints for RAM (Responsibility Assignment Matrix) management
+/// Endpoints para la gestión de RAM (Matriz de Asignación de Responsabilidades)
 /// </summary>
 public class RAMModule : CarterModule
 {
@@ -23,47 +23,47 @@ public class RAMModule : CarterModule
         // Query endpoints
         app.MapGet("/", GetRAMsAsync)
             .WithName("GetRAMs")
-            .WithSummary("Get all RAM assignments with pagination")
-            .WithDescription("Returns a paginated list of RAM assignments")
+            .WithSummary("Obtener todas las asignaciones RAM con paginación")
+            .WithDescription("Devuelve una lista paginada de asignaciones RAM")
             .WithTags("RAM")
             .Produces<PagedResult<RAMDto>>();
 
         app.MapGet("/{id:guid}", GetRAMByIdAsync)
             .WithName("GetRAMById")
-            .WithSummary("Get RAM assignment by ID")
-            .WithDescription("Returns a specific RAM assignment by ID")
+            .WithSummary("Obtener asignación RAM por ID")
+            .WithDescription("Devuelve una asignación RAM específica por ID")
             .WithTags("RAM")
             .Produces<RAMDto>()
             .Produces(404);
 
         app.MapGet("/project/{projectId:guid}", GetRAMByProjectAsync)
             .WithName("GetRAMByProject")
-            .WithSummary("Get RAM assignments by project")
-            .WithDescription("Returns all RAM assignments for a specific project")
+            .WithSummary("Obtener asignaciones RAM por proyecto")
+            .WithDescription("Devuelve todas las asignaciones RAM para un proyecto específico")
             .WithTags("RAM")
             .Produces<List<RAMDto>>()
             .Produces(404);
 
         app.MapGet("/project/{projectId:guid}/matrix", GetProjectRAMMatrixAsync)
             .WithName("GetProjectRAMMatrix")
-            .WithSummary("Get project RAM matrix")
-            .WithDescription("Returns the complete RAM matrix for a project")
+            .WithSummary("Obtener matriz RAM del proyecto")
+            .WithDescription("Devuelve la matriz RAM completa para un proyecto")
             .WithTags("RAM")
             .Produces<RAMMatrixDto>()
             .Produces(404);
 
         app.MapGet("/user/{userId:guid}/assignments", GetUserRAMAssignmentsAsync)
             .WithName("GetUserRAMAssignments")
-            .WithSummary("Get user RAM assignments")
-            .WithDescription("Returns all RAM assignments for a specific user")
+            .WithSummary("Obtener asignaciones RAM del usuario")
+            .WithDescription("Devuelve todas las asignaciones RAM para un usuario específico")
             .WithTags("RAM")
             .Produces<List<UserRAMAssignmentDto>>()
             .Produces(404);
 
         app.MapGet("/obs-node/{obsNodeId:guid}", GetRAMByOBSNodeAsync)
             .WithName("GetRAMByOBSNode")
-            .WithSummary("Get RAM assignments by OBS node")
-            .WithDescription("Returns all RAM assignments for a specific OBS node")
+            .WithSummary("Obtener asignaciones RAM por nodo OBS")
+            .WithDescription("Devuelve todas las asignaciones RAM para un nodo OBS específico")
             .WithTags("RAM")
             .Produces<List<RAMDto>>()
             .Produces(404);
@@ -71,8 +71,8 @@ public class RAMModule : CarterModule
         // Command endpoints
         app.MapPost("/", CreateRAMAsync)
             .WithName("CreateRAM")
-            .WithSummary("Create a new RAM assignment")
-            .WithDescription("Creates a new RAM assignment")
+            .WithSummary("Crear una nueva asignación RAM")
+            .WithDescription("Crea una nueva asignación RAM")
             .WithTags("RAM")
             .RequireAuthorization("ProjectEdit")
             .Produces<Result<Guid>>(201)
@@ -80,8 +80,8 @@ public class RAMModule : CarterModule
 
         app.MapPut("/{id:guid}", UpdateRAMAsync)
             .WithName("UpdateRAM")
-            .WithSummary("Update RAM assignment")
-            .WithDescription("Updates an existing RAM assignment")
+            .WithSummary("Actualizar asignación RAM")
+            .WithDescription("Actualiza una asignación RAM existente")
             .WithTags("RAM")
             .RequireAuthorization("ProjectEdit")
             .Produces<Result>()
@@ -90,8 +90,8 @@ public class RAMModule : CarterModule
 
         app.MapPost("/bulk-assign", BulkAssignRAMAsync)
             .WithName("BulkAssignRAM")
-            .WithSummary("Bulk assign RAM")
-            .WithDescription("Creates multiple RAM assignments in a single operation")
+            .WithSummary("Asignar RAM en lote")
+            .WithDescription("Crea múltiples asignaciones RAM en una sola operación")
             .WithTags("RAM")
             .RequireAuthorization("ProjectEdit")
             .Produces<BulkOperationResult>()
@@ -99,8 +99,8 @@ public class RAMModule : CarterModule
 
         app.MapPost("/import", ImportRAMMatrixAsync)
             .WithName("ImportRAMMatrix")
-            .WithSummary("Import RAM matrix")
-            .WithDescription("Imports a complete RAM matrix from Excel")
+            .WithSummary("Importar matriz RAM")
+            .WithDescription("Importa una matriz RAM completa desde Excel")
             .WithTags("RAM")
             .RequireAuthorization("ProjectEdit")
             .Produces<ImportResultDto>()
@@ -108,16 +108,16 @@ public class RAMModule : CarterModule
 
         app.MapGet("/export/{projectId:guid}", ExportRAMMatrixAsync)
             .WithName("ExportRAMMatrix")
-            .WithSummary("Export RAM matrix")
-            .WithDescription("Exports the RAM matrix to Excel")
+            .WithSummary("Exportar matriz RAM")
+            .WithDescription("Exporta la matriz RAM a Excel")
             .WithTags("RAM")
             .Produces(200, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             .Produces(404);
 
         app.MapPost("/{id:guid}/add-notes", AddRAMNotesAsync)
             .WithName("AddRAMNotes")
-            .WithSummary("Add notes to RAM assignment")
-            .WithDescription("Adds notes to a RAM assignment")
+            .WithSummary("Añadir notas a asignación RAM")
+            .WithDescription("Añade notas a una asignación RAM")
             .WithTags("RAM")
             .RequireAuthorization("ProjectEdit")
             .Produces<Result>()
@@ -126,8 +126,8 @@ public class RAMModule : CarterModule
 
         app.MapDelete("/{id:guid}", DeleteRAMAsync)
             .WithName("DeleteRAM")
-            .WithSummary("Delete RAM assignment")
-            .WithDescription("Soft deletes a RAM assignment")
+            .WithSummary("Eliminar asignación RAM")
+            .WithDescription("Elimina de forma lógica una asignación RAM")
             .WithTags("RAM")
             .RequireAuthorization("ProjectEdit")
             .Produces<Result>()
@@ -195,12 +195,12 @@ public class RAMModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await ramService.CreateAsync(dto, userId, cancellationToken);
         
         return result != null 
             ? Results.CreatedAtRoute("GetRAMById", new { id = result.Id }, result)
-            : Results.BadRequest("Failed to create RAM assignment");
+            : Results.BadRequest("Error al crear la asignación RAM");
     }
 
     private static async Task<IResult> UpdateRAMAsync(
@@ -210,7 +210,7 @@ public class RAMModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await ramService.UpdateAsync(id, dto, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -222,7 +222,7 @@ public class RAMModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await ramService.BulkCreateAsync(dto, userId, cancellationToken);
         
         return Results.Ok(result);
@@ -236,13 +236,13 @@ public class RAMModule : CarterModule
         CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)
-            return Results.BadRequest(Result.Failure("No file uploaded"));
+            return Results.BadRequest(Result.Failure("No se cargó ningún archivo"));
 
         using var stream = new MemoryStream();
         await file.CopyToAsync(stream, cancellationToken);
         stream.Position = 0;
 
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         // This would need to be implemented in the service
         return Results.Ok(new ImportResultDto { SuccessfulRecords = 0, FailedRecords = 0 });
     }
@@ -271,7 +271,7 @@ public class RAMModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         // This would need to be implemented using Update method
         var existing = await ramService.GetByIdAsync(id, cancellationToken);
         if (existing == null) return Results.NotFound();
@@ -299,9 +299,9 @@ public class RAMModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await ramService.DeleteAsync(id, cancellationToken);
         
-        return result ? Results.Ok("RAM assignment deleted successfully") : Results.BadRequest("Failed to delete RAM assignment");
+        return result ? Results.Ok("Asignación RAM eliminada exitosamente") : Results.BadRequest("Error al eliminar la asignación RAM");
     }
 }

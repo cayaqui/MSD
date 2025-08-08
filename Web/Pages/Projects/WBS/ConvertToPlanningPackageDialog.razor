@@ -1,0 +1,125 @@
+@using Core.DTOs.Cost.ControlAccounts
+@using MudBlazor
+@using Web.Services.Interfaces.Projects
+@using Web.Services.Interfaces.Cost
+@inject IWBSApiService WBSService
+@inject IControlAccountApiService ControlAccountService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="@isFormValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.body1" Class="mb-4">
+                        Esta acción convertirá el elemento WBS en un paquete de planificación. 
+                        Los paquetes de planificación se utilizan para trabajo futuro que aún no está completamente definido.
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudAutocomplete T="ControlAccountDto"
+                                     @bind-Value="selectedControlAccount"
+                                     Label="Cuenta de Control"
+                                     Required="true"
+                                     RequiredError="La cuenta de control es requerida"
+                                     SearchFunc="@SearchControlAccounts"
+                                     ToStringFunc="@(ca => ca?.Code + " - " + ca?.Name)"
+                                     Variant="Variant.Outlined"
+                                     Dense="true"
+                                     CoerceText="true">
+                        <ItemTemplate Context="ca">
+                            <MudText>@ca.Code - @ca.Name</MudText>
+                        </ItemTemplate>
+                    </MudAutocomplete>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        Los paquetes de planificación pueden convertirse posteriormente en paquetes de trabajo cuando se tenga más información detallada.
+                    </MudAlert>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="Submit"
+                   Disabled="@(!isFormValid || isProcessing)">
+            @if (isProcessing)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Convirtiendo...</MudText>
+            }
+            else
+            {
+                <MudText>Convertir</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public Guid WBSElementId { get; set; }
+    [Parameter] public Guid ProjectId { get; set; }
+
+    private MudForm form = default!;
+    private bool isFormValid;
+    private bool isProcessing;
+    
+    private ControlAccountDto? selectedControlAccount;
+
+    private async Task<IEnumerable<ControlAccountDto>> SearchControlAccounts(string value, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var filter = new ControlAccountFilterDto
+            {
+                ProjectId = ProjectId,
+                SearchTerm = value,
+                PageSize = 10,
+                OnlyActive = true
+            };
+            
+            var result = await ControlAccountService.GetControlAccountsAsync(filter);
+            return result?.Items ?? new List<ControlAccountDto>();
+        }
+        catch
+        {
+            return new List<ControlAccountDto>();
+        }
+    }
+
+    private async Task Submit()
+    {
+        try
+        {
+            isProcessing = true;
+            
+            if (selectedControlAccount == null)
+            {
+                Snackbar.Add("Debe seleccionar una cuenta de control", Severity.Warning);
+                return;
+            }
+            
+            await WBSService.ConvertToPlanningPackageAsync(WBSElementId, selectedControlAccount.Id);
+            
+            Snackbar.Add("Elemento convertido a paquete de planificación exitosamente", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al convertir: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

@@ -187,14 +187,15 @@ public class AuthService : IAuthService
                         if (!string.IsNullOrEmpty(graphUser.JobTitle))
                             user.JobTitle = graphUser.JobTitle;
                             
-                        if (!string.IsNullOrEmpty(graphUser.Department))
-                            user.Department = graphUser.Department;
+                        // TODO: Add these properties to User entity if needed
+                        // if (!string.IsNullOrEmpty(graphUser.Department))
+                        //     user.Department = graphUser.Department;
                             
-                        if (!string.IsNullOrEmpty(graphUser.OfficeLocation))
-                            user.OfficeLocation = graphUser.OfficeLocation;
+                        // if (!string.IsNullOrEmpty(graphUser.OfficeLocation))
+                        //     user.OfficeLocation = graphUser.OfficeLocation;
                             
-                        if (!string.IsNullOrEmpty(graphUser.MobilePhone))
-                            user.MobilePhone = graphUser.MobilePhone;
+                        // if (!string.IsNullOrEmpty(graphUser.MobilePhone))
+                        //     user.MobilePhone = graphUser.MobilePhone;
                         
                         // Try to get and save user photo
 

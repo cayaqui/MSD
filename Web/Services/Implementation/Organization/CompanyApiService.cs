@@ -30,11 +30,38 @@ public class CompanyApiService : ICompanyApiService
             {
                 ["pageNumber"] = pageNumber.ToString(),
                 ["pageSize"] = pageSize.ToString(),
-                ["isAscending"] = isAscending.ToString()
+                ["sortDirection"] = isAscending ? "asc" : "desc"
             };
 
             if (!string.IsNullOrEmpty(sortBy))
                 queryParams["sortBy"] = sortBy;
+
+            return await _apiService.GetAsync<PagedResult<CompanyDto>>($"{BaseEndpoint}?{BuildQueryString(queryParams)}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting companies");
+            return null;
+        }
+    }
+    
+    public async Task<PagedResult<CompanyDto>?> GetCompaniesAsync(CompanyFilterDto filter, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug($"Getting companies - Page: {filter.PageNumber}, Size: {filter.PageSize}");
+            
+            var queryParams = new Dictionary<string, string>
+            {
+                ["pageNumber"] = filter.PageNumber.ToString(),
+                ["pageSize"] = filter.PageSize.ToString(),
+                ["sortDirection"] = filter.SortDirection.ToString()
+            };
+
+            if (!string.IsNullOrEmpty(filter.SortBy))
+                queryParams["sortBy"] = filter.SortBy;
+            if (!string.IsNullOrEmpty(filter.SearchTerm))
+                queryParams["searchTerm"] = filter.SearchTerm;
 
             return await _apiService.GetAsync<PagedResult<CompanyDto>>($"{BaseEndpoint}?{BuildQueryString(queryParams)}");
         }

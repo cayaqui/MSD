@@ -1,0 +1,111 @@
+@page "/simple-api-test"
+@inject HttpClient Http
+@inject IConfiguration Configuration
+
+<PageTitle>Simple API Test</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Simple API Test</MudText>
+    
+    <MudCard>
+        <MudCardContent>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="TestDirectHealth" Class="mb-2">
+                Test Direct Health (No Auth)
+            </MudButton>
+            
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="TestWithTimeout" Class="mb-2 ml-2">
+                Test With Timeout
+            </MudButton>
+            
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="TestCors" Class="mb-2 ml-2">
+                Test CORS
+            </MudButton>
+        </MudCardContent>
+    </MudCard>
+    
+    @if (!string.IsNullOrEmpty(_result))
+    {
+        <MudCard Class="mt-4">
+            <MudCardContent>
+                <pre style="white-space: pre-wrap; word-wrap: break-word;">@_result</pre>
+            </MudCardContent>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    private string _result = "";
+    private string _apiUrl => Configuration["ApiSettings:BaseUrl"] ?? "https://ez-capst-dev-api-eastus.azurewebsites.net/";
+
+    private async Task TestDirectHealth()
+    {
+        try
+        {
+            _result = "Testing direct health endpoint...\n";
+            _result += $"API URL: {_apiUrl}\n\n";
+            
+            using var client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
+            
+            var response = await client.GetAsync($"{_apiUrl}health");
+            _result += $"Status: {response.StatusCode}\n";
+            _result += $"Response: {await response.Content.ReadAsStringAsync()}\n";
+        }
+        catch (Exception ex)
+        {
+            _result = $"Error: {ex.GetType().Name}\n{ex.Message}";
+        }
+    }
+
+    private async Task TestWithTimeout()
+    {
+        try
+        {
+            _result = "Testing with explicit timeout...\n";
+            
+            using var client = new HttpClient();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            
+            var response = await client.GetAsync($"{_apiUrl}api/test", cts.Token);
+            _result += $"Status: {response.StatusCode}\n";
+            _result += $"Response: {await response.Content.ReadAsStringAsync()}\n";
+        }
+        catch (TaskCanceledException)
+        {
+            _result = "Request cancelled - timeout reached (5 seconds)";
+        }
+        catch (Exception ex)
+        {
+            _result = $"Error: {ex.GetType().Name}\n{ex.Message}";
+        }
+    }
+
+    private async Task TestCors()
+    {
+        try
+        {
+            _result = "Testing CORS headers...\n";
+            
+            using var client = new HttpClient();
+            var request = new HttpRequestMessage(HttpMethod.Options, $"{_apiUrl}api/test");
+            request.Headers.Add("Origin", "https://localhost:7284");
+            request.Headers.Add("Access-Control-Request-Method", "GET");
+            
+            var response = await client.SendAsync(request);
+            _result += $"Status: {response.StatusCode}\n\n";
+            
+            _result += "Response Headers:\n";
+            foreach (var header in response.Headers)
+            {
+                if (header.Key.StartsWith("Access-Control"))
+                {
+                    _result += $"{header.Key}: {string.Join(", ", header.Value)}\n";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _result = $"Error: {ex.GetType().Name}\n{ex.Message}";
+        }
+    }
+}

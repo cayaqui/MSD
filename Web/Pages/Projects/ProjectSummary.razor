@@ -1,0 +1,856 @@
+@page "/projects/{ProjectId:guid}/summary"
+@using Core.DTOs.Projects
+@using Core.DTOs.Auth.ProjectTeamMembers
+@using Core.DTOs.Cost.Budgets
+@using Core.DTOs.Cost.ControlAccounts
+@using Core.Constants
+@using Web.Components.Common
+@using Web.Services.Interfaces.Organization
+@using Web.Services.Interfaces.Auth
+@using Web.Services.Interfaces.Cost
+@using Web.Services.Interfaces.Projects
+@inject IProjectApiService ProjectService
+@inject IProjectTeamMemberApiService TeamMemberService
+@inject IBudgetApiService BudgetService
+@inject IControlAccountApiService ControlAccountService
+@inject IWBSApiService WBSService
+@inject ICurrentUserService CurrentUserService
+@inject IToastService ToastService
+@inject INavigationService NavigationService
+
+<PageTitle>Resumen del Proyecto | EzPro</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_project != null)
+    {
+        <!-- Header del Proyecto -->
+        <MudCard Class="mb-4">
+            <MudCardContent>
+                <MudGrid AlignItems="Center">
+                    <MudItem xs="12" md="8">
+                        <div class="d-flex align-center gap-3">
+                            <MudAvatar Color="Color.Primary" Size="Size.Large">
+                                <MudIcon Icon="@Icons.Material.Filled.BusinessCenter" />
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.h4">@_project.Name</MudText>
+                                <MudText Typo="Typo.subtitle1" Color="Color.Secondary">
+                                    Código: @_project.Code | Estado: 
+                                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(_project.Status)">
+                                        @_project.Status
+                                    </MudChip>
+                                </MudText>
+                            </div>
+                        </div>
+                    </MudItem>
+                    <MudItem xs="12" md="4" Class="text-right">
+                        <MudButton Color="Color.Primary" 
+                                   Variant="Variant.Filled" 
+                                   StartIcon="@Icons.Material.Filled.Dashboard"
+                                   OnClick="@(() => NavigationService.NavigateTo($"/projects/{ProjectId}/dashboard"))">
+                            Ver Dashboard
+                        </MudButton>
+                        <MudButton Color="Color.Secondary" 
+                                   Variant="Variant.Outlined" 
+                                   StartIcon="@Icons.Material.Filled.Print"
+                                   OnClick="PrintSummary"
+                                   Class="ml-2">
+                            Imprimir
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+
+        <!-- Información según PMBOK -->
+        <MudGrid>
+            <!-- 1. Project Charter / Acta de Constitución -->
+            <MudItem xs="12" md="6">
+                <MudCard Class="h-100">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.Description" Class="mr-2" />
+                                Acta de Constitución del Proyecto
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudSimpleTable Dense="true" Hover="true">
+                            <tbody>
+                                <tr>
+                                    <td><strong>Nombre del Proyecto</strong></td>
+                                    <td>@_project.Name</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Código del Proyecto</strong></td>
+                                    <td>@_project.Code</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Cliente/Patrocinador</strong></td>
+                                    <td>@(_project.Client ?? "No especificado")</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Gerente de Proyecto</strong></td>
+                                    <td>
+                                        @if (_projectManager != null)
+                                        {
+                                            <div class="d-flex align-center gap-2">
+                                                <UserAvatar PhotoUrl="@_projectManager.UserPhotoUrl" 
+                                                           UserName="@_projectManager.UserName" 
+                                                           Size="Size.Small" />
+                                                <span>@_projectManager.UserName</span>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span>No asignado</span>
+                                        }
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Fecha de Inicio</strong></td>
+                                    <td>@_project.PlannedStartDate.ToString("dd/MM/yyyy")</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Fecha de Fin</strong></td>
+                                    <td>@_project.PlannedEndDate.ToString("dd/MM/yyyy")</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Duración</strong></td>
+                                    <td>@CalculateDuration() días</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Ubicación</strong></td>
+                                    <td>@(_project.Location ?? "No especificada")</td>
+                                </tr>
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- 2. Alcance del Proyecto -->
+            <MudItem xs="12" md="6">
+                <MudCard Class="h-100">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.AccountTree" Class="mr-2" />
+                                Alcance del Proyecto
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Descripción del Proyecto</MudText>
+                        <MudText Typo="Typo.body2" Class="mb-3">
+                            @(_project.Description ?? "Sin descripción disponible")
+                        </MudText>
+                        
+                        <MudDivider Class="my-3" />
+                        
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Estructura de Desglose del Trabajo (WBS)</MudText>
+                        @if (_wbsStatistics != null)
+                        {
+                            <MudGrid>
+                                <MudItem xs="4">
+                                    <MudText Typo="Typo.caption">Elementos WBS</MudText>
+                                    <MudText Typo="Typo.h6">@_wbsStatistics.TotalElements</MudText>
+                                </MudItem>
+                                <MudItem xs="4">
+                                    <MudText Typo="Typo.caption">Paquetes de Trabajo</MudText>
+                                    <MudText Typo="Typo.h6">@_wbsStatistics.WorkPackages</MudText>
+                                </MudItem>
+                                <MudItem xs="4">
+                                    <MudText Typo="Typo.caption">Niveles</MudText>
+                                    <MudText Typo="Typo.h6">@_wbsStatistics.MaxLevel</MudText>
+                                </MudItem>
+                            </MudGrid>
+                        }
+                        
+                        <MudButton Color="Color.Primary" 
+                                   Variant="Variant.Text" 
+                                   StartIcon="@Icons.Material.Filled.AccountTree"
+                                   OnClick="@(() => NavigationService.NavigateTo($"/projects/{ProjectId}/wbs"))"
+                                   Class="mt-2">
+                            Ver WBS Completo
+                        </MudButton>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- 3. Cronograma del Proyecto -->
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="mr-2" />
+                                Cronograma del Proyecto
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudTimeline TimelineOrientation="TimelineOrientation.Vertical">
+                            <MudTimelineItem Color="Color.Success" Size="Size.Small">
+                                <ItemContent>
+                                    <MudText Typo="Typo.subtitle2">Inicio del Proyecto</MudText>
+                                    <MudText Typo="Typo.body2">@_project.PlannedStartDate.ToString("dd/MM/yyyy")</MudText>
+                                </ItemContent>
+                            </MudTimelineItem>
+                            
+                            @if (_milestones != null && _milestones.Any())
+                            {
+                                @foreach (var milestone in _milestones)
+                                {
+                                    <MudTimelineItem Color="Color.Primary" Size="Size.Small">
+                                        <ItemContent>
+                                            <MudText Typo="Typo.subtitle2">@milestone.Name</MudText>
+                                            <MudText Typo="Typo.body2">@milestone.Date.ToString("dd/MM/yyyy")</MudText>
+                                        </ItemContent>
+                                    </MudTimelineItem>
+                                }
+                            }
+                            
+                            <MudTimelineItem Color="Color.Error" Size="Size.Small">
+                                <ItemContent>
+                                    <MudText Typo="Typo.subtitle2">Fin del Proyecto</MudText>
+                                    <MudText Typo="Typo.body2">@_project.PlannedEndDate.ToString("dd/MM/yyyy")</MudText>
+                                </ItemContent>
+                            </MudTimelineItem>
+                        </MudTimeline>
+                        
+                        <MudDivider Class="my-3" />
+                        
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption">Progreso Actual</MudText>
+                                <MudProgressLinear Color="Color.Primary" 
+                                                   Value="@CalculateProgress()" 
+                                                   Size="Size.Large" 
+                                                   Class="my-2">
+                                    <MudText Typo="Typo.body2">@CalculateProgress()%</MudText>
+                                </MudProgressLinear>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption">Días Restantes</MudText>
+                                <MudText Typo="Typo.h6">@CalculateRemainingDays()</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- 4. Presupuesto del Proyecto -->
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Class="mr-2" />
+                                Presupuesto del Proyecto
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (_budgetSummary != null)
+                        {
+                            <MudGrid>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption">Presupuesto Total (BAC)</MudText>
+                                    <MudText Typo="Typo.h6" Color="Color.Primary">
+                                        @_budgetSummary.TotalBudget.ToString("C", new System.Globalization.CultureInfo("es-ES"))
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption">Moneda</MudText>
+                                    <MudText Typo="Typo.h6">@_project.Currency</MudText>
+                                </MudItem>
+                            </MudGrid>
+                            
+                            <MudDivider Class="my-3" />
+                            
+                            <MudText Typo="Typo.subtitle2" Class="mb-2">Distribución del Presupuesto</MudText>
+                            <MudChart ChartType="ChartType.Donut" 
+                                      InputData="@_budgetData" 
+                                      InputLabels="@_budgetLabels"
+                                      Width="300px" Height="200px" />
+                            
+                            <MudDivider Class="my-3" />
+                            
+                            <MudGrid>
+                                <MudItem xs="4">
+                                    <MudText Typo="Typo.caption">Comprometido</MudText>
+                                    <MudText Typo="Typo.body2">
+                                        @_budgetSummary.CommittedAmount.ToString("C", new System.Globalization.CultureInfo("es-ES"))
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="4">
+                                    <MudText Typo="Typo.caption">Gastado</MudText>
+                                    <MudText Typo="Typo.body2">
+                                        @_budgetSummary.ActualCost.ToString("C", new System.Globalization.CultureInfo("es-ES"))
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="4">
+                                    <MudText Typo="Typo.caption">Disponible</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Success">
+                                        @_budgetSummary.RemainingBudget.ToString("C", new System.Globalization.CultureInfo("es-ES"))
+                                    </MudText>
+                                </MudItem>
+                            </MudGrid>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info">
+                                No hay información de presupuesto disponible
+                            </MudAlert>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- 5. Equipo del Proyecto -->
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.Groups" Class="mr-2" />
+                                Equipo del Proyecto
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Miembros del Equipo (@_teamMembers.Count)</MudText>
+                        
+                        <MudList Dense="true">
+                            @foreach (var member in _teamMembers.Take(5))
+                            {
+                                <MudListItem>
+                                    <div class="d-flex align-center justify-space-between">
+                                        <div class="d-flex align-center gap-2">
+                                            <UserAvatar PhotoUrl="@member.UserPhotoUrl" 
+                                                       UserName="@member.UserName" 
+                                                       Size="Size.Small" />
+                                            <div>
+                                                <MudText Typo="Typo.body2">@member.UserName</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                    @member.UserEmail
+                                                </MudText>
+                                            </div>
+                                        </div>
+                                        <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(member.Role)">
+                                            @SimplifiedRoles.GetDisplayName(member.Role)
+                                        </MudChip>
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
+                        
+                        @if (_teamMembers.Count > 5)
+                        {
+                            <MudButton Color="Color.Primary" 
+                                       Variant="Variant.Text" 
+                                       StartIcon="@Icons.Material.Filled.Groups"
+                                       OnClick="@(() => NavigationService.NavigateTo($"/projects/{ProjectId}/team"))"
+                                       Class="mt-2">
+                                Ver Equipo Completo (@_teamMembers.Count)
+                            </MudButton>
+                        }
+                        
+                        <MudDivider Class="my-3" />
+                        
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Distribución por Rol</MudText>
+                        <MudGrid>
+                            @foreach (var roleGroup in _teamMembers.GroupBy(m => m.Role))
+                            {
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption">
+                                        @SimplifiedRoles.GetDisplayName(roleGroup.Key)
+                                    </MudText>
+                                    <MudText Typo="Typo.body2">@roleGroup.Count()</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- 6. Riesgos del Proyecto -->
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.Warning" Class="mr-2" />
+                                Gestión de Riesgos
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="4">
+                                <MudPaper Class="pa-3 text-center" Style="background-color: var(--mud-palette-error-lighten);">
+                                    <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" />
+                                    <MudText Typo="Typo.h6" Color="Color.Error">3</MudText>
+                                    <MudText Typo="Typo.caption">Alto</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="4">
+                                <MudPaper Class="pa-3 text-center" Style="background-color: var(--mud-palette-warning-lighten);">
+                                    <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" />
+                                    <MudText Typo="Typo.h6" Color="Color.Warning">5</MudText>
+                                    <MudText Typo="Typo.caption">Medio</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="4">
+                                <MudPaper Class="pa-3 text-center" Style="background-color: var(--mud-palette-success-lighten);">
+                                    <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Success" />
+                                    <MudText Typo="Typo.h6" Color="Color.Success">12</MudText>
+                                    <MudText Typo="Typo.caption">Bajo</MudText>
+                                </MudPaper>
+                            </MudItem>
+                        </MudGrid>
+                        
+                        <MudDivider Class="my-3" />
+                        
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Principales Riesgos Identificados</MudText>
+                        <MudList Dense="true">
+                            <MudListItem Icon="@Icons.Material.Filled.Error">
+                                <MudText Typo="Typo.body2">Retrasos en la entrega de materiales</MudText>
+                            </MudListItem>
+                            <MudListItem Icon="@Icons.Material.Filled.Warning">
+                                <MudText Typo="Typo.body2">Cambios en los requisitos del cliente</MudText>
+                            </MudListItem>
+                            <MudListItem Icon="@Icons.Material.Filled.Info">
+                                <MudText Typo="Typo.body2">Condiciones climáticas adversas</MudText>
+                            </MudListItem>
+                        </MudList>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- 7. Métricas de Valor Ganado (EVM) -->
+            <MudItem xs="12">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.Analytics" Class="mr-2" />
+                                Métricas de Valor Ganado (EVM)
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <!-- Valores Principales -->
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
+                                    <MudText Typo="Typo.caption">Valor Planificado (PV)</MudText>
+                                    <MudText Typo="Typo.h6">€ 450,000</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Trabajo planificado a la fecha</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
+                                    <MudText Typo="Typo.caption">Valor Ganado (EV)</MudText>
+                                    <MudText Typo="Typo.h6">€ 420,000</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Trabajo completado</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
+                                    <MudText Typo="Typo.caption">Costo Actual (AC)</MudText>
+                                    <MudText Typo="Typo.h6">€ 435,000</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Costo real incurrido</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
+                                    <MudText Typo="Typo.caption">Presupuesto al Completar (BAC)</MudText>
+                                    <MudText Typo="Typo.h6">€ 1,200,000</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Presupuesto total</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            
+                            <!-- Índices de Desempeño -->
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudPaper Class="pa-3" Elevation="0">
+                                    <MudText Typo="Typo.caption">Índice de Desempeño del Cronograma (SPI)</MudText>
+                                    <MudText Typo="Typo.h6" Color="@GetPerformanceColor(0.93)">0.93</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Warning">7% detrás del cronograma</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudPaper Class="pa-3" Elevation="0">
+                                    <MudText Typo="Typo.caption">Índice de Desempeño del Costo (CPI)</MudText>
+                                    <MudText Typo="Typo.h6" Color="@GetPerformanceColor(0.97)">0.97</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Warning">3% sobre el presupuesto</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudPaper Class="pa-3" Elevation="0">
+                                    <MudText Typo="Typo.caption">Estimación a la Conclusión (EAC)</MudText>
+                                    <MudText Typo="Typo.h6" Color="Color.Warning">€ 1,237,113</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Proyección del costo final</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudPaper Class="pa-3" Elevation="0">
+                                    <MudText Typo="Typo.caption">Variación al Completar (VAC)</MudText>
+                                    <MudText Typo="Typo.h6" Color="Color.Error">-€ 37,113</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Sobrecosto proyectado</MudText>
+                                </MudPaper>
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- 8. Comunicaciones y Stakeholders -->
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" />
+                                Partes Interesadas (Stakeholders)
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudList Dense="true">
+                            <MudListItem>
+                                <MudListItemText>
+                                    <div class="d-flex justify-space-between align-center">
+                                        <div>
+                                            <MudText Typo="Typo.body2">Cliente Principal</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @(_project.Client ?? "No especificado")
+                                            </MudText>
+                                        </div>
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Error">Alto</MudChip>
+                                    </div>
+                                </MudListItemText>
+                            </MudListItem>
+                            <MudListItem>
+                                <MudListItemText>
+                                    <div class="d-flex justify-space-between align-center">
+                                        <div>
+                                            <MudText Typo="Typo.body2">Contratista Principal</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                Construcciones ABC S.A.
+                                            </MudText>
+                                        </div>
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Error">Alto</MudChip>
+                                    </div>
+                                </MudListItemText>
+                            </MudListItem>
+                            <MudListItem>
+                                <MudListItemText>
+                                    <div class="d-flex justify-space-between align-center">
+                                        <div>
+                                            <MudText Typo="Typo.body2">Autoridades Locales</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                Municipalidad
+                                            </MudText>
+                                        </div>
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Medio</MudChip>
+                                    </div>
+                                </MudListItemText>
+                            </MudListItem>
+                        </MudList>
+                        
+                        <MudDivider Class="my-3" />
+                        
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Plan de Comunicaciones</MudText>
+                        <MudSimpleTable Dense="true" Hover="true">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Frecuencia</th>
+                                    <th>Audiencia</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Reporte de Estado</td>
+                                    <td>Semanal</td>
+                                    <td>Cliente, PM</td>
+                                </tr>
+                                <tr>
+                                    <td>Reunión de Equipo</td>
+                                    <td>Diaria</td>
+                                    <td>Equipo del Proyecto</td>
+                                </tr>
+                                <tr>
+                                    <td>Comité Directivo</td>
+                                    <td>Mensual</td>
+                                    <td>Stakeholders Clave</td>
+                                </tr>
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- 9. Calidad -->
+            <MudItem xs="12" md="6">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Class="mr-2" />
+                                Gestión de Calidad
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Estándares de Calidad</MudText>
+                        <MudList Dense="true">
+                            <MudListItem Icon="@Icons.Material.Filled.Check">
+                                <MudText Typo="Typo.body2">ISO 9001:2015 - Sistema de Gestión de Calidad</MudText>
+                            </MudListItem>
+                            <MudListItem Icon="@Icons.Material.Filled.Check">
+                                <MudText Typo="Typo.body2">ISO 14001:2015 - Gestión Ambiental</MudText>
+                            </MudListItem>
+                            <MudListItem Icon="@Icons.Material.Filled.Check">
+                                <MudText Typo="Typo.body2">ISO 45001:2018 - Seguridad y Salud Ocupacional</MudText>
+                            </MudListItem>
+                        </MudList>
+                        
+                        <MudDivider Class="my-3" />
+                        
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Métricas de Calidad</MudText>
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption">Defectos Detectados</MudText>
+                                <MudText Typo="Typo.h6">12</MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption">Defectos Resueltos</MudText>
+                                <MudText Typo="Typo.h6">10</MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption">Auditorías Realizadas</MudText>
+                                <MudText Typo="Typo.h6">3 / 5</MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption">Satisfacción del Cliente</MudText>
+                                <MudText Typo="Typo.h6" Color="Color.Success">92%</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Error">
+            No se pudo cargar la información del proyecto.
+        </MudAlert>
+    }
+</MudContainer>
+
+<style>
+    @@media print {
+        .mud-appbar, .mud-drawer, .mud-fab {
+            display: none !important;
+        }
+        .mud-container {
+            max-width: 100% !important;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+    
+    private ProjectDto? _project;
+    private List<ProjectTeamMemberDetailDto> _teamMembers = new();
+    private ProjectTeamMemberDetailDto? _projectManager;
+    private WBSStatistics? _wbsStatistics;
+    private BudgetSummaryDto? _budgetSummary;
+    private List<MilestoneDto> _milestones = new();
+    private bool _isLoading = true;
+    
+    // Datos para gráficos
+    private double[] _budgetData = { 35, 25, 20, 20 };
+    private string[] _budgetLabels = { "Mano de Obra", "Materiales", "Equipos", "Otros" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProjectSummary();
+    }
+
+    private async Task LoadProjectSummary()
+    {
+        try
+        {
+            _isLoading = true;
+
+            // Cargar información del proyecto
+            _project = await ProjectService.GetProjectByIdAsync(ProjectId);
+            
+            if (_project != null)
+            {
+                // Cargar equipo del proyecto
+                _teamMembers = await TeamMemberService.GetByProjectAsync(ProjectId) ?? new List<ProjectTeamMemberDetailDto>();
+                _projectManager = _teamMembers.FirstOrDefault(m => m.Role == SimplifiedRoles.Project.ProjectManager);
+                
+                // Cargar estadísticas WBS
+                await LoadWBSStatistics();
+                
+                // Cargar resumen de presupuesto
+                await LoadBudgetSummary();
+                
+                // Cargar hitos
+                await LoadMilestones();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error al cargar el resumen del proyecto: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadWBSStatistics()
+    {
+        try
+        {
+            var wbsElements = await WBSService.GetWBSElementsAsync(ProjectId);
+            if (wbsElements != null && wbsElements.Any())
+            {
+                _wbsStatistics = new WBSStatistics
+                {
+                    TotalElements = wbsElements.Count,
+                    WorkPackages = wbsElements.Count(e => e.ElementType == "WorkPackage"),
+                    MaxLevel = wbsElements.Max(e => e.HierarchyLevel)
+                };
+            }
+        }
+        catch { }
+    }
+
+    private async Task LoadBudgetSummary()
+    {
+        try
+        {
+            // Simulación - en producción vendría del servicio
+            _budgetSummary = new BudgetSummaryDto
+            {
+                TotalBudget = _project?.TotalBudget ?? 0,
+                CommittedAmount = (_project?.TotalBudget ?? 0) * 0.65m,
+                ActualCost = (_project?.TotalBudget ?? 0) * 0.45m,
+                RemainingBudget = (_project?.TotalBudget ?? 0) * 0.35m
+            };
+        }
+        catch { }
+    }
+
+    private async Task LoadMilestones()
+    {
+        try
+        {
+            // Simulación - en producción vendría del servicio
+            _milestones = new List<MilestoneDto>
+            {
+                new() { Name = "Inicio de Excavación", Date = _project!.PlannedStartDate.AddDays(15) },
+                new() { Name = "Finalización de Cimientos", Date = _project.PlannedStartDate.AddDays(45) },
+                new() { Name = "Estructura Completa", Date = _project.PlannedStartDate.AddDays(120) },
+                new() { Name = "Acabados Finales", Date = _project.PlannedStartDate.AddDays(180) }
+            };
+        }
+        catch { }
+    }
+
+    private int CalculateDuration()
+    {
+        if (_project == null) return 0;
+        return (_project.PlannedEndDate - _project.PlannedStartDate).Days;
+    }
+
+    private double CalculateProgress()
+    {
+        if (_project == null) return 0;
+        var totalDays = (_project.PlannedEndDate - _project.PlannedStartDate).Days;
+        var elapsedDays = (DateTime.Today - _project.PlannedStartDate).Days;
+        if (totalDays > 0)
+        {
+            var progress = (double)elapsedDays / totalDays * 100;
+            return Math.Max(0, Math.Min(100, progress));
+        }
+        return 0;
+    }
+
+    private int CalculateRemainingDays()
+    {
+        if (_project == null) return 0;
+        var remaining = (_project.PlannedEndDate - DateTime.Today).Days;
+        return Math.Max(0, remaining);
+    }
+
+    private Color GetStatusColor(string status) => status?.ToLower() switch
+    {
+        "active" or "activo" => Color.Success,
+        "planning" or "planificación" => Color.Info,
+        "on hold" or "en espera" => Color.Warning,
+        "completed" or "completado" => Color.Primary,
+        "cancelled" or "cancelado" => Color.Error,
+        _ => Color.Default
+    };
+
+    private Color GetRoleColor(string role) => SimplifiedRoles.GetProjectRoleLevel(role) switch
+    {
+        4 => Color.Error,
+        3 => Color.Warning,
+        2 => Color.Primary,
+        1 => Color.Info,
+        _ => Color.Default
+    };
+
+    private Color GetPerformanceColor(double value)
+    {
+        if (value >= 0.95) return Color.Success;
+        if (value >= 0.90) return Color.Warning;
+        return Color.Error;
+    }
+
+    private async Task PrintSummary()
+    {
+        await IJSRuntime.InvokeVoidAsync("window.print");
+    }
+
+    // DTOs auxiliares
+    private class WBSStatistics
+    {
+        public int TotalElements { get; set; }
+        public int WorkPackages { get; set; }
+        public int MaxLevel { get; set; }
+    }
+
+    private class BudgetSummaryDto
+    {
+        public decimal TotalBudget { get; set; }
+        public decimal CommittedAmount { get; set; }
+        public decimal ActualCost { get; set; }
+        public decimal RemainingBudget { get; set; }
+    }
+
+    private class MilestoneDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+    }
+}
+
+@inject IJSRuntime IJSRuntime

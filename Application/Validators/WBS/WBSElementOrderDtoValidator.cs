@@ -12,9 +12,9 @@ public class WBSElementOrderDtoValidator : AbstractValidator<WBSElementOrderDto>
     public WBSElementOrderDtoValidator()
     {
         RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("Element ID is required");
+            .NotEmpty().WithMessage("El ID del elemento es requerido");
 
         RuleFor(x => x.SequenceNumber)
-            .GreaterThan(0).WithMessage("Sequence number must be greater than 0");
+            .GreaterThan(0).WithMessage("El número de secuencia debe ser mayor que 0");
     }
 }

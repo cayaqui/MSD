@@ -10,128 +10,128 @@ using Microsoft.AspNetCore.Authorization;
 namespace Api.Modules;
 
 /// <summary>
-/// User management endpoints
+/// Endpoints de gestión de usuarios
 /// </summary>
 public class UsersModule : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
         var users = app.MapGroup("/api/users")
-            .WithTags("Users")
+            .WithTags("Usuarios")
             .RequireAuthorization();
 
-        // User CRUD operations
+        // Operaciones CRUD de usuarios
         users.MapGet("/", GetUsers)
             .WithName("GetUsers")
-            .WithSummary("Get paginated list of users")
+            .WithSummary("Obtener lista paginada de usuarios")
             .Produces<PagedResult<UserDto>>(200)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         users.MapPost("/search", SearchUsers)
             .WithName("SearchUsers")
-            .WithSummary("Search users with filters")
+            .WithSummary("Buscar usuarios con filtros")
             .Produces<PagedResult<UserDto>>(200)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         users.MapGet("/{id:guid}", GetUserById)
             .WithName("GetUserById")
-            .WithSummary("Get user by ID")
+            .WithSummary("Obtener usuario por ID")
             .Produces<UserDto>(200)
             .Produces(404);
 
         users.MapGet("/by-email/{email}", GetUserByEmail)
             .WithName("GetUserByEmail")
-            .WithSummary("Get user by email")
+            .WithSummary("Obtener usuario por correo electrónico")
             .Produces<UserDto>(200)
             .Produces(404);
 
         users.MapGet("/by-entra-id/{entraId}", GetUserByEntraId)
             .WithName("GetUserByEntraId")
-            .WithSummary("Get user by Entra ID")
+            .WithSummary("Obtener usuario por ID de Entra")
             .Produces<UserDto>(200)
             .Produces(404);
 
         users.MapPost("/", CreateUser)
             .WithName("CreateUser")
-            .WithSummary("Create a new user")
+            .WithSummary("Crear un nuevo usuario")
             .Produces<UserDto>(201)
             .Produces(400)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         users.MapPut("/{id:guid}", UpdateUser)
             .WithName("UpdateUser")
-            .WithSummary("Update user details")
+            .WithSummary("Actualizar detalles del usuario")
             .Produces<UserDto>(200)
             .Produces(404)
             .Produces(400)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         users.MapPost("/{id:guid}/activate", ActivateUser)
             .WithName("ActivateUser")
-            .WithSummary("Activate a user")
+            .WithSummary("Activar un usuario")
             .Produces<UserDto>(200)
             .Produces(404)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         users.MapPost("/{id:guid}/deactivate", DeactivateUser)
             .WithName("DeactivateUser")
-            .WithSummary("Deactivate a user")
+            .WithSummary("Desactivar un usuario")
             .Produces<UserDto>(200)
             .Produces(404)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         users.MapDelete("/{id:guid}", DeleteUser)
             .WithName("DeleteUser")
-            .WithSummary("Delete a user")
+            .WithSummary("Eliminar un usuario")
             .Produces(204)
             .Produces(404)
             .Produces(400)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
-        // User projects
+        // Proyectos del usuario
         users.MapGet("/{id:guid}/projects", GetUserProjects)
             .WithName("GetUserProjects")
-            .WithSummary("Get user's project assignments")
+            .WithSummary("Obtener asignaciones de proyecto del usuario")
             .Produces<IEnumerable<ProjectTeamMemberDto>>(200)
             .Produces(404);
 
-        // Azure AD sync
+        // Sincronización con Azure AD
         users.MapPost("/{id:guid}/sync", SyncUserWithAzure)
             .WithName("SyncUserWithAzure")
-            .WithSummary("Sync user data with Azure AD")
+            .WithSummary("Sincronizar datos del usuario con Azure AD")
             .Produces<UserDto>(200)
             .Produces(404)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
-        // User photo
+        // Foto del usuario
         users.MapGet("/{id:guid}/photo", GetUserPhoto)
             .WithName("GetUserPhoto")
-            .WithSummary("Get user photo from Azure AD")
+            .WithSummary("Obtener foto del usuario desde Azure AD")
             //.Produces<UserPhotoResponse>(200)
             .Produces(404);
 
-        // Bulk operations
+        // Operaciones masivas
         users.MapPost("/bulk/activate", BulkActivateUsers)
             .WithName("BulkActivateUsers")
-            .WithSummary("Activate multiple users")
+            .WithSummary("Activar múltiples usuarios")
             .Produces<BulkOperationResult>(200)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         users.MapPost("/bulk/deactivate", BulkDeactivateUsers)
             .WithName("BulkDeactivateUsers")
-            .WithSummary("Deactivate multiple users")
+            .WithSummary("Desactivar múltiples usuarios")
             .Produces<BulkOperationResult>(200)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
-        // Validation endpoints
+        // Endpoints de validación
         users.MapGet("/check-email/{email}", CheckEmailExists)
             .WithName("CheckEmailExists")
-            .WithSummary("Check if email already exists")
+            .WithSummary("Verificar si el correo electrónico ya existe")
             .Produces<bool>(200);
 
         users.MapGet("/{id:guid}/can-delete", CanDeleteUser)
             .WithName("CanDeleteUser")
-            .WithSummary("Check if user can be deleted")
+            .WithSummary("Verificar si el usuario puede ser eliminado")
             .Produces<CanDeleteResult>(200)
             .Produces(404);
     }
@@ -157,7 +157,7 @@ public class UsersModule : ICarterModule
         IUserService userService)
     {
         var user = await userService.GetByIdAsync(id);
-        return user != null ? Results.Ok(user) : Results.NotFound($"User {id} not found");
+        return user != null ? Results.Ok(user) : Results.NotFound($"Usuario {id} no encontrado");
     }
 
     private static async Task<IResult> GetUserByEmail(
@@ -165,7 +165,7 @@ public class UsersModule : ICarterModule
         IUserService userService)
     {
         var user = await userService.GetByEmailAsync(email);
-        return user != null ? Results.Ok(user) : Results.NotFound($"User with email {email} not found");
+        return user != null ? Results.Ok(user) : Results.NotFound($"Usuario con correo {email} no encontrado");
     }
 
     private static async Task<IResult> GetUserByEntraId(
@@ -173,7 +173,7 @@ public class UsersModule : ICarterModule
         IUserService userService)
     {
         var user = await userService.GetByEntraIdAsync(entraId);
-        return user != null ? Results.Ok(user) : Results.NotFound($"User with Entra ID {entraId} not found");
+        return user != null ? Results.Ok(user) : Results.NotFound($"Usuario con ID de Entra {entraId} no encontrado");
     }
 
     private static async Task<IResult> CreateUser(
@@ -183,10 +183,10 @@ public class UsersModule : ICarterModule
     {
         try
         {
-            // Check if email already exists
+            // Verificar si el correo ya existe
             if (await userService.EmailExistsAsync(dto.Email))
             {
-                return Results.BadRequest("A user with this email already exists");
+                return Results.BadRequest("Ya existe un usuario con este correo electrónico");
             }
 
             var user = await userService.CreateAsync(dto);
@@ -195,7 +195,7 @@ public class UsersModule : ICarterModule
         catch (Exception ex)
         {
             return Results.Problem(
-                title: "User creation failed",
+                title: "Creación de usuario fallida",
                 detail: ex.Message,
                 statusCode: 400);
         }
@@ -208,22 +208,22 @@ public class UsersModule : ICarterModule
     {
         try
         {
-            // Check if email is being changed and already exists
+            // Verificar si el correo está siendo cambiado y ya existe
             if (!string.IsNullOrEmpty(dto.Email))
             {
                 if (await userService.EmailExistsAsync(dto.Email, id))
                 {
-                    return Results.BadRequest("A user with this email already exists");
+                    return Results.BadRequest("Ya existe un usuario con este correo electrónico");
                 }
             }
 
             var user = await userService.UpdateAsync(id, dto);
-            return user != null ? Results.Ok(user) : Results.NotFound($"User {id} not found");
+            return user != null ? Results.Ok(user) : Results.NotFound($"Usuario {id} no encontrado");
         }
         catch (Exception ex)
         {
             return Results.Problem(
-                title: "User update failed",
+                title: "Actualización de usuario fallida",
                 detail: ex.Message,
                 statusCode: 400);
         }
@@ -234,7 +234,7 @@ public class UsersModule : ICarterModule
         IUserService userService)
     {
         var user = await userService.ActivateAsync(id);
-        return user != null ? Results.Ok(user) : Results.NotFound($"User {id} not found");
+        return user != null ? Results.Ok(user) : Results.NotFound($"Usuario {id} no encontrado");
     }
 
     private static async Task<IResult> DeactivateUser(
@@ -242,7 +242,7 @@ public class UsersModule : ICarterModule
         IUserService userService)
     {
         var user = await userService.DeactivateAsync(id);
-        return user != null ? Results.Ok(user) : Results.NotFound($"User {id} not found");
+        return user != null ? Results.Ok(user) : Results.NotFound($"Usuario {id} no encontrado");
     }
 
     private static async Task<IResult> DeleteUser(
@@ -252,10 +252,10 @@ public class UsersModule : ICarterModule
     {
         try
         {
-            // Check if user can be deleted
+            // Verificar si el usuario puede ser eliminado
             if (!await userService.CanUserBeDeletedAsync(id))
             {
-                return Results.BadRequest("User cannot be deleted due to existing dependencies");
+                return Results.BadRequest("El usuario no puede ser eliminado debido a dependencias existentes");
             }
 
             await userService.DeleteAsync(id, currentUserService.UserId);
@@ -263,12 +263,12 @@ public class UsersModule : ICarterModule
         }
         catch (KeyNotFoundException)
         {
-            return Results.NotFound($"User {id} not found");
+            return Results.NotFound($"Usuario {id} no encontrado");
         }
         catch (Exception ex)
         {
             return Results.Problem(
-                title: "User deletion failed",
+                title: "Eliminación de usuario fallida",
                 detail: ex.Message,
                 statusCode: 400);
         }
@@ -289,12 +289,12 @@ public class UsersModule : ICarterModule
         try
         {
             var user = await userService.SyncWithAzureADAsync(id);
-            return user != null ? Results.Ok(user) : Results.NotFound($"User {id} not found");
+            return user != null ? Results.Ok(user) : Results.NotFound($"Usuario {id} no encontrado");
         }
         catch (Exception ex)
         {
             return Results.Problem(
-                title: "Azure AD sync failed",
+                title: "Sincronización con Azure AD fallida",
                 detail: ex.Message,
                 statusCode: 500);
         }
@@ -304,11 +304,11 @@ public class UsersModule : ICarterModule
         Guid id,
         IUserService userService)
     {
-        // This would need to be implemented in the service
+        // Esto necesitaría ser implementado en el servicio
         var user = await userService.GetByIdAsync(id);
         if (user == null) return Results.NotFound();
         
-        // Return empty photo for now
+        // Retornar foto vacía por ahora
         return Results.Ok(new { ContentType = "image/png", Data = Array.Empty<byte>() });
     }
 
@@ -342,8 +342,8 @@ public class UsersModule : ICarterModule
     {
         var canDelete = await userService.CanUserBeDeletedAsync(id);
         return Results.Ok(new CanDeleteResult(canDelete, 
-            canDelete ? null : "User has active project assignments or other dependencies"));
+            canDelete ? null : "El usuario tiene asignaciones de proyecto activas u otras dependencias"));
     }
 }
 
-// Request/Response DTOs
+// DTOs de solicitud/respuesta

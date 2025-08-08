@@ -1,0 +1,195 @@
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Forms
+@using Core.DTOs.Projects.WBSElement
+@using Web.Services.Interfaces.Projects
+@inject IWBSApiService WBSService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudText Typo="Typo.body1" Class="mb-4">
+                    Importe la estructura WBS desde un archivo Excel (.xlsx) o CSV (.csv).
+                </MudText>
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudFileUpload T="IBrowserFile" 
+                               @ref="fileUpload"
+                               FilesChanged="UploadFile"
+                               Accept=".xlsx,.csv"
+                               MaximumFileCount="1"
+                               Class="mt-0">
+                    <ActivatorContent>
+                        <MudButton HtmlTag="label"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.CloudUpload">
+                            Seleccionar Archivo
+                        </MudButton>
+                    </ActivatorContent>
+                </MudFileUpload>
+                
+                @if (selectedFile != null)
+                {
+                    <MudChip T="string" Color="Color.Primary" Class="mt-2">
+                        <MudIcon Icon="@Icons.Material.Filled.AttachFile" Class="mr-1" />
+                        @selectedFile.Name
+                    </MudChip>
+                }
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudExpansionPanels>
+                    <MudExpansionPanel Text="Formato del Archivo" Icon="@Icons.Material.Filled.Info">
+                        <MudText Typo="Typo.body2" Class="mb-2">
+                            El archivo debe contener las siguientes columnas:
+                        </MudText>
+                        <MudList T="string" Dense="true">
+                            <MudListItem T="string" Icon="@Icons.Material.Filled.TableChart">
+                                <MudText Typo="Typo.body2"><strong>Código:</strong> Código WBS (ej: 1.2.3)</MudText>
+                            </MudListItem>
+                            <MudListItem T="string" Icon="@Icons.Material.Filled.TableChart">
+                                <MudText Typo="Typo.body2"><strong>Nombre:</strong> Nombre del elemento</MudText>
+                            </MudListItem>
+                            <MudListItem T="string" Icon="@Icons.Material.Filled.TableChart">
+                                <MudText Typo="Typo.body2"><strong>Descripción:</strong> Descripción (opcional)</MudText>
+                            </MudListItem>
+                            <MudListItem T="string" Icon="@Icons.Material.Filled.TableChart">
+                                <MudText Typo="Typo.body2"><strong>Tipo:</strong> Level, WorkPackage o PlanningPackage</MudText>
+                            </MudListItem>
+                            <MudListItem T="string" Icon="@Icons.Material.Filled.TableChart">
+                                <MudText Typo="Typo.body2"><strong>Código Padre:</strong> Código del elemento padre (opcional)</MudText>
+                            </MudListItem>
+                        </MudList>
+                        <MudButton Variant="Variant.Text" 
+                                   Color="Color.Primary" 
+                                   StartIcon="@Icons.Material.Filled.Download"
+                                   OnClick="DownloadTemplate"
+                                   Class="mt-2">
+                            Descargar Plantilla
+                        </MudButton>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+            </MudItem>
+
+            @if (importResult != null)
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="@(importResult.FailedRecords > 0 ? Severity.Warning : Severity.Success)">
+                        <MudText>
+                            Importación completada: @importResult.SuccessfulRecords exitosos, @importResult.FailedRecords fallidos
+                        </MudText>
+                    </MudAlert>
+                    
+                    @if (importResult.Errors?.Any() == true)
+                    {
+                        <MudPaper Class="pa-2 mt-2" Outlined="true">
+                            <MudText Typo="Typo.subtitle2" Class="mb-2">Errores:</MudText>
+                            @foreach (var error in importResult.Errors.Take(5))
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Error">• @error</MudText>
+                            }
+                            @if (importResult.Errors.Length > 5)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    ... y @(importResult.Errors.Length - 5) errores más
+                                </MudText>
+                            }
+                        </MudPaper>
+                    }
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="Import"
+                   Disabled="@(selectedFile == null || isProcessing)">
+            @if (isProcessing)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Importando...</MudText>
+            }
+            else
+            {
+                <MudText>Importar</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public Guid ProjectId { get; set; }
+
+    private MudFileUpload<IBrowserFile>? fileUpload;
+    private IBrowserFile? selectedFile;
+    private bool isProcessing;
+    private ImportResultDto? importResult;
+
+    private void UploadFile(IBrowserFile file)
+    {
+        selectedFile = file;
+        importResult = null;
+    }
+
+    private async Task Import()
+    {
+        if (selectedFile == null) return;
+
+        try
+        {
+            isProcessing = true;
+            
+            var maxFileSize = 10 * 1024 * 1024; // 10 MB
+            
+            using var stream = selectedFile.OpenReadStream(maxFileSize);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            ms.Position = 0;
+            
+            importResult = await WBSService.ImportWBSAsync(ProjectId, ms, selectedFile.Name);
+            
+            if (importResult.Success)
+            {
+                Snackbar.Add($"WBS importado exitosamente: {importResult.SuccessfulRecords} elementos", Severity.Success);
+                if (importResult.FailedRecords == 0)
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+            }
+            else
+            {
+                Snackbar.Add("Error al importar WBS", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al importar: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task DownloadTemplate()
+    {
+        try
+        {
+            await WBSService.DownloadWBSTemplateAsync();
+            Snackbar.Add("Plantilla descargada exitosamente", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al descargar plantilla: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

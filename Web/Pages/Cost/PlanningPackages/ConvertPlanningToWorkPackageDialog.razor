@@ -1,0 +1,198 @@
+@using Core.DTOs.Projects.WorkPackageDetails
+@using Core.DTOs.Auth.Users
+@using Core.Enums.Progress
+@using MudBlazor
+@using Web.Services.Interfaces.Projects
+@using Web.Services.Interfaces.Auth
+@inject IPlanningPackageApiService PlanningPackageService
+@inject IUserApiService UserService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="@isFormValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.body1" Class="mb-4">
+                        Esta acción convertirá el paquete de planificación "@PlanningPackageName" en un paquete de trabajo.
+                        Esta operación no se puede deshacer.
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudSelect T="ProgressMethod"
+                               @bind-Value="dto.ProgressMethod"
+                               Label="Método de Progreso"
+                               Required="true"
+                               RequiredError="El método de progreso es requerido"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem Value="ProgressMethod.WeightedActivities">Actividades Ponderadas</MudSelectItem>
+                        <MudSelectItem Value="ProgressMethod.Milestones">Hitos</MudSelectItem>
+                        <MudSelectItem Value="ProgressMethod.UnitsProduced">Unidades Producidas</MudSelectItem>
+                        <MudSelectItem Value="ProgressMethod.DurationBased">Basado en Duración</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudAutocomplete T="UserDto"
+                                     @bind-Value="selectedUser"
+                                     Label="Usuario Responsable"
+                                     SearchFunc="@SearchUsers"
+                                     ToStringFunc="@(u => u?.DisplayName ?? string.Empty)"
+                                     Variant="Variant.Outlined"
+                                     CoerceText="true">
+                        <ItemTemplate Context="user">
+                            <MudGrid AlignItems="Center">
+                                <MudItem xs="2">
+                                    <MudAvatar Size="Size.Small">
+                                        @if (!string.IsNullOrEmpty(user.PhotoUrl))
+                                        {
+                                            <MudImage Src="@user.PhotoUrl" />
+                                        }
+                                        else
+                                        {
+                                            @user.DisplayName.Substring(0, 1).ToUpper()
+                                        }
+                                    </MudAvatar>
+                                </MudItem>
+                                <MudItem xs="10">
+                                    <MudText>@user.DisplayName</MudText>
+                                    <MudText Typo="Typo.caption">@user.Email</MudText>
+                                </MudItem>
+                            </MudGrid>
+                        </ItemTemplate>
+                    </MudAutocomplete>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudDatePicker Label="Fecha de Conversión"
+                                   @bind-Date="conversionDate"
+                                   Variant="Variant.Outlined"
+                                   Editable="true"
+                                   DateFormat="dd/MM/yyyy"
+                                   DisableFuture="true" />
+                </MudItem>
+
+                @* StartProgressTracking property was removed from DTO
+                <MudItem xs="12" md="6">
+                    <MudSwitch @bind-Value="dto.StartProgressTracking"
+                               Label="Iniciar seguimiento de progreso"
+                               Color="Color.Primary" />
+                </MudItem> *@
+
+                @* Notes property was removed from DTO
+                <MudItem xs="12">
+                    <MudTextField T="string"
+                                  @bind-Value="dto.Notes"
+                                  Label="Notas de Conversión"
+                                  Lines="3"
+                                  Variant="Variant.Outlined" />
+                </MudItem> *@
+
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Warning" Dense="true">
+                        <MudText Typo="Typo.body2">
+                            Al convertir a paquete de trabajo:
+                        </MudText>
+                        <ul style="margin: 0.5rem 0;">
+                            <li>Se habilitará el seguimiento de progreso</li>
+                            <li>Se podrán agregar actividades y recursos</li>
+                            <li>Se generarán métricas de valor ganado (EVM)</li>
+                            <li>No se podrá revertir a paquete de planificación</li>
+                        </ul>
+                    </MudAlert>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="Submit"
+                   Disabled="@(!isFormValid || isProcessing)">
+            @if (isProcessing)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Convirtiendo...</MudText>
+            }
+            else
+            {
+                <MudText>Convertir</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public Guid PlanningPackageId { get; set; }
+    [Parameter] public string PlanningPackageName { get; set; } = string.Empty;
+
+    private MudForm form = default!;
+    private bool isFormValid;
+    private bool isProcessing;
+    
+    private ConvertPlanningToWorkPackageDto dto = new()
+    {
+        ProgressMethod = ProgressMethod.WeightedActivities
+        // StartProgressTracking = true // Property removed from DTO
+    };
+    
+    private UserDto? selectedUser;
+    private DateTime? conversionDate = DateTime.Today;
+
+    private async Task<IEnumerable<UserDto>> SearchUsers(string value, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var filter = new UserFilterDto
+            {
+                SearchTerm = value,
+                IsActive = true,
+                PageSize = 10
+            };
+            
+            var result = await UserService.SearchUsersAsync(filter);
+            return result?.Items ?? new List<UserDto>();
+        }
+        catch
+        {
+            return new List<UserDto>();
+        }
+    }
+
+    private async Task Submit()
+    {
+        try
+        {
+            isProcessing = true;
+            
+            dto.ResponsibleUserId = selectedUser?.Id;
+            // dto.ConversionDate = conversionDate ?? DateTime.Today; // Property not available
+            
+            var success = await PlanningPackageService.ConvertToWorkPackageAsync(PlanningPackageId, dto);
+            
+            if (success)
+            {
+                Snackbar.Add("Paquete de planificación convertido exitosamente a paquete de trabajo", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add("Error al convertir el paquete de planificación", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

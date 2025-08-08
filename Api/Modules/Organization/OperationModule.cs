@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Modules.Organization;
 
 /// <summary>
-/// Endpoints for operation management
+/// Endpoints para la gestión de operaciones
 /// </summary>
 public class OperationModule : CarterModule
 {
@@ -23,50 +23,50 @@ public class OperationModule : CarterModule
         // Query endpoints
         app.MapGet("/", GetOperationsAsync)
             .WithName("GetOperations")
-            .WithSummary("Get all operations with pagination")
-            .WithDescription("Returns a paginated list of operations")
-            .WithTags("Operations")
+            .WithSummary("Obtener todas las operaciones con paginación")
+            .WithDescription("Devuelve una lista paginada de operaciones")
+            .WithTags("Operaciones")
             .Produces<PagedResult<OperationDto>>();
 
         app.MapGet("/{id:guid}", GetOperationByIdAsync)
             .WithName("GetOperationById")
-            .WithSummary("Get operation by ID")
-            .WithDescription("Returns a specific operation by ID")
-            .WithTags("Operations")
+            .WithSummary("Obtener operación por ID")
+            .WithDescription("Devuelve una operación específica por ID")
+            .WithTags("Operaciones")
             .Produces<OperationDto>()
             .Produces(404);
 
         app.MapGet("/company/{companyId:guid}", GetOperationsByCompanyAsync)
             .WithName("GetOperationsByCompany")
-            .WithSummary("Get operations by company")
-            .WithDescription("Returns all operations for a specific company")
-            .WithTags("Operations")
+            .WithSummary("Obtener operaciones por empresa")
+            .WithDescription("Devuelve todas las operaciones para una empresa específica")
+            .WithTags("Operaciones")
             .Produces<List<OperationDto>>()
             .Produces(404);
 
         app.MapGet("/{id:guid}/projects", GetOperationProjectsAsync)
             .WithName("GetOperationProjects")
-            .WithSummary("Get operation projects")
-            .WithDescription("Returns all projects for a specific operation")
-            .WithTags("Operations")
+            .WithSummary("Obtener proyectos de la operación")
+            .WithDescription("Devuelve todos los proyectos para una operación específica")
+            .WithTags("Operaciones")
             .Produces<OperationWithProjectsDto>()
             .Produces(404);
 
         // Command endpoints
         app.MapPost("/", CreateOperationAsync)
             .WithName("CreateOperation")
-            .WithSummary("Create a new operation")
-            .WithDescription("Creates a new operation")
-            .WithTags("Operations")
+            .WithSummary("Crear una nueva operación")
+            .WithDescription("Crea una nueva operación")
+            .WithTags("Operaciones")
             .RequireAuthorization("AdminOnly")
             .Produces<Result<Guid>>(201)
             .Produces<Result>(400);
 
         app.MapPut("/{id:guid}", UpdateOperationAsync)
             .WithName("UpdateOperation")
-            .WithSummary("Update operation")
-            .WithDescription("Updates an existing operation")
-            .WithTags("Operations")
+            .WithSummary("Actualizar operación")
+            .WithDescription("Actualiza una operación existente")
+            .WithTags("Operaciones")
             .RequireAuthorization("AdminOnly")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -74,27 +74,27 @@ public class OperationModule : CarterModule
 
         app.MapPost("/{id:guid}/activate", ActivateOperationAsync)
             .WithName("ActivateOperation")
-            .WithSummary("Activate operation")
-            .WithDescription("Activates an operation")
-            .WithTags("Operations")
+            .WithSummary("Activar operación")
+            .WithDescription("Activa una operación")
+            .WithTags("Operaciones")
             .RequireAuthorization("AdminOnly")
             .Produces<Result>()
             .Produces(404);
 
         app.MapPost("/{id:guid}/deactivate", DeactivateOperationAsync)
             .WithName("DeactivateOperation")
-            .WithSummary("Deactivate operation")
-            .WithDescription("Deactivates an operation")
-            .WithTags("Operations")
+            .WithSummary("Desactivar operación")
+            .WithDescription("Desactiva una operación")
+            .WithTags("Operaciones")
             .RequireAuthorization("AdminOnly")
             .Produces<Result>()
             .Produces(404);
 
         app.MapDelete("/{id:guid}", DeleteOperationAsync)
             .WithName("DeleteOperation")
-            .WithSummary("Delete operation")
-            .WithDescription("Soft deletes an operation")
-            .WithTags("Operations")
+            .WithSummary("Eliminar operación")
+            .WithDescription("Elimina de forma lógica una operación")
+            .WithTags("Operaciones")
             .RequireAuthorization("AdminOnly")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -143,12 +143,12 @@ public class OperationModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await operationService.CreateAsync(dto, userId, cancellationToken);
         
         return result != null 
             ? Results.CreatedAtRoute("GetOperationById", new { id = result.Id }, result)
-            : Results.BadRequest("Failed to create operation");
+            : Results.BadRequest("Error al crear la operación");
     }
 
     private static async Task<IResult> UpdateOperationAsync(
@@ -158,7 +158,7 @@ public class OperationModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await operationService.UpdateAsync(id, dto, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -170,12 +170,12 @@ public class OperationModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         // Since there's no IsActive property, just verify the operation exists
         var existing = await operationService.GetByIdAsync(id, cancellationToken);
         if (existing == null) return Results.NotFound();
         
-        return Results.Ok("Operation is active");
+        return Results.Ok("La operación está activa");
     }
 
     private static async Task<IResult> DeactivateOperationAsync(
@@ -184,11 +184,11 @@ public class OperationModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         // Since there's no IsActive property, we could use soft delete instead
         var result = await operationService.DeleteAsync(id, cancellationToken);
         
-        return result ? Results.Ok("Operation deactivated successfully") : Results.BadRequest("Failed to deactivate operation");
+        return result ? Results.Ok("Operación desactivada exitosamente") : Results.BadRequest("Error al desactivar la operación");
     }
 
     private static async Task<IResult> DeleteOperationAsync(
@@ -197,9 +197,9 @@ public class OperationModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await operationService.DeleteAsync(id, cancellationToken);
         
-        return result ? Results.Ok("Operation deleted successfully") : Results.BadRequest("Failed to delete operation");
+        return result ? Results.Ok("Operación eliminada exitosamente") : Results.BadRequest("Error al eliminar la operación");
     }
 }

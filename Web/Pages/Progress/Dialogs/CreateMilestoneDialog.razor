@@ -1,0 +1,158 @@
+@using Core.DTOs.Progress.Milestones
+@using Core.DTOs.Projects.WBSElement
+@using Core.Enums
+@using MudBlazor
+@inject Web.Services.Interfaces.Progress.IMilestoneApiService MilestoneService
+@inject Web.Services.Interfaces.Projects.IWBSApiService WBSService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="model.MilestoneCode" Label="Código" Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="model.Name" Label="Nombre" Required="true" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="model.Description" Label="Descripción" Lines="2" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect @bind-Value="model.WBSElementId" Label="Elemento WBS" Required="true">
+                    @foreach (var wbs in wbsElements)
+                    {
+                        <MudSelectItem Value="@wbs.Id">@wbs.Code - @wbs.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect @bind-Value="model.MilestoneType" Label="Tipo">
+                    @foreach (MilestoneType type in Enum.GetValues(typeof(MilestoneType)))
+                    {
+                        <MudSelectItem Value="@type">@GetTypeDisplay(type)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudDatePicker Label="Fecha Objetivo" @bind-Date="targetDate" Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="model.CompletionCriteria" Label="Criterios de Cumplimiento" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSwitch @bind-Value="model.IsCritical" Label="Hito Crítico" Color="Color.Error" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSwitch @bind-Value="model.IsContractual" Label="Hito Contractual" Color="Color.Info" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSwitch @bind-Value="hasPayment" Label="Con Pago" Color="Color.Success" />
+            </MudItem>
+            @if (hasPayment)
+            {
+                <MudItem xs="12" md="6">
+                    <MudNumericField @bind-Value="model.PaymentAmount" Label="Monto del Pago" Min="0" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect @bind-Value="model.PaymentCurrency" Label="Moneda">
+                        <MudSelectItem Value="@("USD")">USD</MudSelectItem>
+                        <MudSelectItem Value="@("EUR")">EUR</MudSelectItem>
+                        <MudSelectItem Value="@("MXN")">MXN</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="isSubmitting">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+            else
+            {
+                <text>Crear</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudBlazor.MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Guid ProjectId { get; set; }
+
+    private CreateMilestoneDto model = new();
+    private List<WBSElementDto> wbsElements = new();
+    private DateTime? targetDate;
+    private bool hasPayment;
+    private bool isSubmitting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        model.ProjectId = ProjectId;
+        model.MilestoneType = MilestoneType.KeyDeliverable;
+        model.PaymentCurrency = "USD";
+        targetDate = DateTime.Today.AddMonths(1);
+        
+        try
+        {
+            wbsElements = await WBSService.GetHierarchyAsync(ProjectId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar elementos WBS: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(model.MilestoneCode) || string.IsNullOrWhiteSpace(model.Name) ||
+            model.WBSElementId == Guid.Empty || !targetDate.HasValue)
+        {
+            Snackbar.Add("Por favor complete todos los campos requeridos", Severity.Warning);
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            model.TargetDate = targetDate.Value;
+            
+            if (!hasPayment)
+            {
+                model.PaymentAmount = null;
+                model.PaymentCurrency = null;
+            }
+            
+            var result = await MilestoneService.CreateMilestoneAsync(model);
+            Snackbar.Add("Hito creado exitosamente", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al crear el hito: {ex.Message}", Severity.Error);
+            isSubmitting = false;
+        }
+    }
+
+    private string GetTypeDisplay(MilestoneType type)
+    {
+        return type switch
+        {
+            MilestoneType.ProjectStart => "Inicio del Proyecto",
+            MilestoneType.ProjectEnd => "Fin del Proyecto",
+            MilestoneType.PhaseGate => "Puerta de Fase",
+            MilestoneType.KeyDeliverable => "Entregable Clave",
+            MilestoneType.ContractualObligation => "Obligación Contractual",
+            MilestoneType.PaymentMilestone => "Hito de Pago",
+            MilestoneType.RegulatoryApproval => "Aprobación Regulatoria",
+            MilestoneType.ClientApproval => "Aprobación del Cliente",
+            _ => type.ToString()
+        };
+    }
+}

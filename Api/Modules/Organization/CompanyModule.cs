@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Modules.Organization;
 
 /// <summary>
-/// Endpoints for company management
+/// Endpoints para gestión de compañías
 /// </summary>
 public class CompanyModule : CarterModule
 {
@@ -23,49 +23,49 @@ public class CompanyModule : CarterModule
         // Query endpoints
         app.MapGet("/", GetCompaniesAsync)
             .WithName("GetCompanies")
-            .WithSummary("Get all companies with pagination")
-            .WithDescription("Returns a paginated list of companies")
-            .WithTags("Companies")
+            .WithSummary("Obtener todas las compañías con paginación")
+            .WithDescription("Retorna una lista paginada de compañías")
+            .WithTags("Compañías")
             .Produces<PagedResult<CompanyDto>>();
 
         app.MapGet("/{id:guid}", GetCompanyByIdAsync)
             .WithName("GetCompanyById")
-            .WithSummary("Get company by ID")
-            .WithDescription("Returns a specific company by ID")
-            .WithTags("Companies")
+            .WithSummary("Obtener compañía por ID")
+            .WithDescription("Retorna una compañía específica por ID")
+            .WithTags("Compañías")
             .Produces<CompanyDto>()
             .Produces(404);
 
         app.MapGet("/{id:guid}/operations", GetCompanyOperationsAsync)
             .WithName("GetCompanyOperations")
-            .WithSummary("Get company operations")
-            .WithDescription("Returns all operations for a specific company")
-            .WithTags("Companies")
+            .WithSummary("Obtener operaciones de la compañía")
+            .WithDescription("Retorna todas las operaciones de una compañía específica")
+            .WithTags("Compañías")
             .Produces<CompanyWithOperationsDto>()
             .Produces(404);
 
         app.MapGet("/active", GetActiveCompaniesAsync)
             .WithName("GetActiveCompanies")
-            .WithSummary("Get active companies")
-            .WithDescription("Returns all active companies")
-            .WithTags("Companies")
+            .WithSummary("Obtener compañías activas")
+            .WithDescription("Retorna todas las compañías activas")
+            .WithTags("Compañías")
             .Produces<List<CompanyDto>>();
 
         // Command endpoints
         app.MapPost("/", CreateCompanyAsync)
             .WithName("CreateCompany")
-            .WithSummary("Create a new company")
-            .WithDescription("Creates a new company")
-            .WithTags("Companies")
+            .WithSummary("Crear una nueva compañía")
+            .WithDescription("Crea una nueva compañía")
+            .WithTags("Compañías")
             .RequireAuthorization("AdminOnly")
             .Produces<Result<Guid>>(201)
             .Produces<Result>(400);
 
         app.MapPut("/{id:guid}", UpdateCompanyAsync)
             .WithName("UpdateCompany")
-            .WithSummary("Update company")
-            .WithDescription("Updates an existing company")
-            .WithTags("Companies")
+            .WithSummary("Actualizar compañía")
+            .WithDescription("Actualiza una compañía existente")
+            .WithTags("Compañías")
             .RequireAuthorization("AdminOnly")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -73,27 +73,27 @@ public class CompanyModule : CarterModule
 
         app.MapPost("/{id:guid}/activate", ActivateCompanyAsync)
             .WithName("ActivateCompany")
-            .WithSummary("Activate company")
-            .WithDescription("Activates a company")
-            .WithTags("Companies")
+            .WithSummary("Activar compañía")
+            .WithDescription("Activa una compañía")
+            .WithTags("Compañías")
             .RequireAuthorization("AdminOnly")
             .Produces<Result>()
             .Produces(404);
 
         app.MapPost("/{id:guid}/deactivate", DeactivateCompanyAsync)
             .WithName("DeactivateCompany")
-            .WithSummary("Deactivate company")
-            .WithDescription("Deactivates a company")
-            .WithTags("Companies")
+            .WithSummary("Desactivar compañía")
+            .WithDescription("Desactiva una compañía")
+            .WithTags("Compañías")
             .RequireAuthorization("AdminOnly")
             .Produces<Result>()
             .Produces(404);
 
         app.MapDelete("/{id:guid}", DeleteCompanyAsync)
             .WithName("DeleteCompany")
-            .WithSummary("Delete company")
-            .WithDescription("Soft deletes a company")
-            .WithTags("Companies")
+            .WithSummary("Eliminar compañía")
+            .WithDescription("Elimina lógicamente una compañía")
+            .WithTags("Compañías")
             .RequireAuthorization("AdminOnly")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -145,12 +145,12 @@ public class CompanyModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await companyService.CreateAsync(dto, userId, cancellationToken);
         
         return result != null 
             ? Results.CreatedAtRoute("GetCompanyById", new { id = result.Id }, result)
-            : Results.BadRequest("Failed to create company");
+            : Results.BadRequest("Error al crear la compañía");
     }
 
     private static async Task<IResult> UpdateCompanyAsync(
@@ -160,7 +160,7 @@ public class CompanyModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await companyService.UpdateAsync(id, dto, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -172,12 +172,12 @@ public class CompanyModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         // Since there's no IsActive property, just verify the company exists
         var existing = await companyService.GetByIdAsync(id, cancellationToken);
         if (existing == null) return Results.NotFound();
         
-        return Results.Ok("Company is active");
+        return Results.Ok("La compañía está activa");
     }
 
     private static async Task<IResult> DeactivateCompanyAsync(
@@ -186,11 +186,11 @@ public class CompanyModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         // Since there's no IsActive property, we could use soft delete instead
         var result = await companyService.DeleteAsync(id, cancellationToken);
         
-        return result ? Results.Ok("Company deactivated successfully") : Results.BadRequest("Failed to deactivate company");
+        return result ? Results.Ok("Compañía desactivada exitosamente") : Results.BadRequest("Error al desactivar la compañía");
     }
 
     private static async Task<IResult> DeleteCompanyAsync(
@@ -199,9 +199,9 @@ public class CompanyModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await companyService.DeleteAsync(id, cancellationToken);
         
-        return result ? Results.Ok("Company deleted successfully") : Results.BadRequest("Failed to delete company");
+        return result ? Results.Ok("Compañía eliminada exitosamente") : Results.BadRequest("Error al eliminar la compañía");
     }
 }

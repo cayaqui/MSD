@@ -1,10 +1,4 @@
-﻿using Domain.Common;
-using Domain.Entities.Auth.Permissions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
-namespace Domain.Entities.Auth.Security
+﻿namespace Domain.Entities.Auth.Security
 {
     /// <summary>
     /// User entity representing authenticated users in the system
@@ -15,7 +9,6 @@ namespace Domain.Entities.Auth.Security
         private User()
         {
             ProjectTeamMembers = new HashSet<ProjectTeamMember>();
-            UserProjectPermissions = new HashSet<UserProjectPermission>();
         }
 
         public User(string entraId, string email, string name)
@@ -38,15 +31,14 @@ namespace Domain.Entities.Auth.Security
         public string? Surname { get; private set; }
         public string? PhoneNumber { get; set; }
         public string? JobTitle { get; set; }
-        public string? Department { get; set; }
-        public string? OfficeLocation { get; set; }
-        public string? MobilePhone { get; set; }
-        public string? BusinessPhone { get; set; }
+        public string? Phone { get; set; }
         public string? CompanyId { get; set; }
         public string? PreferredLanguage { get; set; }
-
         public string? PhotoUrl { get; set; }
         public bool IsActive { get; private set; }
+        
+        // System role for simplified authorization
+        public string? SystemRole { get; set; }
         
         // Display name property for compatibility
         public string DisplayName => Name;
@@ -63,7 +55,6 @@ namespace Domain.Entities.Auth.Security
 
         // Navigation properties
         public virtual ICollection<ProjectTeamMember> ProjectTeamMembers { get; private set; }
-        public virtual ICollection<UserProjectPermission> UserProjectPermissions { get; private set; }
 
         public bool HasActiveProjects() => ProjectTeamMembers?.Any(ptm => ptm.IsActive) ?? false;
         // Methods
@@ -181,22 +172,6 @@ namespace Domain.Entities.Auth.Security
             if (!string.IsNullOrWhiteSpace(azureUser.JobTitle))
             {
                 JobTitle = azureUser.JobTitle;
-            }
-            if (!string.IsNullOrWhiteSpace(azureUser.Department))
-            {
-                Department = azureUser.Department;
-            }
-            if (!string.IsNullOrWhiteSpace(azureUser.OfficeLocation))
-            {
-                OfficeLocation = azureUser.OfficeLocation;
-            }
-            if (!string.IsNullOrWhiteSpace(azureUser.MobilePhone))
-            {
-                MobilePhone = azureUser.MobilePhone;
-            }
-            if (!string.IsNullOrWhiteSpace(azureUser.BusinessPhone))
-            {
-                BusinessPhone = azureUser.BusinessPhone;
             }
             if (!string.IsNullOrWhiteSpace(azureUser.PreferredLanguage))
             {

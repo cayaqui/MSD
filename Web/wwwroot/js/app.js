@@ -186,6 +186,19 @@ window.ezproApp = {
         }
     },
 
+    // Download file from byte array
+    downloadFile: function(fileName, byteArray) {
+        const blob = new Blob([byteArray], { type: 'application/octet-stream' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    },
+
     // Debounce function
     debounce: function(func, wait) {
         let timeout;
@@ -211,3 +224,6 @@ window.ezproApp = {
 document.addEventListener('DOMContentLoaded', function() {
     window.ezproApp.init();
 });
+
+// Make downloadFile available globally for Blazor
+window.downloadFile = window.ezproApp.downloadFile;

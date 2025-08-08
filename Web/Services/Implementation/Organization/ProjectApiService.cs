@@ -23,21 +23,23 @@ public class ProjectApiService : IProjectApiService
 
     // Query Operations
 
-    public async Task<PagedResult<ProjectListDto>> GetProjectsAsync(ProjectFilterDto? filter = null, int pageNumber = 1, int pageSize = 10, string? sortBy = null, bool isAscending = true, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<ProjectListDto>> GetProjectsAsync(ProjectFilterDto? filter = null, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug($"Getting projects - Page: {pageNumber}, Size: {pageSize}");
-            
+            _logger.LogDebug($"Getting projects - Page: {filter.PageNumber}, Size: {filter.PageSize}");
+
             var queryParams = new Dictionary<string, string>
             {
-                ["pageNumber"] = pageNumber.ToString(),
-                ["pageSize"] = pageSize.ToString(),
-                ["isAscending"] = isAscending.ToString()
+                ["pageNumber"] = filter.PageNumber.ToString(),
+                ["pageSize"] = filter.PageSize.ToString(),
+                ["sortDirection"] = filter.SortDirection.ToString(),
+                ["includeDeleted"] = filter.IncludeDeleted.ToString(),
+                ["includeInactive"] = filter.IncludeInactive.ToString(),
             };
 
-            if (!string.IsNullOrEmpty(sortBy))
-                queryParams["sortBy"] = sortBy;
+            if (!string.IsNullOrEmpty(filter.SortBy))
+                queryParams["sortBy"] = filter.SortBy;
 
             // Add filter parameters if provided
             if (filter != null)
@@ -68,15 +70,16 @@ public class ProjectApiService : IProjectApiService
                 
                 if (filter.EndDateTo.HasValue)
                     queryParams["endDateTo"] = filter.EndDateTo.Value.ToString("O");
+
             }
 
             return await _apiService.GetAsync<PagedResult<ProjectListDto>>($"{BaseEndpoint}?{BuildQueryString(queryParams)}") 
-                ?? new PagedResult<ProjectListDto>(new List<ProjectListDto>(), pageNumber, pageSize);
+                ?? new PagedResult<ProjectListDto>(new List<ProjectListDto>(), filter.PageNumber, filter.PageSize);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting projects");
-            return new PagedResult<ProjectListDto>(new List<ProjectListDto>(), pageNumber, pageSize);
+            return new PagedResult<ProjectListDto>(new List<ProjectListDto>(), filter.PageNumber, filter.PageSize);
         }
     }
 

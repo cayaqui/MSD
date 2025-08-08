@@ -1,3 +1,4 @@
+using Application.Interfaces.Auth;
 using Core.Constants;
 using Microsoft.AspNetCore.Authorization;
 
@@ -58,56 +59,56 @@ public class RequireProjectRoleAttribute : AuthorizeAttribute
     }
 }
 
-/// <summary>
-/// Policy provider to handle dynamic authorization policies
-/// </summary>
-public class SimplifiedAuthorizationPolicyProvider : IAuthorizationPolicyProvider
-{
-    private readonly DefaultAuthorizationPolicyProvider _defaultProvider;
+///// <summary>
+///// Policy provider to handle dynamic authorization policies
+///// </summary>
+//public class SimplifiedAuthorizationPolicyProvider : IAuthorizationPolicyProvider
+//{
+//    private readonly DefaultAuthorizationPolicyProvider _defaultProvider;
 
-    public SimplifiedAuthorizationPolicyProvider(IOptions<AuthorizationOptions> options)
-    {
-        _defaultProvider = new DefaultAuthorizationPolicyProvider(options);
-    }
+//    public SimplifiedAuthorizationPolicyProvider(IOptions<AuthorizationOptions> options)
+//    {
+//        _defaultProvider = new DefaultAuthorizationPolicyProvider(options);
+//    }
 
-    public async Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
-    {
-        // Check if it's a system role policy
-        if (policyName.StartsWith("SystemRole_"))
-        {
-            var roles = policyName.Substring("SystemRole_".Length).Split('_');
-            var policy = new AuthorizationPolicyBuilder()
-                .RequireAuthenticatedUser()
-                .AddRequirements(new SystemRoleRequirement(roles))
-                .Build();
-            return policy;
-        }
+//    public async Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
+//    {
+//        // Check if it's a system role policy
+//        if (policyName.StartsWith("SystemRole_"))
+//        {
+//            var roles = policyName.Substring("SystemRole_".Length).Split('_');
+//            var policy = new AuthorizationPolicyBuilder()
+//                .RequireAuthenticatedUser()
+//                .AddRequirements(new SystemRoleRequirement(roles))
+//                .Build();
+//            return policy;
+//        }
 
-        // Check if it's a project role policy
-        if (policyName.StartsWith("ProjectRole_"))
-        {
-            var role = policyName.Substring("ProjectRole_".Length);
-            var policy = new AuthorizationPolicyBuilder()
-                .RequireAuthenticatedUser()
-                .AddRequirements(new ProjectRoleRequirement(role))
-                .Build();
-            return policy;
-        }
+//        // Check if it's a project role policy
+//        if (policyName.StartsWith("ProjectRole_"))
+//        {
+//            var role = policyName.Substring("ProjectRole_".Length);
+//            var policy = new AuthorizationPolicyBuilder()
+//                .RequireAuthenticatedUser()
+//                .AddRequirements(new ProjectRoleRequirement(role))
+//                .Build();
+//            return policy;
+//        }
 
-        // Fall back to default provider
-        return await _defaultProvider.GetPolicyAsync(policyName);
-    }
+//        // Fall back to default provider
+//        return await _defaultProvider.GetPolicyAsync(policyName);
+//    }
 
-    public async Task<AuthorizationPolicy> GetDefaultPolicyAsync()
-    {
-        return await _defaultProvider.GetDefaultPolicyAsync();
-    }
+//    public async Task<AuthorizationPolicy> GetDefaultPolicyAsync()
+//    {
+//        return await _defaultProvider.GetDefaultPolicyAsync();
+//    }
 
-    public async Task<AuthorizationPolicy?> GetFallbackPolicyAsync()
-    {
-        return await _defaultProvider.GetFallbackPolicyAsync();
-    }
-}
+//    public async Task<AuthorizationPolicy?> GetFallbackPolicyAsync()
+//    {
+//        return await _defaultProvider.GetFallbackPolicyAsync();
+//    }
+//}
 
 /// <summary>
 /// Requirement for system roles

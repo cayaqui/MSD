@@ -2,7 +2,33 @@
   "permissions": {
     "allow": [
       "Bash(ren:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(rm:*)",
+      "Bash(az:*)",
+      "Bash(dotnet publish:*)",
+      "Bash(ls:*)",
+      "Bash(zip:*)",
+      "Bash(tar:*)",
+      "Bash(powershell:*)",
+      "Bash(dotnet clean:*)",
+      "Bash(dotnet build)",
+      "Bash(dotnet build:*)",
+      "Bash(find:*)",
+      "Bash(mv:*)",
+      "Bash(del \"C:\\Users\\AlejandroMuñoz\\source\\repos\\MSD\\Application\\Services\\Projects\\PlanningPackageService.cs\")",
+      "Bash(dotnet ef database update:*)",
+      "Bash(dotnet run --launch-profile https)",
+      "Bash(dotnet list:*)",
+      "Bash(rg:*)",
+      "Bash(del temp_routes.txt)",
+      "Bash(git checkout:*)",
+      "Bash(del \"C:\\Users\\AlejandroMuñoz\\source\\repos\\MSD\\Core\\Enums\\ScheduleStatus.cs\")",
+      "Bash(mkdir:*)",
+      "Bash(dotnet ef migrations:*)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(del nul)"
     ],
     "deny": []
   }

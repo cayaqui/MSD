@@ -1,0 +1,370 @@
+@page "/evm/project/{projectId:guid}"
+@using Core.DTOs.EVM
+@using Web.Services.Interfaces.Cost
+@inject IEVMApiService EVMApiService
+@inject INavigationService NavigationService
+@inject IToastService ToastService
+@inject IDialogService DialogService
+
+<PageTitle>Gestión del Valor Ganado (EVM)</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudBreadcrumbs Items="_breadcrumbs" />
+    
+    <MudGrid Class="mt-4">
+        <MudItem xs="12" sm="6">
+            <MudText Typo="Typo.h5">Gestión del Valor Ganado</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Fecha de Datos: @_asOfDate?.ToString("dd/MM/yyyy")</MudText>
+        </MudItem>
+        <MudItem xs="12" sm="6" Class="text-right">
+            <MudDatePicker @bind-Date="_asOfDate" Label="Fecha de Datos" Variant="Variant.Outlined" 
+                          MaxDate="DateTime.Today" Class="mb-2" />
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Calculate"
+                      OnClick="CalculateEVM" Class="ml-2">
+                Calcular EVM
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+    
+    @if (_performanceReport != null)
+    {
+        <!-- Key Performance Indicators -->
+        <MudGrid Class="mt-4">
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard>
+                    <MudCardContent>
+                        <MudText Typo="Typo.subtitle2">SPI (Schedule Performance Index)</MudText>
+                        <MudText Typo="Typo.h4" Color="@GetSPIColor(_performanceReport.OverallSPI)">
+                            @_performanceReport.OverallSPI.ToString("F2")
+                        </MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @GetPerformanceText(_performanceReport.OverallSPI, "cronograma")
+                        </MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard>
+                    <MudCardContent>
+                        <MudText Typo="Typo.subtitle2">CPI (Cost Performance Index)</MudText>
+                        <MudText Typo="Typo.h4" Color="@GetCPIColor(_performanceReport.OverallCPI)">
+                            @_performanceReport.OverallCPI.ToString("F2")
+                        </MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @GetPerformanceText(_performanceReport.OverallCPI, "costo")
+                        </MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard>
+                    <MudCardContent>
+                        <MudText Typo="Typo.subtitle2">SV (Schedule Variance)</MudText>
+                        <MudText Typo="Typo.h4" Color="@GetVarianceColor(_performanceReport.TotalSV)">
+                            @_performanceReport.TotalSV.ToString("C")
+                        </MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @((_performanceReport.TotalSV / _performanceReport.TotalBAC * 100).ToString("F1"))%
+                        </MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard>
+                    <MudCardContent>
+                        <MudText Typo="Typo.subtitle2">CV (Cost Variance)</MudText>
+                        <MudText Typo="Typo.h4" Color="@GetVarianceColor(_performanceReport.TotalCV)">
+                            @_performanceReport.TotalCV.ToString("C")
+                        </MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @((_performanceReport.TotalCV / _performanceReport.TotalBAC * 100).ToString("F1"))%
+                        </MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+        
+        <!-- Progress Overview -->
+        <MudCard Class="mt-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-4">Resumen de Progreso</MudText>
+                <MudGrid>
+                    <MudItem xs="12" sm="4">
+                        <MudProgressLinear Color="Color.Primary" Value="@((double)_performanceReport.ProjectPercentComplete)" Class="my-2">
+                            <MudText Typo="Typo.body2">Avance Físico: @_performanceReport.ProjectPercentComplete.ToString("F1")%</MudText>
+                        </MudProgressLinear>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudProgressLinear Color="Color.Info" Value="@GetBudgetSpentPercent()" Class="my-2">
+                            <MudText Typo="Typo.body2">Presupuesto Gastado: @GetBudgetSpentPercent().ToString("F1")%</MudText>
+                        </MudProgressLinear>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudProgressLinear Color="Color.Warning" Value="@GetTimeElapsedPercent()" Class="my-2">
+                            <MudText Typo="Typo.body2">Tiempo Transcurrido: @GetTimeElapsedPercent().ToString("F1")%</MudText>
+                        </MudProgressLinear>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+        
+        <!-- S-Curve Chart Placeholder -->
+        <MudCard Class="mt-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-4">Tendencia del Valor Ganado</MudText>
+                @if (_trendData.Any())
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                        Mostrando tendencia de los últimos 12 meses
+                    </MudText>
+                    <MudSimpleTable>
+                        <thead>
+                            <tr>
+                                <th>Período</th>
+                                <th>PV</th>
+                                <th>EV</th>
+                                <th>AC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var trend in _trendData.TakeLast(5))
+                            {
+                                <tr>
+                                    <td>@trend.DataDate.ToString("MMM yyyy")</td>
+                                    <td>@trend.PV.ToString("C")</td>
+                                    <td>@trend.EV.ToString("C")</td>
+                                    <td>@trend.AC.ToString("C")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        No hay datos de tendencia disponibles
+                    </MudText>
+                }
+            </MudCardContent>
+        </MudCard>
+        
+        <!-- Cost at Completion Forecast -->
+        <MudCard Class="mt-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-4">Pronóstico de Costo Final</MudText>
+                <MudGrid>
+                    <MudItem xs="12" sm="3">
+                        <MudText Typo="Typo.subtitle2">BAC (Budget at Completion)</MudText>
+                        <MudText Typo="Typo.h5">@_performanceReport.TotalBAC.ToString("C")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudText Typo="Typo.subtitle2">EAC (Estimate at Completion)</MudText>
+                        <MudText Typo="Typo.h5" Color="@GetEACColor()">@_performanceReport.ProjectEAC.ToString("C")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudText Typo="Typo.subtitle2">VAC (Variance at Completion)</MudText>
+                        <MudText Typo="Typo.h5" Color="@GetVarianceColor(_performanceReport.ProjectVAC)">
+                            @_performanceReport.ProjectVAC.ToString("C")
+                        </MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudText Typo="Typo.subtitle2">ETC (Estimate to Complete)</MudText>
+                        <MudText Typo="Typo.h5">@((_performanceReport.ProjectEAC - _performanceReport.TotalAC).ToString("C"))</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+    }
+    
+    <!-- Actions -->
+    <MudCard Class="mt-4">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudButton Color="Color.Primary" Variant="Variant.Outlined" FullWidth="true"
+                              StartIcon="@Icons.Material.Filled.Assessment"
+                              OnClick="ViewNineColumnReport">
+                        Ver Reporte de 9 Columnas
+                    </MudButton>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudButton Color="Color.Secondary" Variant="Variant.Outlined" FullWidth="true"
+                              StartIcon="@Icons.Material.Filled.TableChart"
+                              OnClick="ViewDetailedRecords">
+                        Ver Registros Detallados
+                    </MudButton>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudButton Color="Color.Success" Variant="Variant.Outlined" FullWidth="true"
+                              StartIcon="@Icons.Material.Filled.Download"
+                              OnClick="ExportReport">
+                        Exportar Reporte
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+    
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    private DateTime? _asOfDate = DateTime.Today;
+    private EVMPerformanceReportDto? _performanceReport;
+    private List<EVMTrendDto> _trendData = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new("Inicio", href: "/"),
+            new("Proyectos", href: "/projects"),
+            new("EVM", href: null, disabled: true)
+        };
+        
+        await LoadData();
+    }
+    
+    private async Task LoadData()
+    {
+        try
+        {
+            _performanceReport = await EVMApiService.GetProjectEVMReportAsync(ProjectId, _asOfDate);
+            
+            if (_performanceReport != null)
+            {
+                // Load trend data for the last 12 months
+                var endDate = _asOfDate ?? DateTime.Today;
+                var startDate = endDate.AddMonths(-12);
+                
+                // For demo purposes, using a control account ID from the report
+                if (_performanceReport.ControlAccounts?.Any() == true)
+                {
+                    var controlAccountId = _performanceReport.ControlAccounts.First().ControlAccountId;
+                    _trendData = await EVMApiService.GetEVMTrendsAsync(controlAccountId, startDate, endDate);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error al cargar datos EVM: {ex.Message}");
+        }
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_asOfDate.HasValue)
+        {
+            await LoadData();
+        }
+    }
+    
+    private async Task CalculateEVM()
+    {
+        if (!_asOfDate.HasValue)
+        {
+            ToastService.ShowWarning("Seleccione una fecha de datos");
+            return;
+        }
+        
+        var success = await EVMApiService.CalculateProjectEVMAsync(ProjectId, _asOfDate.Value);
+        if (success)
+        {
+            ToastService.ShowSuccess("EVM calculado exitosamente");
+            await LoadData();
+        }
+        else
+        {
+            ToastService.ShowError("Error al calcular EVM");
+        }
+    }
+    
+    private void ViewNineColumnReport()
+    {
+        NavigationService.NavigateTo($"/evm/nine-column-report/{ProjectId}");
+    }
+    
+    private void ViewDetailedRecords()
+    {
+        NavigationService.NavigateTo($"/evm/records/{ProjectId}");
+    }
+    
+    private async Task ExportReport()
+    {
+        var dialog = await DialogService.ShowAsync<ExportOptionsDialog>("Opciones de Exportación",
+            new DialogOptions { MaxWidth = MaxWidth.Small });
+            
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is string formatData)
+        {
+            var format = formatData;
+            byte[] fileData;
+            string fileName;
+            string contentType;
+            
+            if (format == "excel")
+            {
+                fileData = await EVMApiService.ExportNineColumnReportToExcelAsync(ProjectId, _asOfDate);
+                fileName = $"EVM_Report_{ProjectId}_{DateTime.Now:yyyyMMdd}.xlsx";
+                contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            }
+            else
+            {
+                fileData = await EVMApiService.ExportNineColumnReportToPdfAsync(ProjectId, _asOfDate);
+                fileName = $"EVM_Report_{ProjectId}_{DateTime.Now:yyyyMMdd}.pdf";
+                contentType = "application/pdf";
+            }
+            
+            // Trigger file download
+            await DownloadFile(fileData, fileName, contentType);
+        }
+    }
+    
+    private async Task DownloadFile(byte[] fileData, string fileName, string contentType)
+    {
+        // Implementation would depend on your file download service
+        ToastService.ShowInfo("Descargando archivo...");
+    }
+    
+    private Color GetSPIColor(decimal spi) => spi switch
+    {
+        >= 0.95m => Color.Success,
+        >= 0.90m => Color.Warning,
+        _ => Color.Error
+    };
+    
+    private Color GetCPIColor(decimal cpi) => cpi switch
+    {
+        >= 0.95m => Color.Success,
+        >= 0.90m => Color.Warning,
+        _ => Color.Error
+    };
+    
+    private Color GetVarianceColor(decimal variance) => variance >= 0 ? Color.Success : Color.Error;
+    
+    private Color GetEACColor() => _performanceReport?.ProjectEAC <= _performanceReport?.TotalBAC ? Color.Success : Color.Error;
+    
+    private string GetPerformanceText(decimal index, string type)
+    {
+        if (index >= 1.0m) return $"Adelantado en {type}";
+        if (index >= 0.95m) return $"A tiempo en {type}";
+        if (index >= 0.90m) return $"Ligeramente atrasado en {type}";
+        return $"Atrasado en {type}";
+    }
+    
+    private double GetBudgetSpentPercent()
+    {
+        if (_performanceReport?.TotalBAC == 0) return 0;
+        return (double)((_performanceReport?.TotalAC ?? 0) / (_performanceReport?.TotalBAC ?? 1) * 100);
+    }
+    
+    private double GetTimeElapsedPercent()
+    {
+        // This would need project start and end dates
+        return 50; // Placeholder
+    }
+}

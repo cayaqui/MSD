@@ -9,107 +9,107 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Modules.Cost;
 
 /// <summary>
-/// Commitment management endpoints
+/// Endpoints de gestión de compromisos
 /// </summary>
 public class CommitmentModule : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/commitments")
-            .WithTags("Commitments")
+            .WithTags("Compromisos")
             .RequireAuthorization();
 
         // Query endpoints
         group.MapPost("/search", SearchCommitments)
             .WithName("SearchCommitments")
-            .WithSummary("Search commitments with filters")
+            .WithSummary("Buscar compromisos con filtros")
             .Produces<PagedResult<CommitmentListDto>>();
 
         group.MapGet("/{id:guid}", GetCommitmentById)
             .WithName("GetCommitmentById")
-            .WithSummary("Get commitment by ID")
+            .WithSummary("Obtener compromiso por ID")
             .Produces<CommitmentDto>()
             .ProducesProblem(404);
 
         group.MapGet("/{id:guid}/detail", GetCommitmentDetail)
             .WithName("GetCommitmentDetail")
-            .WithSummary("Get commitment detailed information")
+            .WithSummary("Obtener información detallada del compromiso")
             .Produces<CommitmentDetailDto>()
             .ProducesProblem(404);
 
         group.MapGet("/project/{projectId:guid}", GetProjectCommitments)
             .WithName("GetProjectCommitments")
-            .WithSummary("Get commitments for a project")
+            .WithSummary("Obtener compromisos para un proyecto")
             .Produces<List<CommitmentListDto>>();
 
         group.MapGet("/project/{projectId:guid}/summary", GetProjectCommitmentSummary)
             .WithName("GetProjectCommitmentSummary")
-            .WithSummary("Get commitment summary for a project")
+            .WithSummary("Obtener resumen de compromisos para un proyecto")
             .Produces<CommitmentSummaryDto>();
 
         // Command endpoints
         group.MapPost("/", CreateCommitment)
             .WithName("CreateCommitment")
-            .WithSummary("Create a new commitment")
+            .WithSummary("Crear un nuevo compromiso")
             .Produces<CommitmentDto>(201)
             .ProducesValidationProblem();
 
         group.MapPut("/{id:guid}", UpdateCommitment)
             .WithName("UpdateCommitment")
-            .WithSummary("Update a commitment")
+            .WithSummary("Actualizar un compromiso")
             .Produces<CommitmentDto>()
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapDelete("/{id:guid}", DeleteCommitment)
             .WithName("DeleteCommitment")
-            .WithSummary("Delete a commitment")
+            .WithSummary("Eliminar un compromiso")
             .Produces(204)
             .ProducesProblem(404);
 
         // Workflow endpoints
         group.MapPost("/{id:guid}/submit", SubmitForApproval)
             .WithName("SubmitCommitmentForApproval")
-            .WithSummary("Submit commitment for approval")
+            .WithSummary("Enviar compromiso para aprobación")
             .Produces<CommitmentDto>()
             .ProducesProblem(404);
 
         group.MapPost("/{id:guid}/approve", ApproveCommitment)
             .WithName("ApproveCommitment")
-            .WithSummary("Approve a commitment")
+            .WithSummary("Aprobar un compromiso")
             .Produces<CommitmentDto>()
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapPost("/{id:guid}/reject", RejectCommitment)
             .WithName("RejectCommitment")
-            .WithSummary("Reject a commitment")
+            .WithSummary("Rechazar un compromiso")
             .Produces<CommitmentDto>()
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapPost("/{id:guid}/activate", ActivateCommitment)
             .WithName("ActivateCommitment")
-            .WithSummary("Activate a commitment")
+            .WithSummary("Activar un compromiso")
             .Produces<CommitmentDto>()
             .ProducesProblem(404);
 
         group.MapPost("/{id:guid}/revise", ReviseCommitment)
             .WithName("ReviseCommitment")
-            .WithSummary("Revise a commitment")
+            .WithSummary("Revisar un compromiso")
             .Produces<CommitmentDto>()
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapPost("/{id:guid}/close", CloseCommitment)
             .WithName("CloseCommitment")
-            .WithSummary("Close a commitment")
+            .WithSummary("Cerrar un compromiso")
             .Produces<CommitmentDto>()
             .ProducesProblem(404);
 
         group.MapPost("/{id:guid}/cancel", CancelCommitment)
             .WithName("CancelCommitment")
-            .WithSummary("Cancel a commitment")
+            .WithSummary("Cancelar un compromiso")
             .Produces<CommitmentDto>()
             .ProducesValidationProblem()
             .ProducesProblem(404);
@@ -117,65 +117,65 @@ public class CommitmentModule : ICarterModule
         // Work Package allocation endpoints
         group.MapPost("/{id:guid}/allocations", AddWorkPackageAllocation)
             .WithName("AddWorkPackageAllocation")
-            .WithSummary("Add work package allocation")
+            .WithSummary("Agregar asignación de paquete de trabajo")
             .Produces<CommitmentDto>()
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapPut("/{id:guid}/allocations/{allocationId:guid}", UpdateWorkPackageAllocation)
             .WithName("UpdateWorkPackageAllocation")
-            .WithSummary("Update work package allocation")
+            .WithSummary("Actualizar asignación de paquete de trabajo")
             .Produces<CommitmentDto>()
             .ProducesProblem(404);
 
         group.MapDelete("/{id:guid}/allocations/{allocationId:guid}", RemoveWorkPackageAllocation)
             .WithName("RemoveWorkPackageAllocation")
-            .WithSummary("Remove work package allocation")
+            .WithSummary("Eliminar asignación de paquete de trabajo")
             .Produces(204)
             .ProducesProblem(404);
 
         group.MapGet("/{id:guid}/allocations", GetWorkPackageAllocations)
             .WithName("GetWorkPackageAllocations")
-            .WithSummary("Get work package allocations")
+            .WithSummary("Obtener asignaciones de paquete de trabajo")
             .Produces<List<CommitmentWorkPackageDto>>();
 
         // Commitment Item endpoints
         group.MapPost("/{id:guid}/items", AddCommitmentItem)
             .WithName("AddCommitmentItem")
-            .WithSummary("Add commitment item")
+            .WithSummary("Agregar elemento de compromiso")
             .Produces<CommitmentDto>()
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapPut("/{id:guid}/items/{itemId:guid}", UpdateCommitmentItem)
             .WithName("UpdateCommitmentItem")
-            .WithSummary("Update commitment item")
+            .WithSummary("Actualizar elemento de compromiso")
             .Produces<CommitmentDto>()
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapDelete("/{id:guid}/items/{itemId:guid}", RemoveCommitmentItem)
             .WithName("RemoveCommitmentItem")
-            .WithSummary("Remove commitment item")
+            .WithSummary("Eliminar elemento de compromiso")
             .Produces(204)
             .ProducesProblem(404);
 
         group.MapGet("/{id:guid}/items", GetCommitmentItems)
             .WithName("GetCommitmentItems")
-            .WithSummary("Get commitment items")
+            .WithSummary("Obtener elementos de compromiso")
             .Produces<List<CommitmentItemDto>>();
 
         // Financial endpoints
         group.MapPost("/{id:guid}/invoice", RecordInvoice)
             .WithName("RecordCommitmentInvoice")
-            .WithSummary("Record invoice for commitment")
+            .WithSummary("Registrar factura para compromiso")
             .Produces<CommitmentDto>()
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapPost("/{id:guid}/performance", UpdatePerformance)
             .WithName("UpdateCommitmentPerformance")
-            .WithSummary("Update commitment performance")
+            .WithSummary("Actualizar rendimiento del compromiso")
             .Produces<CommitmentDto>()
             .ProducesValidationProblem()
             .ProducesProblem(404);
@@ -183,30 +183,30 @@ public class CommitmentModule : ICarterModule
         // Reporting endpoints
         group.MapGet("/{id:guid}/revisions", GetCommitmentRevisions)
             .WithName("GetCommitmentRevisions")
-            .WithSummary("Get commitment revisions")
+            .WithSummary("Obtener revisiones del compromiso")
             .Produces<List<CommitmentRevisionDto>>();
 
         group.MapGet("/{id:guid}/financial-summary", GetFinancialSummary)
             .WithName("GetCommitmentFinancialSummary")
-            .WithSummary("Get commitment financial summary")
+            .WithSummary("Obtener resumen financiero del compromiso")
             .Produces<CommitmentFinancialSummary>()
             .ProducesProblem(404);
 
         group.MapGet("/{id:guid}/performance-metrics", GetPerformanceMetrics)
             .WithName("GetCommitmentPerformanceMetrics")
-            .WithSummary("Get commitment performance metrics")
+            .WithSummary("Obtener métricas de rendimiento del compromiso")
             .Produces<CommitmentPerformanceMetrics>()
             .ProducesProblem(404);
 
         group.MapPost("/export", ExportCommitments)
             .WithName("ExportCommitments")
-            .WithSummary("Export commitments")
+            .WithSummary("Exportar compromisos")
             .Produces(200);
 
         // Validation endpoints
         group.MapGet("/validate/number/{number}", ValidateCommitmentNumber)
             .WithName("ValidateCommitmentNumber")
-            .WithSummary("Validate commitment number uniqueness")
+            .WithSummary("Validar unicidad del número de compromiso")
             .Produces<bool>();
     }
 

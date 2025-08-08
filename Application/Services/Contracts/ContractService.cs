@@ -1,8 +1,20 @@
+using Application.Interfaces.Contracts;
+using Application.Interfaces.Common;
+using Application.Services.Base;
+using AutoMapper;
+using Core.DTOs.Common;
 using Core.DTOs.Contracts.ChangeOrders;
 using Core.DTOs.Contracts.Claims;
 using Core.DTOs.Contracts.Contracts;
 using Core.DTOs.Contracts.Valuations;
-
+using Core.DTOs.Contracts.ContractMilestones;
+using Core.Enums.Contracts;
+using Domain.Entities.Contracts.Core;
+using Domain.Entities.Contracts;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System.Linq.Expressions;
+using Core.Exceptions;
 
 namespace Application.Services.Contracts;
 

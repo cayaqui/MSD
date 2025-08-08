@@ -1,15 +1,12 @@
+using Core.DTOs.Common;
+
 namespace Core.DTOs.Organization.Project;
 
 /// <summary>
 /// DTO for filtering projects in search/list operations
 /// </summary>
-public class ProjectFilterDto 
+public class ProjectFilterDto:BaseFilterDto
 {
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 10;
-
-    // Basic filters
-    public string? SearchTerm { get; set; }
     public Guid? OperationId { get; set; }
     public Guid? CompanyId { get; set; }
 
@@ -36,4 +33,5 @@ public class ProjectFilterDto
     // User context filters
     public bool? OnlyMyProjects { get; set; }
     public string? UserRole { get; set; }
+
 }

@@ -1,0 +1,357 @@
+@page "/wbs/templates/{Id:guid}"
+@using Core.DTOs.Configuration.WBSTemplates
+@using Web.Services.Interfaces.Configuration
+@using MudBlazor
+@inject IWBSTemplateApiService WBSTemplateService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject ILoggingService Logger
+@inject IDialogService DialogService
+@attribute [Authorize]
+
+<PageTitle>Detalle Plantilla WBS | EzPro MSD</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <!-- Header -->
+    <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
+    
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (_template != null)
+    {
+        <MudGrid>
+            <MudItem xs="12" md="8">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h5">@_template.Name</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Código: @_template.Code</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" 
+                                       OnClick="Edit">
+                                Editar
+                            </MudButton>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.h6" Class="mb-2">Información General</MudText>
+                            </MudItem>
+                            
+                            <MudItem xs="12" md="6">
+                                <MudField Label="Descripción" Variant="Variant.Text">
+                                    @(_template.Description ?? "Sin descripción")
+                                </MudField>
+                            </MudItem>
+                            
+                            <MudItem xs="12" md="3">
+                                <MudField Label="Tipo de Industria" Variant="Variant.Text">
+                                    @_template.IndustryType
+                                </MudField>
+                            </MudItem>
+                            
+                            <MudItem xs="12" md="3">
+                                <MudField Label="Tipo de Proyecto" Variant="Variant.Text">
+                                    @_template.ProjectType
+                                </MudField>
+                            </MudItem>
+                            
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.h6" Class="mb-2 mt-4">Configuración de Codificación</MudText>
+                            </MudItem>
+                            
+                            <MudItem xs="12" md="3">
+                                <MudField Label="Esquema" Variant="Variant.Text">
+                                    @_template.CodingScheme
+                                </MudField>
+                            </MudItem>
+                            
+                            <MudItem xs="12" md="3">
+                                <MudField Label="Delimitador" Variant="Variant.Text">
+                                    "@_template.Delimiter"
+                                </MudField>
+                            </MudItem>
+                            
+                            <MudItem xs="12" md="3">
+                                <MudField Label="Longitud de Código" Variant="Variant.Text">
+                                    @_template.CodeLength
+                                </MudField>
+                            </MudItem>
+                            
+                            <MudItem xs="12" md="3">
+                                <MudField Label="Códigos Automáticos" Variant="Variant.Text">
+                                    @(_template.AutoGenerateCodes ? "Sí" : "No")
+                                </MudField>
+                            </MudItem>
+                            
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.h6" Class="mb-2 mt-4">Elementos de la Plantilla</MudText>
+                            </MudItem>
+                            
+                            <MudItem xs="12">
+                                @if (_elements.Any())
+                                {
+                                    <MudList T="string">
+                                        @foreach (var element in _elements.OrderBy(e => e.Level).ThenBy(e => e.SequenceNumber))
+                                        {
+                                            <MudListItem T="string">
+                                                <div class="d-flex align-center">
+                                                    <MudText Style="@($"margin-left: {element.Level * 20}px")">
+                                                        <strong>@element.Code</strong> - @element.Name
+                                                    </MudText>
+                                                    @if (element.IsOptional)
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ml-2">Opcional</MudChip>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(element.ElementType))
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Class="ml-2">@element.ElementType</MudChip>
+                                                    }
+                                                </div>
+                                            </MudListItem>
+                                        }
+                                    </MudList>
+                                }
+                                else
+                                {
+                                    <MudAlert Severity="Severity.Info">Esta plantilla no tiene elementos definidos</MudAlert>
+                                }
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            
+            <MudItem xs="12" md="4">
+                <MudCard>
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6" Class="mb-3">Estado y Uso</MudText>
+                        
+                        <MudField Label="Estado" Variant="Variant.Text" Class="mb-3">
+                            @if (_template.IsActive)
+                            {
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small">Activo</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Color="Color.Default" Size="Size.Small">Inactivo</MudChip>
+                            }
+                        </MudField>
+                        
+                        <MudField Label="Visibilidad" Variant="Variant.Text" Class="mb-3">
+                            @(_template.IsPublic ? "Pública" : "Privada")
+                        </MudField>
+                        
+                        <MudField Label="Total de Elementos" Variant="Variant.Text" Class="mb-3">
+                            @_template.TotalElements
+                        </MudField>
+                        
+                        <MudField Label="Niveles Máximos" Variant="Variant.Text" Class="mb-3">
+                            @_template.MaxLevel
+                        </MudField>
+                        
+                        <MudField Label="Veces Utilizada" Variant="Variant.Text" Class="mb-3">
+                            @_template.UsageCount
+                        </MudField>
+                        
+                        @if (_template.LastUsedDate.HasValue)
+                        {
+                            <MudField Label="Última Vez Usada" Variant="Variant.Text" Class="mb-3">
+                                @_template.LastUsedDate.Value.ToString("dd/MM/yyyy")
+                            </MudField>
+                        }
+                        
+                        <MudDivider Class="my-4" />
+                        
+                        <MudText Typo="Typo.h6" Class="mb-3">Acciones</MudText>
+                        
+                        <MudStack Spacing="2">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="Clone">
+                                Clonar Plantilla
+                            </MudButton>
+                            
+                            <MudButton Variant="Variant.Outlined" Color="Color.Info" FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.Download" OnClick="Export">
+                                Exportar
+                            </MudButton>
+                            
+                            @if (_template.IsActive)
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Warning" FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.Block" OnClick="Deactivate">
+                                    Desactivar
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Success" FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.CheckCircle" OnClick="Activate">
+                                    Activar
+                                </MudButton>
+                            }
+                            
+                            <MudButton Variant="Variant.Outlined" Color="Color.Error" FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.Delete" OnClick="Delete">
+                                Eliminar
+                            </MudButton>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Error">No se pudo cargar la plantilla</MudAlert>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    
+    private WBSTemplateDto? _template;
+    private List<WBSTemplateElementDto> _elements = new();
+    private bool _loading = true;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Inicio", href: "/", icon: Icons.Material.Filled.Home),
+            new BreadcrumbItem("WBS", href: null),
+            new BreadcrumbItem("Plantillas", href: "/wbs/templates"),
+            new BreadcrumbItem("Detalle", href: null, disabled: true)
+        };
+        
+        await LoadTemplate();
+    }
+
+    private async Task LoadTemplate()
+    {
+        try
+        {
+            _template = await WBSTemplateService.GetTemplateByIdAsync(Id);
+            if (_template != null)
+            {
+                await LoadElements();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error loading template {Id}");
+            Snackbar.Add("Error al cargar la plantilla", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadElements()
+    {
+        try
+        {
+            var elements = await WBSTemplateService.GetTemplateElementsAsync(Id);
+            _elements = elements.ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading template elements");
+        }
+    }
+
+
+    private void Edit()
+    {
+        Navigation.NavigateTo($"/wbs/templates/{Id}/edit");
+    }
+
+    private void Clone()
+    {
+        // TODO: Implement clone functionality
+        Snackbar.Add("Función de clonar pendiente de implementar", Severity.Info);
+    }
+
+    private async Task Export()
+    {
+        try
+        {
+            var data = await WBSTemplateService.ExportTemplateAsync(Id, "Excel");
+            // TODO: Handle file download
+            Snackbar.Add("Función de exportar pendiente de implementar", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error exporting template");
+            Snackbar.Add("Error al exportar la plantilla", Severity.Error);
+        }
+    }
+
+    private async Task Activate()
+    {
+        try
+        {
+            var success = await WBSTemplateService.ActivateTemplateAsync(Id);
+            if (success)
+            {
+                await LoadTemplate();
+                Snackbar.Add("Plantilla activada", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error activating template");
+            Snackbar.Add("Error al activar la plantilla", Severity.Error);
+        }
+    }
+
+    private async Task Deactivate()
+    {
+        try
+        {
+            var success = await WBSTemplateService.DeactivateTemplateAsync(Id);
+            if (success)
+            {
+                await LoadTemplate();
+                Snackbar.Add("Plantilla desactivada", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deactivating template");
+            Snackbar.Add("Error al desactivar la plantilla", Severity.Error);
+        }
+    }
+
+    private async Task Delete()
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Confirmar eliminación",
+            $"¿Está seguro de eliminar la plantilla '{_template?.Name}'?",
+            yesText: "Eliminar", cancelText: "Cancelar");
+
+        if (result == true)
+        {
+            try
+            {
+                var success = await WBSTemplateService.DeleteTemplateAsync(Id);
+                if (success)
+                {
+                    Snackbar.Add("Plantilla eliminada", Severity.Success);
+                    Navigation.NavigateTo("/wbs/templates");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting template");
+                Snackbar.Add("Error al eliminar la plantilla", Severity.Error);
+            }
+        }
+    }
+}

@@ -1,0 +1,440 @@
+@page "/documents/new"
+@page "/documents/{DocumentId:guid}/edit"
+@using Core.DTOs.Documents.Document
+@using Core.Enums.Documents
+@using Web.Services.Interfaces.Documents
+@using Web.Services.Interfaces.Organization
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@attribute [Authorize]
+@inject IDocumentApiService DocumentService
+@inject IProjectApiService ProjectService
+@inject IDisciplineApiService DisciplineService
+@inject IPhaseApiService PhaseService
+@inject INavigationService NavigationService
+@inject IToastService ToastService
+@inject ILoggingService Logger
+
+<PageTitle>@(_isNew ? "New Document" : "Edit Document")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
+    
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5">
+                    <MudIcon Icon="@(_isNew ? Icons.Material.Filled.Add : Icons.Material.Filled.Edit)" Class="mr-2" />
+                    @(_isNew ? "New Document" : "Edit Document")
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        
+        <MudCardContent>
+            @if (_loading)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            }
+            else
+            {
+                <EditForm Model="@_model" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    
+                    <MudGrid>
+                        <!-- Basic Information -->
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.h6" Class="mb-3">Basic Information</MudText>
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_model.DocumentNumber" Label="Document Number *" 
+                                        Variant="Variant.Outlined" Required="true"
+                                        Disabled="@(!_isNew)" />
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="6">
+                            <MudSelect @bind-Value="_model.Type" Label="Document Type *" 
+                                     Variant="Variant.Outlined" Required="true">
+                                @foreach (DocumentType type in Enum.GetValues(typeof(DocumentType)))
+                                {
+                                    <MudSelectItem Value="@type">@type.ToString()</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_model.Title" Label="Title *" 
+                                        Variant="Variant.Outlined" Required="true" />
+                        </MudItem>
+                        
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_model.Description" Label="Description" 
+                                        Variant="Variant.Outlined" Lines="3" />
+                        </MudItem>
+                        
+                        <!-- Project Information -->
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.h6" Class="mb-3 mt-4">Project Information</MudText>
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="4">
+                            <MudSelect @bind-Value="_model.ProjectId" Label="Project *" 
+                                     Variant="Variant.Outlined" Required="true"
+                                     Disabled="@(!_isNew && _existingDocument != null)">
+                                @foreach (var project in _projects)
+                                {
+                                    <MudSelectItem Value="@project.Id">@project.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="4">
+                            <MudSelect @bind-Value="_model.DisciplineId" Label="Discipline" 
+                                     Variant="Variant.Outlined">
+                                <MudSelectItem Value="@((Guid?)null)">None</MudSelectItem>
+                                @foreach (var discipline in _disciplines)
+                                {
+                                    <MudSelectItem Value="@((Guid?)discipline.Id)">@discipline.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="4">
+                            <MudSelect @bind-Value="_model.PhaseId" Label="Phase" 
+                                     Variant="Variant.Outlined">
+                                <MudSelectItem Value="@((Guid?)null)">None</MudSelectItem>
+                                @foreach (var phase in _phases)
+                                {
+                                    <MudSelectItem Value="@((Guid?)phase.Id)">@phase.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        
+                        <!-- Classification -->
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.h6" Class="mb-3 mt-4">Classification</MudText>
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="4">
+                            <MudSelect @bind-Value="_model.Category" Label="Category" 
+                                     Variant="Variant.Outlined">
+                                <MudSelectItem Value="@((DocumentCategory?)null)">None</MudSelectItem>
+                                @foreach (DocumentCategory category in Enum.GetValues(typeof(DocumentCategory)))
+                                {
+                                    <MudSelectItem Value="@((DocumentCategory?)category)">@category.ToString()</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="4">
+                            <MudSelect @bind-Value="_model.Confidentiality" Label="Confidentiality" 
+                                     Variant="Variant.Outlined">
+                                @foreach (DocumentConfidentiality conf in Enum.GetValues(typeof(DocumentConfidentiality)))
+                                {
+                                    <MudSelectItem Value="@conf">@conf.ToString()</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="4">
+                            <MudSelect @bind-Value="_model.SecurityLevel" Label="Security Level" 
+                                     Variant="Variant.Outlined">
+                                @foreach (DocumentSecurityLevel level in Enum.GetValues(typeof(DocumentSecurityLevel)))
+                                {
+                                    <MudSelectItem Value="@level">@level.ToString()</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        
+                        <!-- Additional Information -->
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.h6" Class="mb-3 mt-4">Additional Information</MudText>
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_model.ClientDocumentNumber" Label="Client Document Number" 
+                                        Variant="Variant.Outlined" />
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_model.ContractorDocumentNumber" Label="Contractor Document Number" 
+                                        Variant="Variant.Outlined" />
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_model.Keywords" Label="Keywords" 
+                                        Variant="Variant.Outlined" 
+                                        HelperText="Comma-separated keywords" />
+                        </MudItem>
+                        
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_model.Tags" Label="Tags" 
+                                        Variant="Variant.Outlined" 
+                                        HelperText="Comma-separated tags" />
+                        </MudItem>
+                        
+                        <!-- File Upload (for new documents) -->
+                        @if (_isNew)
+                        {
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.h6" Class="mb-3 mt-4">File Upload</MudText>
+                            </MudItem>
+                            
+                            <MudItem xs="12">
+                                <MudFileUpload T="IBrowserFile" Accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.dwg,.dxf"
+                                             MaximumFileCount="1" OnFilesChanged="OnFileSelected">
+                                    <ButtonTemplate>
+                                        <MudButton HtmlTag="label" Variant="Variant.Filled" Color="Color.Primary"
+                                                 StartIcon="@Icons.Material.Filled.CloudUpload" for="@context">
+                                            Select File
+                                        </MudButton>
+                                    </ButtonTemplate>
+                                </MudFileUpload>
+                                
+                                @if (_selectedFile != null)
+                                {
+                                    <MudChip Color="Color.Info" OnClose="@(() => _selectedFile = null)" Class="mt-2">
+                                        @_selectedFile.Name (@FormatFileSize(_selectedFile.Size))
+                                    </MudChip>
+                                }
+                            </MudItem>
+                        }
+                    </MudGrid>
+                    
+                    <MudDivider Class="my-4" />
+                    
+                    <div class="d-flex justify-end gap-2">
+                        <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">
+                            Cancel
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit"
+                                 Disabled="@_saving">
+                            @if (_saving)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            @(_isNew ? "Create Document" : "Save Changes")
+                        </MudButton>
+                    </div>
+                </EditForm>
+            }
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    [Parameter] public Guid? DocumentId { get; set; }
+    
+    private bool _isNew => DocumentId == null;
+    private bool _loading = true;
+    private bool _saving = false;
+    
+    private CreateDocumentDto _createModel = new();
+    private UpdateDocumentDto _updateModel = new();
+    private dynamic _model => _isNew ? (object)_createModel : _updateModel;
+    
+    private DocumentDto? _existingDocument;
+    private IBrowserFile? _selectedFile;
+    
+    private List<Core.DTOs.Organization.Project.ProjectDto> _projects = new();
+    private List<Core.DTOs.Organization.Discipline.DisciplineDto> _disciplines = new();
+    private List<Core.DTOs.Organization.Phase.PhaseDto> _phases = new();
+    
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        UpdateBreadcrumbs();
+        await LoadLookupData();
+        
+        if (!_isNew && DocumentId.HasValue)
+        {
+            await LoadDocument();
+        }
+        else
+        {
+            _createModel = new CreateDocumentDto
+            {
+                Type = DocumentType.Document,
+                Status = DocumentStatus.Draft,
+                Confidentiality = DocumentConfidentiality.Internal,
+                SecurityLevel = DocumentSecurityLevel.None
+            };
+            _loading = false;
+        }
+    }
+
+    private void UpdateBreadcrumbs()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Documents", href: "/documents"),
+            new BreadcrumbItem(_isNew ? "New" : "Edit", href: null, disabled: true)
+        };
+    }
+
+    private async Task LoadLookupData()
+    {
+        try
+        {
+            // Load projects
+            var projectResult = await ProjectService.GetProjectsAsync(new Core.DTOs.Organization.Project.ProjectFilterDto 
+            { 
+                PageSize = 100,
+                IncludeInactive = false 
+            });
+            
+            if (projectResult != null)
+            {
+                _projects = projectResult.Items.ToList();
+            }
+
+            // Load disciplines
+            var disciplineResult = await DisciplineService.GetDisciplinesAsync(new Core.DTOs.Common.SimpleQueryParameters { PageSize = 100 });
+            if (disciplineResult != null)
+            {
+                _disciplines = disciplineResult.Items.ToList();
+            }
+
+            // Load phases
+            var phaseResult = await PhaseService.GetPhasesAsync(new Core.DTOs.Common.SimpleQueryParameters { PageSize = 100 });
+            if (phaseResult != null)
+            {
+                _phases = phaseResult.Items.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading lookup data");
+        }
+    }
+
+    private async Task LoadDocument()
+    {
+        try
+        {
+            _existingDocument = await DocumentService.GetDocumentByIdAsync(DocumentId!.Value);
+            
+            if (_existingDocument != null)
+            {
+                _updateModel = new UpdateDocumentDto
+                {
+                    Title = _existingDocument.Title,
+                    Description = _existingDocument.Description,
+                    Type = _existingDocument.Type,
+                    Category = _existingDocument.Category,
+                    DisciplineId = _existingDocument.DisciplineId,
+                    PhaseId = _existingDocument.PhaseId,
+                    PackageId = _existingDocument.PackageId,
+                    ClientDocumentNumber = _existingDocument.ClientDocumentNumber,
+                    ContractorDocumentNumber = _existingDocument.ContractorDocumentNumber,
+                    Keywords = _existingDocument.Keywords,
+                    Tags = _existingDocument.Tags,
+                    Confidentiality = _existingDocument.Confidentiality,
+                    SecurityLevel = _existingDocument.SecurityLevel
+                };
+            }
+            else
+            {
+                ToastService.ShowError("Document not found");
+                NavigationService.NavigateTo("/documents");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error loading document {DocumentId}");
+            ToastService.ShowError("Failed to load document");
+            NavigationService.NavigateTo("/documents");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            _saving = true;
+            
+            if (_isNew)
+            {
+                if (_selectedFile != null)
+                {
+                    var result = await DocumentService.UploadDocumentAsync(_createModel, _selectedFile);
+                    if (result != null)
+                    {
+                        ToastService.ShowSuccess("Document created successfully");
+                        NavigationService.NavigateTo($"/documents/{result.Id}");
+                    }
+                    else
+                    {
+                        ToastService.ShowError("Failed to create document");
+                    }
+                }
+                else
+                {
+                    var result = await DocumentService.CreateDocumentAsync(_createModel);
+                    if (result != null)
+                    {
+                        ToastService.ShowSuccess("Document created successfully");
+                        NavigationService.NavigateTo($"/documents/{result.Id}");
+                    }
+                    else
+                    {
+                        ToastService.ShowError("Failed to create document");
+                    }
+                }
+            }
+            else
+            {
+                var result = await DocumentService.UpdateDocumentAsync(DocumentId!.Value, _updateModel);
+                if (result != null)
+                {
+                    ToastService.ShowSuccess("Document updated successfully");
+                    NavigationService.NavigateTo($"/documents/{DocumentId}");
+                }
+                else
+                {
+                    ToastService.ShowError("Failed to update document");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving document");
+            ToastService.ShowError("An error occurred while saving the document");
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationService.NavigateTo("/documents");
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        int order = 0;
+        double size = bytes;
+        
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+        
+        return $"{size:0.##} {sizes[order]}";
+    }
+}

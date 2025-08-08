@@ -1,0 +1,48 @@
+@using Core.DTOs.Cost.Budgets
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudText Class="mb-4">
+            @if (IsApproval)
+            {
+                <span>Please provide comments for approving budget '@BudgetName':</span>
+            }
+            else
+            {
+                <span>Please provide a reason for rejecting budget '@BudgetName':</span>
+            }
+        </MudText>
+        <MudTextField @bind-Value="_comments" Label="@(IsApproval ? "Comments (Optional)" : "Reason (Required)")" 
+                      Variant="Variant.Outlined" Lines="4" 
+                      Required="@(!IsApproval)" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="@(IsApproval ? Color.Success : Color.Error)" Variant="Variant.Filled" 
+                   OnClick="Submit" Disabled="@(!IsApproval && string.IsNullOrWhiteSpace(_comments))">
+            @(IsApproval ? "Approve" : "Reject")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public string BudgetName { get; set; } = string.Empty;
+    [Parameter] public bool IsApproval { get; set; } = true;
+    
+    private string _comments = string.Empty;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        if (!IsApproval && string.IsNullOrWhiteSpace(_comments))
+        {
+            return;
+        }
+        
+        MudDialog.Close(DialogResult.Ok(_comments));
+    }
+}

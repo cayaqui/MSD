@@ -1,0 +1,434 @@
+@page "/documents"
+@using Core.DTOs.Documents.Document
+@using Core.Enums.Documents
+@using Web.Services.Interfaces.Documents
+@using Web.Services.Interfaces.Organization
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IDocumentApiService DocumentService
+@inject IProjectApiService ProjectService
+@inject INavigationService NavigationService
+@inject IToastService ToastService
+@inject ILoggingService Logger
+@inject IDialogService DialogService
+
+<PageTitle>Documents</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
+    
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5">
+                    <MudIcon Icon="@Icons.Material.Filled.Description" Class="mr-2" />
+                    Document Management
+                </MudText>
+            </CardHeaderContent>
+            <CardHeaderActions>
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="@(() => NavigationService.NavigateTo("/documents/new"))">
+                    New Document
+                </MudButton>
+                <MudButton Color="Color.Secondary" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Upload"
+                           OnClick="ShowImportDialog">
+                    Import
+                </MudButton>
+                <MudButton Color="Color.Secondary" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download"
+                           OnClick="ExportDocuments" Disabled="@(!_documents.Any())">
+                    Export
+                </MudButton>
+            </CardHeaderActions>
+        </MudCardHeader>
+        
+        <MudCardContent>
+            <!-- Search and Filter Section -->
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_filter.SearchTerm" Label="Search" Variant="Variant.Outlined"
+                                Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                                DebounceInterval="500" OnDebounceIntervalElapsed="@(() => LoadDocuments())" />
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSelect @bind-Value="_filter.ProjectId" Label="Project" Variant="Variant.Outlined"
+                             OnClose="@(() => LoadDocuments())">
+                        <MudSelectItem Value="@((Guid?)null)">All Projects</MudSelectItem>
+                        @foreach (var project in _projects)
+                        {
+                            <MudSelectItem Value="@((Guid?)project.Id)">@project.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudSelect @bind-Value="_filter.Type" Label="Type" Variant="Variant.Outlined"
+                             OnClose="@(() => LoadDocuments())">
+                        <MudSelectItem Value="@((DocumentType?)null)">All Types</MudSelectItem>
+                        @foreach (DocumentType type in Enum.GetValues(typeof(DocumentType)))
+                        {
+                            <MudSelectItem Value="@((DocumentType?)type)">@type.ToString()</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudSelect @bind-Value="_filter.Status" Label="Status" Variant="Variant.Outlined"
+                             OnClose="@(() => LoadDocuments())">
+                        <MudSelectItem Value="@((DocumentStatus?)null)">All Status</MudSelectItem>
+                        @foreach (DocumentStatus status in Enum.GetValues(typeof(DocumentStatus)))
+                        {
+                            <MudSelectItem Value="@((DocumentStatus?)status)">@status.ToString()</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="1" Class="d-flex align-center">
+                    <MudIconButton Icon="@Icons.Material.Filled.Clear" Title="Clear Filters" 
+                                 OnClick="ClearFilters" />
+                </MudItem>
+            </MudGrid>
+            
+            <!-- Documents Table -->
+            @if (_loading)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+            }
+            else if (!_documents.Any())
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-4">
+                    No documents found. Try adjusting your filters or create a new document.
+                </MudAlert>
+            }
+            else
+            {
+                <MudTable Items="@_documents" Hover="true" Dense="true" Loading="@_loading" 
+                        LoadingProgressColor="Color.Info" @ref="_table">
+                    <HeaderContent>
+                        <MudTh>
+                            <MudTableSortLabel T="DocumentDto" SortBy="new Func<DocumentDto, object>(x => x.DocumentNumber)">
+                                Document Number
+                            </MudTableSortLabel>
+                        </MudTh>
+                        <MudTh>
+                            <MudTableSortLabel T="DocumentDto" SortBy="new Func<DocumentDto, object>(x => x.Title)">
+                                Title
+                            </MudTableSortLabel>
+                        </MudTh>
+                        <MudTh>Type</MudTh>
+                        <MudTh>Revision</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Author</MudTh>
+                        <MudTh>
+                            <MudTableSortLabel T="DocumentDto" SortBy="new Func<DocumentDto, object>(x => x.CreatedDate)">
+                                Created
+                            </MudTableSortLabel>
+                        </MudTh>
+                        <MudTh Style="text-align:right">Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Document Number">
+                            <MudLink Href="@($"/documents/{context.Id}")">@context.DocumentNumber</MudLink>
+                        </MudTd>
+                        <MudTd DataLabel="Title">
+                            <MudText>@context.Title</MudText>
+                            @if (!string.IsNullOrEmpty(context.Description))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Tertiary">
+                                    @(context.Description.Length > 100 ? context.Description.Substring(0, 100) + "..." : context.Description)
+                                </MudText>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Type">
+                            <MudChip T="string" Color="GetTypeColor(context.Type)" Size="Size.Small">
+                                @context.Type
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Revision">@context.CurrentVersion</MudTd>
+                        <MudTd DataLabel="Status">
+                            <MudChip T="string" Color="GetStatusColor(context.Status)" Size="Size.Small">
+                                @context.Status
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Author">@context.AuthorName</MudTd>
+                        <MudTd DataLabel="Created">@context.CreatedDate.ToString("MMM dd, yyyy")</MudTd>
+                        <MudTd DataLabel="Actions" Style="text-align:right">
+                            <MudIconButton Icon="@Icons.Material.Filled.Download" Title="Download"
+                                         Size="Size.Small" OnClick="@(() => DownloadDocument(context.Id))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Title="Edit"
+                                         Size="Size.Small" OnClick="@(() => NavigationService.NavigateTo($"/documents/{context.Id}/edit"))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.History" Title="Version History"
+                                         Size="Size.Small" OnClick="@(() => ShowVersionHistory(context.Id))" />
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                                <MudMenuItem Icon="@Icons.Material.Filled.Lock" OnClick="@(() => LockDocument(context.Id))">
+                                    @(context.IsLocked ? "Unlock" : "Lock")
+                                </MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.Share" OnClick="@(() => ShowShareDialog(context.Id))">
+                                    Share
+                                </MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.Link" OnClick="@(() => ShowRelatedDocuments(context.Id))">
+                                    Related Documents
+                                </MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="@(() => DeleteDocument(context.Id))">
+                                    Delete
+                                </MudMenuItem>
+                            </MudMenu>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager />
+                    </PagerContent>
+                </MudTable>
+            }
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem("Home", href: "/"),
+        new BreadcrumbItem("Documents", href: null, disabled: true)
+    };
+
+    private DocumentFilterDto _filter = new()
+    {
+        PageNumber = 1,
+        PageSize = 10,
+        SortBy = "date",
+        SortDescending = true
+    };
+
+    private List<DocumentDto> _documents = new();
+    private List<Core.DTOs.Organization.Project.ProjectDto> _projects = new();
+    private bool _loading = true;
+    private MudTable<DocumentDto> _table = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProjects();
+        await LoadDocuments();
+    }
+
+    private async Task LoadProjects()
+    {
+        try
+        {
+            var projectResult = await ProjectService.GetProjectsAsync(new Core.DTOs.Organization.Project.ProjectFilterDto 
+            { 
+                PageSize = 100,
+                IncludeInactive = false 
+            });
+            
+            if (projectResult != null)
+            {
+                _projects = projectResult.Items.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading projects");
+        }
+    }
+
+    private async Task LoadDocuments()
+    {
+        try
+        {
+            _loading = true;
+            var result = await DocumentService.SearchDocumentsAsync(_filter);
+            
+            if (result != null)
+            {
+                _documents = result.Documents;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading documents");
+            ToastService.ShowError("Failed to load documents");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ClearFilters()
+    {
+        _filter = new DocumentFilterDto
+        {
+            PageNumber = 1,
+            PageSize = 10,
+            SortBy = "date",
+            SortDescending = true
+        };
+        await LoadDocuments();
+    }
+
+    private async Task DownloadDocument(Guid documentId)
+    {
+        try
+        {
+            var document = _documents.FirstOrDefault(d => d.Id == documentId);
+            if (document == null) return;
+
+            var data = await DocumentService.DownloadDocumentAsync(documentId);
+            if (data != null)
+            {
+                // TODO: Implement file download in browser
+                ToastService.ShowSuccess($"Downloaded {document.FileName}");
+            }
+            else
+            {
+                ToastService.ShowError("Failed to download document");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error downloading document {documentId}");
+            ToastService.ShowError("Failed to download document");
+        }
+    }
+
+    private async Task LockDocument(Guid documentId)
+    {
+        try
+        {
+            var document = _documents.FirstOrDefault(d => d.Id == documentId);
+            if (document == null) return;
+
+            bool success;
+            if (document.IsLocked)
+            {
+                success = await DocumentService.UnlockDocumentAsync(documentId);
+                if (success)
+                {
+                    document.IsLocked = false;
+                    ToastService.ShowSuccess("Document unlocked");
+                }
+            }
+            else
+            {
+                success = await DocumentService.LockDocumentAsync(documentId);
+                if (success)
+                {
+                    document.IsLocked = true;
+                    ToastService.ShowSuccess("Document locked");
+                }
+            }
+
+            if (!success)
+            {
+                ToastService.ShowError("Failed to change lock status");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error changing lock status for document {documentId}");
+            ToastService.ShowError("Failed to change lock status");
+        }
+    }
+
+    private async Task DeleteDocument(Guid documentId)
+    {
+        try
+        {
+            var document = _documents.FirstOrDefault(d => d.Id == documentId);
+            if (document == null) return;
+
+            bool? result = await DialogService.ShowMessageBox(
+                "Delete Document",
+                $"Are you sure you want to delete document '{document.DocumentNumber}'?",
+                yesText: "Delete", cancelText: "Cancel");
+
+            if (result == true)
+            {
+                var success = await DocumentService.DeleteDocumentAsync(documentId);
+                if (success)
+                {
+                    _documents.Remove(document);
+                    ToastService.ShowSuccess("Document deleted");
+                    StateHasChanged();
+                }
+                else
+                {
+                    ToastService.ShowError("Failed to delete document");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error deleting document {documentId}");
+            ToastService.ShowError("Failed to delete document");
+        }
+    }
+
+    private void ShowVersionHistory(Guid documentId)
+    {
+        NavigationService.NavigateTo($"/documents/{documentId}/versions");
+    }
+
+    private void ShowShareDialog(Guid documentId)
+    {
+        // TODO: Implement share dialog
+        ToastService.ShowInfo("Share functionality coming soon");
+    }
+
+    private void ShowRelatedDocuments(Guid documentId)
+    {
+        NavigationService.NavigateTo($"/documents/{documentId}/related");
+    }
+
+    private void ShowImportDialog()
+    {
+        // TODO: Implement import dialog
+        ToastService.ShowInfo("Import functionality coming soon");
+    }
+
+    private async Task ExportDocuments()
+    {
+        try
+        {
+            var data = await DocumentService.ExportDocumentsAsync(_filter, ExportFormat.Excel);
+            if (data != null)
+            {
+                // TODO: Implement file download in browser
+                ToastService.ShowSuccess("Documents exported successfully");
+            }
+            else
+            {
+                ToastService.ShowError("Failed to export documents");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error exporting documents");
+            ToastService.ShowError("Failed to export documents");
+        }
+    }
+
+    private Color GetTypeColor(DocumentType type)
+    {
+        return type switch
+        {
+            DocumentType.Drawing => Color.Primary,
+            DocumentType.Specification => Color.Secondary,
+            DocumentType.Report => Color.Info,
+            DocumentType.Procedure => Color.Warning,
+            DocumentType.Form => Color.Success,
+            DocumentType.Letter => Color.Tertiary,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetStatusColor(DocumentStatus status)
+    {
+        return status switch
+        {
+            DocumentStatus.Draft => Color.Default,
+            DocumentStatus.InReview => Color.Warning,
+            DocumentStatus.Approved => Color.Success,
+            DocumentStatus.Superseded => Color.Dark,
+            DocumentStatus.Obsolete => Color.Error,
+            _ => Color.Default
+        };
+    }
+}

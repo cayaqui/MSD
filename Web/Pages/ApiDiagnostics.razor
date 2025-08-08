@@ -1,0 +1,169 @@
+@page "/api-diagnostics"
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject IAccessTokenProvider TokenProvider
+@inject HttpClient Http
+@inject IHttpClientFactory HttpClientFactory
+@inject IConfiguration Configuration
+
+<PageTitle>API Diagnostics</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">API Diagnostics</MudText>
+    
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudText Typo="Typo.h6" Class="mb-2">Configuration</MudText>
+            <MudSimpleTable>
+                <tbody>
+                    <tr>
+                        <td>API Base URL</td>
+                        <td>@_apiBaseUrl</td>
+                    </tr>
+                    <tr>
+                        <td>Token Available</td>
+                        <td>
+                            <MudChip T="string" Color="@(_hasToken ? Color.Success : Color.Error)" Size="Size.Small">
+                                @(_hasToken ? "Yes" : "No")
+                            </MudChip>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Token Expiration</td>
+                        <td>@_tokenExpiration</td>
+                    </tr>
+                </tbody>
+            </MudSimpleTable>
+        </MudCardContent>
+    </MudCard>
+    
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudText Typo="Typo.h6" Class="mb-2">API Tests</MudText>
+            
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="TestHealthEndpoint" Class="mb-2">
+                Test Health Endpoint
+            </MudButton>
+            
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="TestAuthEndpoint" Class="mb-2 ml-2">
+                Test Auth Endpoint
+            </MudButton>
+            
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="TestProjectsEndpoint" Class="mb-2 ml-2">
+                Test Projects Endpoint
+            </MudButton>
+        </MudCardContent>
+    </MudCard>
+    
+    @if (!string.IsNullOrEmpty(_testResult))
+    {
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-2">Test Results</MudText>
+                <pre style="white-space: pre-wrap; word-wrap: break-word;">@_testResult</pre>
+            </MudCardContent>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    private string _apiBaseUrl = "";
+    private bool _hasToken = false;
+    private string _tokenExpiration = "N/A";
+    private string _testResult = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _apiBaseUrl = Configuration["ApiSettings:BaseUrl"] ?? "Not configured";
+        
+        var tokenResult = await TokenProvider.RequestAccessToken();
+        if (tokenResult.TryGetToken(out var token))
+        {
+            _hasToken = true;
+            _tokenExpiration = token.Expires.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+    }
+
+    private async Task TestHealthEndpoint()
+    {
+        try
+        {
+            _testResult = "Testing health endpoint...\n";
+            var response = await Http.GetAsync($"{_apiBaseUrl}health");
+            _testResult += $"Status: {response.StatusCode}\n";
+            _testResult += $"Response: {await response.Content.ReadAsStringAsync()}\n";
+        }
+        catch (Exception ex)
+        {
+            _testResult = $"Error: {ex.Message}\n{ex.StackTrace}";
+        }
+    }
+
+    private async Task TestAuthEndpoint()
+    {
+        try
+        {
+            _testResult = "Testing auth endpoint...\n";
+            var client = HttpClientFactory.CreateClient("EzProAPI");
+            
+            // Log headers
+            _testResult += "Headers:\n";
+            foreach (var header in client.DefaultRequestHeaders)
+            {
+                _testResult += $"  {header.Key}: {string.Join(", ", header.Value)}\n";
+            }
+            
+            var response = await client.GetAsync("api/auth/me");
+            _testResult += $"\nStatus: {response.StatusCode}\n";
+            
+            // Log response headers
+            _testResult += "\nResponse Headers:\n";
+            foreach (var header in response.Headers)
+            {
+                _testResult += $"  {header.Key}: {string.Join(", ", header.Value)}\n";
+            }
+            
+            _testResult += $"\nResponse: {await response.Content.ReadAsStringAsync()}\n";
+        }
+        catch (Exception ex)
+        {
+            _testResult = $"Error: {ex.Message}\n{ex.StackTrace}";
+        }
+    }
+
+    private async Task TestProjectsEndpoint()
+    {
+        try
+        {
+            _testResult = "Testing projects endpoint...\n";
+            var client = HttpClientFactory.CreateClient("EzProAPI");
+            
+            // Add timeout
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            
+            var response = await client.GetAsync("api/projects?pageNumber=1&pageSize=10?", cts.Token);
+            _testResult += $"Status: {response.StatusCode}\n";
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                _testResult += $"Response Length: {content.Length} characters\n";
+                _testResult += $"Response Preview: {content.Substring(0, Math.Min(500, content.Length))}...\n";
+            }
+            else
+            {
+                _testResult += $"Error Response: {await response.Content.ReadAsStringAsync()}\n";
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            _testResult = "Request timed out after 30 seconds. This might indicate:\n";
+            _testResult += "- The API is not responding\n";
+            _testResult += "- CORS is blocking the request\n";
+            _testResult += "- Authentication token is not being sent properly\n";
+        }
+        catch (Exception ex)
+        {
+            _testResult = $"Error: {ex.Message}\n{ex.StackTrace}";
+        }
+    }
+}

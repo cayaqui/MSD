@@ -28,6 +28,13 @@ public class ApiService : IApiService
     public async Task<T?> GetAsync<T>(string endpoint)
     {
         _logger.LogDebug("GET request to: {0}", endpoint);
+        _logger.LogDebug("Base URL: {0}", _httpClient.BaseAddress);
+        
+        // Log headers
+        foreach (var header in _httpClient.DefaultRequestHeaders)
+        {
+            _logger.LogDebug("Header {0}: {1}", header.Key, string.Join(", ", header.Value));
+        }
         
         try
         {
@@ -49,13 +56,47 @@ public class ApiService : IApiService
         {
             _logger.LogError(ex, "Network error during GET request to {0}", endpoint);
             _toastService.ShowError("Network error. Please check your connection.");
-            throw;
+            return default;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Request timeout during GET request to {0}", endpoint);
+            _toastService.ShowError("Request timed out. Please try again.");
+            return default;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error during GET request to {0}", endpoint);
             _toastService.ShowError("An unexpected error occurred.");
-            throw;
+            return default;
+        }
+    }
+    
+    public async Task PostAsync<TRequest>(string endpoint, TRequest data)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync(endpoint, data);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                await HandleErrorResponse(response);
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Network error during POST request to {0}", endpoint);
+            _toastService.ShowError("Network error. Please check your connection.");
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Request timeout during POST request to {0}", endpoint);
+            _toastService.ShowError("Request timed out. Please try again.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during POST request to {0}", endpoint);
+            _toastService.ShowError("An unexpected error occurred.");
         }
     }
     
@@ -76,13 +117,49 @@ public class ApiService : IApiService
         }
         catch (HttpRequestException ex)
         {
+            _logger.LogError(ex, "Network error during POST request to {0}", endpoint);
             _toastService.ShowError("Network error. Please check your connection.");
-            throw;
+            return default;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Request timeout during POST request to {0}", endpoint);
+            _toastService.ShowError("Request timed out. Please try again.");
+            return default;
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error during POST request to {0}", endpoint);
             _toastService.ShowError("An unexpected error occurred.");
-            throw;
+            return default;
+        }
+    }
+    
+    public async Task PutAsync<TRequest>(string endpoint, TRequest data)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync(endpoint, data);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                await HandleErrorResponse(response);
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Network error during PUT request to {0}", endpoint);
+            _toastService.ShowError("Network error. Please check your connection.");
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Request timeout during PUT request to {0}", endpoint);
+            _toastService.ShowError("Request timed out. Please try again.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during PUT request to {0}", endpoint);
+            _toastService.ShowError("An unexpected error occurred.");
         }
     }
     
@@ -103,13 +180,21 @@ public class ApiService : IApiService
         }
         catch (HttpRequestException ex)
         {
+            _logger.LogError(ex, "Network error during POST request to {0}", endpoint);
             _toastService.ShowError("Network error. Please check your connection.");
-            throw;
+            return default;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Request timeout during POST request to {0}", endpoint);
+            _toastService.ShowError("Request timed out. Please try again.");
+            return default;
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error during POST request to {0}", endpoint);
             _toastService.ShowError("An unexpected error occurred.");
-            throw;
+            return default;
         }
     }
     
@@ -129,13 +214,21 @@ public class ApiService : IApiService
         }
         catch (HttpRequestException ex)
         {
+            _logger.LogError(ex, "Network error during POST request to {0}", endpoint);
             _toastService.ShowError("Network error. Please check your connection.");
-            throw;
+            return default;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Request timeout during POST request to {0}", endpoint);
+            _toastService.ShowError("Request timed out. Please try again.");
+            return default;
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error during POST request to {0}", endpoint);
             _toastService.ShowError("An unexpected error occurred.");
-            throw;
+            return default;
         }
     }
     
@@ -155,13 +248,21 @@ public class ApiService : IApiService
         }
         catch (HttpRequestException ex)
         {
+            _logger.LogError(ex, "Network error during POST request to {0}", endpoint);
             _toastService.ShowError("Network error. Please check your connection.");
-            throw;
+            return default;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Request timeout during POST request to {0}", endpoint);
+            _toastService.ShowError("Request timed out. Please try again.");
+            return default;
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error during POST request to {0}", endpoint);
             _toastService.ShowError("An unexpected error occurred.");
-            throw;
+            return default;
         }
     }
     
@@ -182,13 +283,21 @@ public class ApiService : IApiService
         }
         catch (HttpRequestException ex)
         {
+            _logger.LogError(ex, "Network error during POST request to {0}", endpoint);
             _toastService.ShowError("Network error. Please check your connection.");
-            throw;
+            return default;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Request timeout during POST request to {0}", endpoint);
+            _toastService.ShowError("Request timed out. Please try again.");
+            return default;
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error during POST request to {0}", endpoint);
             _toastService.ShowError("An unexpected error occurred.");
-            throw;
+            return default;
         }
     }
     

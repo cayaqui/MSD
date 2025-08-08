@@ -11,12 +11,12 @@ public class ReorderWBSElementsDtoValidator : AbstractValidator<ReorderWBSElemen
     public ReorderWBSElementsDtoValidator()
     {
         RuleFor(x => x.ParentId)
-            .NotEmpty().WithMessage("Parent ID is required");
+            .NotEmpty().WithMessage("El ID del padre es requerido");
 
         RuleFor(x => x.Elements)
-            .NotEmpty().WithMessage("Elements list cannot be empty")
-            .Must(HaveUniqueIds).WithMessage("Element IDs must be unique")
-            .Must(HaveUniqueSequenceNumbers).WithMessage("Sequence numbers must be unique");
+            .NotEmpty().WithMessage("La lista de elementos no puede estar vacía")
+            .Must(HaveUniqueIds).WithMessage("Los IDs de elementos deben ser únicos")
+            .Must(HaveUniqueSequenceNumbers).WithMessage("Los números de secuencia deben ser únicos");
 
         RuleForEach(x => x.Elements)
             .SetValidator(new WBSElementOrderDtoValidator());

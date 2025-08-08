@@ -1,0 +1,305 @@
+@page "/wbs/templates"
+@using Core.DTOs.Configuration.WBSTemplates
+@using Web.Services.Interfaces.Configuration
+@using MudBlazor
+@inject IWBSTemplateApiService WBSTemplateService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILoggingService Logger
+@attribute [Authorize]
+
+<PageTitle>Plantillas WBS | EzPro MSD</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <!-- Header -->
+    <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
+    
+    <MudGrid>
+        <MudItem xs="12">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h5">Plantillas WBS</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateNew">
+                            Nueva Plantilla
+                        </MudButton>
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    <!-- Search and Filters -->
+                    <MudGrid Class="mb-4">
+                        <MudItem xs="12" md="4">
+                            <MudTextField T="string" @bind-Value="_searchTerm" Label="Buscar" Variant="Variant.Outlined" 
+                                          Immediate="true" DebounceInterval="300" OnDebounceIntervalElapsed="OnSearchChanged"
+                                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudSelect T="string" @bind-Value="_selectedIndustry" Label="Tipo de Industria" Variant="Variant.Outlined" 
+                                       AnchorOrigin="Origin.BottomCenter" ClearAble="true" OnClearButtonClick="ClearIndustryFilter">
+                                <MudSelectItem Value="@("")">Todas</MudSelectItem>
+                                <MudSelectItem Value="@("Oil&Gas")">Oil & Gas</MudSelectItem>
+                                <MudSelectItem Value="@("Construction")">Construcción</MudSelectItem>
+                                <MudSelectItem Value="@("Infrastructure")">Infraestructura</MudSelectItem>
+                                <MudSelectItem Value="@("Manufacturing")">Manufactura</MudSelectItem>
+                                <MudSelectItem Value="@("IT")">Tecnología</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudSelect T="string" @bind-Value="_selectedProjectType" Label="Tipo de Proyecto" Variant="Variant.Outlined" 
+                                       AnchorOrigin="Origin.BottomCenter" ClearAble="true" OnClearButtonClick="ClearProjectTypeFilter">
+                                <MudSelectItem Value="@("")">Todos</MudSelectItem>
+                                <MudSelectItem Value="@("EPC")">EPC</MudSelectItem>
+                                <MudSelectItem Value="@("EPCM")">EPCM</MudSelectItem>
+                                <MudSelectItem Value="@("Construction")">Construcción</MudSelectItem>
+                                <MudSelectItem Value="@("Engineering")">Ingeniería</MudSelectItem>
+                                <MudSelectItem Value="@("Maintenance")">Mantenimiento</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="2">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters" Class="mt-2">
+                                Aplicar Filtros
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+
+                    <!-- Templates Table -->
+                    <MudTable Items="@_templates" Dense="true" Hover="true" Loading="@_loading" LoadingProgressColor="Color.Primary"
+                              ServerData="@(new Func<TableState, CancellationToken, Task<TableData<WBSTemplateDto>>>((state, token) => ServerReload(state)))"
+                              @ref="_table">
+                        <HeaderContent>
+                            <MudTh>Código</MudTh>
+                            <MudTh>Nombre</MudTh>
+                            <MudTh>Industria</MudTh>
+                            <MudTh>Tipo Proyecto</MudTh>
+                            <MudTh>Elementos</MudTh>
+                            <MudTh>Usos</MudTh>
+                            <MudTh Style="text-align: center">Estado</MudTh>
+                            <MudTh Style="text-align: center">Acciones</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Código">@context.Code</MudTd>
+                            <MudTd DataLabel="Nombre">@context.Name</MudTd>
+                            <MudTd DataLabel="Industria">@context.IndustryType</MudTd>
+                            <MudTd DataLabel="Tipo Proyecto">@context.ProjectType</MudTd>
+                            <MudTd DataLabel="Elementos">@context.TotalElements</MudTd>
+                            <MudTd DataLabel="Usos">@context.UsageCount</MudTd>
+                            <MudTd DataLabel="Estado" Style="text-align: center">
+                                @if (context.IsActive)
+                                {
+                                    <MudChip T="string" Color="Color.Success" Size="Size.Small">Activo</MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Color="Color.Default" Size="Size.Small">Inactivo</MudChip>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Acciones" Style="text-align: center">
+                                <MudTooltip Text="Ver detalles">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Primary" OnClick="() => ViewDetails(context.Id)" />
+                                </MudTooltip>
+                                <MudTooltip Text="Editar">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Info" OnClick="() => Edit(context.Id)" />
+                                </MudTooltip>
+                                <MudTooltip Text="Clonar">
+                                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Color="Color.Secondary" OnClick="() => Clone(context.Id)" />
+                                </MudTooltip>
+                                @if (context.IsActive)
+                                {
+                                    <MudTooltip Text="Desactivar">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small" Color="Color.Warning" OnClick="() => ToggleStatus(context)" />
+                                    </MudTooltip>
+                                }
+                                else
+                                {
+                                    <MudTooltip Text="Activar">
+                                        <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" OnClick="() => ToggleStatus(context)" />
+                                    </MudTooltip>
+                                }
+                                <MudTooltip Text="Eliminar">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => Delete(context)" />
+                                </MudTooltip>
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <MudText>No se encontraron plantillas</MudText>
+                        </NoRecordsContent>
+                        <LoadingContent>
+                            <MudText>Cargando plantillas...</MudText>
+                        </LoadingContent>
+                        <PagerContent>
+                            <MudTablePager />
+                        </PagerContent>
+                    </MudTable>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    private MudTable<WBSTemplateDto> _table = null!;
+    private List<WBSTemplateDto> _templates = new();
+    private bool _loading = true;
+    
+    // Filters
+    private string _searchTerm = string.Empty;
+    private string _selectedIndustry = string.Empty;
+    private string _selectedProjectType = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Inicio", href: "/", icon: Icons.Material.Filled.Home),
+            new BreadcrumbItem("WBS", href: null),
+            new BreadcrumbItem("Plantillas", href: null, disabled: true)
+        };
+    }
+
+    private async Task<TableData<WBSTemplateDto>> ServerReload(TableState state)
+    {
+        _loading = true;
+        
+        try
+        {
+            var result = await WBSTemplateService.GetTemplatesAsync(
+                pageNumber: state.Page + 1,
+                pageSize: state.PageSize,
+                searchTerm: _searchTerm,
+                industryType: _selectedIndustry,
+                projectType: _selectedProjectType);
+            
+            _templates = result.Items.ToList();
+            
+            return new TableData<WBSTemplateDto>() 
+            { 
+                TotalItems = result.TotalCount, 
+                Items = result.Items 
+            };
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading WBS templates");
+            Snackbar.Add("Error al cargar las plantillas", Severity.Error);
+            return new TableData<WBSTemplateDto>() { TotalItems = 0, Items = new List<WBSTemplateDto>() };
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnSearchChanged(string value)
+    {
+        _searchTerm = value;
+        await _table.ReloadServerData();
+    }
+
+    private async Task ApplyFilters()
+    {
+        await _table.ReloadServerData();
+    }
+
+    private void ClearIndustryFilter()
+    {
+        _selectedIndustry = string.Empty;
+    }
+
+    private void ClearProjectTypeFilter()
+    {
+        _selectedProjectType = string.Empty;
+    }
+
+    private void CreateNew()
+    {
+        Navigation.NavigateTo("/wbs/templates/new");
+    }
+
+    private void ViewDetails(Guid id)
+    {
+        Navigation.NavigateTo($"/wbs/templates/{id}");
+    }
+
+    private void Edit(Guid id)
+    {
+        Navigation.NavigateTo($"/wbs/templates/{id}/edit");
+    }
+
+    private async Task Clone(Guid id)
+    {
+        // TODO: Implement clone dialog
+        Snackbar.Add("Función de clonar pendiente de implementar", Severity.Info);
+    }
+
+    private async Task ToggleStatus(WBSTemplateDto template)
+    {
+        try
+        {
+            bool success;
+            if (template.IsActive)
+            {
+                success = await WBSTemplateService.DeactivateTemplateAsync(template.Id);
+                if (success)
+                {
+                    Snackbar.Add("Plantilla desactivada", Severity.Success);
+                }
+            }
+            else
+            {
+                success = await WBSTemplateService.ActivateTemplateAsync(template.Id);
+                if (success)
+                {
+                    Snackbar.Add("Plantilla activada", Severity.Success);
+                }
+            }
+
+            if (success)
+            {
+                await _table.ReloadServerData();
+            }
+            else
+            {
+                Snackbar.Add("Error al cambiar el estado de la plantilla", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error toggling template status");
+            Snackbar.Add("Error al cambiar el estado", Severity.Error);
+        }
+    }
+
+    private async Task Delete(WBSTemplateDto template)
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Eliminar Plantilla",
+            $"¿Está seguro de eliminar la plantilla '{template.Name}'?",
+            yesText: "Eliminar", cancelText: "Cancelar");
+
+        if (result == true)
+        {
+            try
+            {
+                var success = await WBSTemplateService.DeleteTemplateAsync(template.Id);
+                if (success)
+                {
+                    await _table.ReloadServerData();
+                    Snackbar.Add("Plantilla eliminada correctamente", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("Error al eliminar la plantilla", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error deleting template");
+                Snackbar.Add("Error al eliminar la plantilla", Severity.Error);
+            }
+        }
+    }
+}

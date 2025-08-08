@@ -10,122 +10,122 @@ using Microsoft.AspNetCore.Authorization;
 namespace Api.Modules;
 
 /// <summary>
-/// Project team member management endpoints
+/// Endpoints de gestión de miembros del equipo de proyecto
 /// </summary>
 public class ProjectTeamMembersModule : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
         var teamMembers = app.MapGroup("/api/project-team-members")
-            .WithTags("Project Team Members")
+            .WithTags("Miembros del Equipo de Proyecto")
             .RequireAuthorization();
 
         // Read operations
         teamMembers.MapPost("/search", SearchTeamMembers)
             .WithName("SearchTeamMembers")
-            .WithSummary("Search team members with filters")
+            .WithSummary("Buscar miembros del equipo con filtros")
             .Produces<PagedResult<ProjectTeamMemberDetailDto>>(200);
 
         teamMembers.MapGet("/{id:guid}", GetTeamMemberById)
             .WithName("GetTeamMemberById")
-            .WithSummary("Get team member by ID")
+            .WithSummary("Obtener miembro del equipo por ID")
             .Produces<ProjectTeamMemberDetailDto>(200)
             .Produces(404);
 
         teamMembers.MapGet("/project/{projectId:guid}", GetProjectTeamMembers)
             .WithName("GetProjectTeamMembers")
-            .WithSummary("Get all team members for a project")
+            .WithSummary("Obtener todos los miembros del equipo para un proyecto")
             .Produces<IEnumerable<ProjectTeamMemberDetailDto>>(200);
 
         teamMembers.MapGet("/user/{userId:guid}", GetUserAssignments)
             .WithName("GetUserAssignments")
-            .WithSummary("Get all project assignments for a user")
+            .WithSummary("Obtener todas las asignaciones de proyecto para un usuario")
             .Produces<IEnumerable<ProjectTeamMemberDetailDto>>(200);
 
         // Assignment management
         teamMembers.MapPost("/project/{projectId:guid}/assign", AssignTeamMember)
             .WithName("AssignTeamMember")
-            .WithSummary("Assign a team member to a project")
+            .WithSummary("Asignar un miembro del equipo a un proyecto")
             .Produces<ProjectTeamMemberDetailDto>(201)
             .Produces(400)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         teamMembers.MapPut("/{id:guid}", UpdateTeamMember)
             .WithName("UpdateTeamMember")
-            .WithSummary("Update team member details")
+            .WithSummary("Actualizar detalles del miembro del equipo")
             .Produces<ProjectTeamMemberDetailDto>(200)
             .Produces(404)
             .Produces(400)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         teamMembers.MapDelete("/{id:guid}", RemoveTeamMember)
             .WithName("RemoveTeamMember")
-            .WithSummary("Remove team member from project")
+            .WithSummary("Eliminar miembro del equipo del proyecto")
             .Produces(204)
             .Produces(404)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         // Bulk operations
         teamMembers.MapPost("/bulk-assign", BulkAssignTeamMembers)
             .WithName("BulkAssignTeamMembers")
-            .WithSummary("Assign multiple team members to projects")
+            .WithSummary("Asignar múltiples miembros del equipo a proyectos")
             .Produces<BulkAssignResult>(200)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         teamMembers.MapDelete("/project/{projectId:guid}/all", RemoveAllFromProject)
             .WithName("RemoveAllFromProject")
-            .WithSummary("Remove all team members from a project")
+            .WithSummary("Eliminar todos los miembros del equipo de un proyecto")
             .Produces<int>(200)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         // Allocation management
         teamMembers.MapGet("/user/{userId:guid}/availability", GetUserAvailability)
             .WithName("GetUserAvailability")
-            .WithSummary("Get user availability and allocation")
+            .WithSummary("Obtener disponibilidad y asignación del usuario")
             .Produces<UserAvailabilityDto>(200)
             .Produces(404);
 
         teamMembers.MapGet("/allocation-report", GetAllocationReport)
             .WithName("GetAllocationReport")
-            .WithSummary("Get team allocation report")
+            .WithSummary("Obtener reporte de asignación del equipo")
             .Produces<IEnumerable<TeamAllocationReportDto>>(200);
 
         teamMembers.MapPut("/{id:guid}/allocation", UpdateAllocation)
             .WithName("UpdateAllocation")
-            .WithSummary("Update team member allocation percentage")
+            .WithSummary("Actualizar porcentaje de asignación del miembro del equipo")
             .Produces<ProjectTeamMemberDetailDto>(200)
             .Produces(404)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         // Transfer and extension
         teamMembers.MapPost("/{id:guid}/transfer", TransferTeamMember)
             .WithName("TransferTeamMember")
-            .WithSummary("Transfer team member to another project")
+            .WithSummary("Transferir miembro del equipo a otro proyecto")
             .Produces<ProjectTeamMemberDetailDto>(200)
             .Produces(404)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         teamMembers.MapPost("/{id:guid}/extend", ExtendAssignment)
             .WithName("ExtendAssignment")
-            .WithSummary("Extend team member assignment end date")
+            .WithSummary("Extender fecha de fin de asignación del miembro del equipo")
             .Produces<ProjectTeamMemberDetailDto>(200)
             .Produces(404)
-            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(ProjectRoles.ProjectManager));
+            .RequireAuthorization(policy => policy.RequireRoleOrAdmin(SimplifiedRoles.Project.ProjectManager));
 
         // Validation endpoints
         teamMembers.MapGet("/check-assignment/{userId:guid}/{projectId:guid}", CheckUserAssignment)
             .WithName("CheckUserAssignment")
-            .WithSummary("Check if user is assigned to project")
+            .WithSummary("Verificar si el usuario está asignado al proyecto")
             .Produces<bool>(200);
 
         teamMembers.MapPost("/can-assign", CanAssignUser)
             .WithName("CanAssignUser")
-            .WithSummary("Check if user can be assigned to project")
+            .WithSummary("Verificar si el usuario puede ser asignado al proyecto")
             .Produces<AssignmentValidationResult>(200);
 
         teamMembers.MapGet("/check-role/{userId:guid}/{projectId:guid}/{role}", CheckUserRole)
             .WithName("CheckUserRole")
-            .WithSummary("Check if user has specific role in project")
+            .WithSummary("Verificar si el usuario tiene un rol específico en el proyecto")
             .Produces<bool>(200);
     }
 
@@ -142,7 +142,7 @@ public class ProjectTeamMembersModule : ICarterModule
         IProjectTeamMemberService teamMemberService)
     {
         var member = await teamMemberService.GetByIdAsync(id);
-        return member != null ? Results.Ok(member) : Results.NotFound($"Team member {id} not found");
+        return member != null ? Results.Ok(member) : Results.NotFound($"Miembro del equipo {id} no encontrado");
     }
 
     private static async Task<IResult> GetProjectTeamMembers(
@@ -185,7 +185,7 @@ public class ProjectTeamMembersModule : ICarterModule
         try
         {
             // Check if user has permission to manage team for this project
-            if (!await currentUserService.HasProjectAccessAsync(projectId, ProjectRoles.ProjectManager))
+            if (!await currentUserService.HasProjectAccessAsync(projectId, SimplifiedRoles.Project.ProjectManager))
             {
                 return Results.Forbid();
             }
@@ -193,7 +193,7 @@ public class ProjectTeamMembersModule : ICarterModule
             // Validate assignment is possible
             if (!await teamMemberService.CanUserBeAssignedAsync(dto.UserId, projectId, dto.AllocationPercentage))
             {
-                return Results.BadRequest("User cannot be assigned to this project. Check allocation and existing assignments.");
+                return Results.BadRequest("El usuario no puede ser asignado a este proyecto. Verifique la asignación y las asignaciones existentes.");
             }
 
             var member = await teamMemberService.CreateAsync(projectId, dto);
@@ -202,7 +202,7 @@ public class ProjectTeamMembersModule : ICarterModule
         catch (Exception ex)
         {
             return Results.Problem(
-                title: "Assignment failed",
+                title: "Asignación fallida",
                 detail: ex.Message,
                 statusCode: 400);
         }
@@ -219,11 +219,11 @@ public class ProjectTeamMembersModule : ICarterModule
             var existing = await teamMemberService.GetByIdAsync(id);
             if (existing == null)
             {
-                return Results.NotFound($"Team member {id} not found");
+                return Results.NotFound($"Miembro del equipo {id} no encontrado");
             }
 
             // Check permission for the project
-            if (!await currentUserService.HasProjectAccessAsync(existing.ProjectId, ProjectRoles.ProjectManager))
+            if (!await currentUserService.HasProjectAccessAsync(existing.ProjectId, SimplifiedRoles.Project.ProjectManager))
             {
                 return Results.Forbid();
             }
@@ -234,7 +234,7 @@ public class ProjectTeamMembersModule : ICarterModule
         catch (Exception ex)
         {
             return Results.Problem(
-                title: "Update failed",
+                title: "Actualización fallida",
                 detail: ex.Message,
                 statusCode: 400);
         }
@@ -248,11 +248,11 @@ public class ProjectTeamMembersModule : ICarterModule
         var existing = await teamMemberService.GetByIdAsync(id);
         if (existing == null)
         {
-            return Results.NotFound($"Team member {id} not found");
+            return Results.NotFound($"Miembro del equipo {id} no encontrado");
         }
 
         // Check permission for the project
-        if (!await currentUserService.HasProjectAccessAsync(existing.ProjectId, ProjectRoles.ProjectManager))
+        if (!await currentUserService.HasProjectAccessAsync(existing.ProjectId, SimplifiedRoles.Project.ProjectManager))
         {
             return Results.Forbid();
         }
@@ -271,9 +271,9 @@ public class ProjectTeamMembersModule : ICarterModule
             // Check permission for all projects
             foreach (var assignment in dto.Assignments)
             {
-                if (!await currentUserService.HasProjectAccessAsync(assignment.ProjectId, ProjectRoles.ProjectManager))
+                if (!await currentUserService.HasProjectAccessAsync(assignment.ProjectId, SimplifiedRoles.Project.ProjectManager))
                 {
-                    return Results.Problem($"No permission to manage team for project {assignment.ProjectId.ToString()}");
+                    return Results.Problem($"Sin permiso para gestionar el equipo del proyecto {assignment.ProjectId.ToString()}");
                 }
             }
 
@@ -283,7 +283,7 @@ public class ProjectTeamMembersModule : ICarterModule
         catch (Exception ex)
         {
             return Results.Problem(
-                title: "Bulk assignment failed",
+                title: "Asignación masiva fallida",
                 detail: ex.Message,
                 statusCode: 400);
         }
@@ -295,7 +295,7 @@ public class ProjectTeamMembersModule : ICarterModule
         ICurrentUserService currentUserService)
     {
         // Check permission
-        if (!await currentUserService.HasProjectAccessAsync(projectId, ProjectRoles.ProjectManager))
+        if (!await currentUserService.HasProjectAccessAsync(projectId, SimplifiedRoles.Project.ProjectManager))
         {
             return Results.Forbid();
         }
@@ -314,7 +314,7 @@ public class ProjectTeamMembersModule : ICarterModule
             query.StartDate, 
             query.EndDate);
             
-        return availability != null ? Results.Ok(availability) : Results.NotFound($"User {userId} not found");
+        return availability != null ? Results.Ok(availability) : Results.NotFound($"Usuario {userId} no encontrado");
     }
 
     private static async Task<IResult> GetAllocationReport(
@@ -345,18 +345,18 @@ public class ProjectTeamMembersModule : ICarterModule
         var existing = await teamMemberService.GetByIdAsync(id);
         if (existing == null)
         {
-            return Results.NotFound($"Team member {id} not found");
+            return Results.NotFound($"Miembro del equipo {id} no encontrado");
         }
 
         // Check permission
-        if (!await currentUserService.HasProjectAccessAsync(existing.ProjectId, ProjectRoles.ProjectManager))
+        if (!await currentUserService.HasProjectAccessAsync(existing.ProjectId, SimplifiedRoles.Project.ProjectManager))
         {
             return Results.Forbid();
         }
 
         if (request.AllocationPercentage < 0 || request.AllocationPercentage > 100)
         {
-            return Results.BadRequest("Allocation percentage must be between 0 and 100");
+            return Results.BadRequest("El porcentaje de asignación debe estar entre 0 y 100");
         }
 
         var updated = await teamMemberService.UpdateAllocationAsync(id, request.AllocationPercentage);
@@ -374,12 +374,12 @@ public class ProjectTeamMembersModule : ICarterModule
             var existing = await teamMemberService.GetByIdAsync(id);
             if (existing == null)
             {
-                return Results.NotFound($"Team member {id} not found");
+                return Results.NotFound($"Miembro del equipo {id} no encontrado");
             }
 
             // Check permission for both source and target projects
-            if (!await currentUserService.HasProjectAccessAsync(existing.ProjectId, ProjectRoles.ProjectManager) ||
-                !await currentUserService.HasProjectAccessAsync(dto.NewProjectId, ProjectRoles.ProjectManager))
+            if (!await currentUserService.HasProjectAccessAsync(existing.ProjectId, SimplifiedRoles.Project.ProjectManager) ||
+                !await currentUserService.HasProjectAccessAsync(dto.NewProjectId, SimplifiedRoles.Project.ProjectManager))
             {
                 return Results.Forbid();
             }
@@ -390,7 +390,7 @@ public class ProjectTeamMembersModule : ICarterModule
         catch (Exception ex)
         {
             return Results.Problem(
-                title: "Transfer failed",
+                title: "Transferencia fallida",
                 detail: ex.Message,
                 statusCode: 400);
         }
@@ -405,18 +405,18 @@ public class ProjectTeamMembersModule : ICarterModule
         var existing = await teamMemberService.GetByIdAsync(id);
         if (existing == null)
         {
-            return Results.NotFound($"Team member {id} not found");
+            return Results.NotFound($"Miembro del equipo {id} no encontrado");
         }
 
         // Check permission
-        if (!await currentUserService.HasProjectAccessAsync(existing.ProjectId, ProjectRoles.ProjectManager))
+        if (!await currentUserService.HasProjectAccessAsync(existing.ProjectId, SimplifiedRoles.Project.ProjectManager))
         {
             return Results.Forbid();
         }
 
         if (request.NewEndDate <= existing.StartDate)
         {
-            return Results.BadRequest("New end date must be after the start date");
+            return Results.BadRequest("La nueva fecha de fin debe ser posterior a la fecha de inicio");
         }
 
         var extended = await teamMemberService.ExtendAssignmentAsync(id, request.NewEndDate);
@@ -443,7 +443,7 @@ public class ProjectTeamMembersModule : ICarterModule
             
         return Results.Ok(new AssignmentValidationResult(
             canAssign,
-            canAssign ? null : "User cannot be assigned due to allocation constraints or existing assignments"));
+            canAssign ? null : "El usuario no puede ser asignado debido a restricciones de asignación o asignaciones existentes"));
     }
 
     private static async Task<IResult> CheckUserRole(

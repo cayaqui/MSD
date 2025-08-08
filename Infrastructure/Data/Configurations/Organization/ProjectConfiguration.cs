@@ -108,7 +108,6 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
             .HasForeignKey(p => p.OperationId)
             .OnDelete(DeleteBehavior.Restrict);
 
-
         // Navigation properties
         builder.HasMany(p => p.ProjectTeamMembers)
             .WithOne(ptm => ptm.Project)
@@ -119,11 +118,6 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
             .WithOne(ca => ca.Project)
             .HasForeignKey(ca => ca.ProjectId)
             .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasMany(p => p.UserProjectPermissions)
-            .WithOne(upp => upp.Project)
-            .HasForeignKey(upp => upp.ProjectId)
-            .OnDelete(DeleteBehavior.Cascade);
 
         // Global query filter for soft delete
         builder.HasQueryFilter(p => !p.IsDeleted);

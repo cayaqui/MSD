@@ -1,0 +1,409 @@
+@page "/commitments"
+@using Core.DTOs.Cost.Commitments
+@using Core.DTOs.Common
+@using Core.Enums.Cost
+@using Web.Services.Interfaces.Cost
+@using Web.Services.Interfaces
+@inject ICommitmentApiService CommitmentService
+@inject INavigationService Navigation
+@inject IToastService Toast
+@inject IDialogService DialogService
+
+<PageTitle>Commitments</PageTitle>
+
+<MudBreadcrumbs Items="_breadcrumbs" />
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudGrid>
+        <MudItem xs="12" Class="d-flex justify-space-between align-center mb-4">
+            <div>
+                <MudText Typo="Typo.h4">Commitments</MudText>
+                <MudText Typo="Typo.subtitle1" Color="Color.Secondary">Manage project commitments and contracts</MudText>
+            </div>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateCommitment">
+                New Commitment
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    <MudPaper Elevation="2" Class="pa-4">
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudTextField @bind-Value="_searchTerm" Label="Search" Placeholder="Search commitments..." 
+                             Variant="Variant.Outlined" Adornment="Adornment.Start" 
+                             AdornmentIcon="@Icons.Material.Filled.Search" DebounceInterval="300"
+                             OnDebounceIntervalElapsed="SearchCommitments" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="string" Label="Status" @bind-Value="_statusFilter" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                    <MudSelectItem Value="@("")">All Statuses</MudSelectItem>
+                    <MudSelectItem Value="@("Draft")">Draft</MudSelectItem>
+                    <MudSelectItem Value="@("PendingApproval")">Pending Approval</MudSelectItem>
+                    <MudSelectItem Value="@("Approved")">Approved</MudSelectItem>
+                    <MudSelectItem Value="@("Active")">Active</MudSelectItem>
+                    <MudSelectItem Value="@("Closed")">Closed</MudSelectItem>
+                    <MudSelectItem Value="@("Cancelled")">Cancelled</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="string" Label="Type" @bind-Value="_typeFilter" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                    <MudSelectItem Value="@("")">All Types</MudSelectItem>
+                    <MudSelectItem Value="@("Purchase Order")">Purchase Order</MudSelectItem>
+                    <MudSelectItem Value="@("Subcontract")">Subcontract</MudSelectItem>
+                    <MudSelectItem Value="@("Service Agreement")">Service Agreement</MudSelectItem>
+                    <MudSelectItem Value="@("Other")">Other</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2" Class="d-flex align-end">
+                <MudButton Variant="Variant.Outlined" FullWidth OnClick="ResetFilters">
+                    Reset
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="mt-4">
+        @if (_loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        
+        <MudTable Items="@_commitments" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info">
+            <HeaderContent>
+                <MudTh>Commitment Number</MudTh>
+                <MudTh>Description</MudTh>
+                <MudTh>Type</MudTh>
+                <MudTh>Vendor</MudTh>
+                <MudTh>Original Amount</MudTh>
+                <MudTh>Current Amount</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Commitment Number">
+                    <MudText>@context.CommitmentNumber</MudText>
+                </MudTd>
+                <MudTd DataLabel="Description">
+                    <MudTooltip Text="@context.Title">
+                        <MudText>@TruncateText(context.Title, 40)</MudText>
+                    </MudTooltip>
+                </MudTd>
+                <MudTd DataLabel="Type">@context.TypeDescription</MudTd>
+                <MudTd DataLabel="Vendor">@context.ContractorName</MudTd>
+                <MudTd DataLabel="Original Amount">
+                    <MudText>@context.OriginalAmount.ToString("C")</MudText>
+                </MudTd>
+                <MudTd DataLabel="Current Amount">
+                    <MudText>@context.CommittedAmount.ToString("C")</MudText>
+                    @if (context.CommittedAmount != context.OriginalAmount)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            (@((context.CommittedAmount - context.OriginalAmount).ToString("+C;-C;C")))
+                        </MudText>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.StatusDescription)" Variant="Variant.Text">
+                        @context.StatusDescription
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudIconButton Icon="@Icons.Material.Filled.RemoveRedEye" Color="Color.Primary" Size="Size.Small" 
+                                   OnClick="@(() => ViewCommitment(context.Id))" Title="View" />
+                    @if (context.Status == CommitmentStatus.Draft)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Secondary" Size="Size.Small" 
+                                       OnClick="@(() => EditCommitment(context.Id))" Title="Edit" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Send" Color="Color.Success" Size="Size.Small" 
+                                       OnClick="@(() => SubmitForApproval(context))" Title="Submit for Approval" />
+                    }
+                    @if (context.Status == CommitmentStatus.PendingApproval)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" 
+                                       OnClick="@(() => ApproveCommitment(context))" Title="Approve" />
+                    }
+                    @if (context.Status == CommitmentStatus.Approved)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Success" Size="Size.Small" 
+                                       OnClick="@(() => ActivateCommitment(context))" Title="Activate" />
+                    }
+                    @if (context.Status == CommitmentStatus.Active)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Warning" Size="Size.Small" 
+                                       OnClick="@(() => ReviseCommitment(context))" Title="Revise" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Receipt" Color="Color.Info" Size="Size.Small" 
+                                       OnClick="@(() => RecordInvoice(context))" Title="Record Invoice" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Lock" Color="Color.Secondary" Size="Size.Small" 
+                                       OnClick="@(() => CloseCommitment(context))" Title="Close" />
+                    }
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" 
+                                   OnClick="@(() => DeleteCommitment(context))" Title="Delete" 
+                                   Disabled="@(context.Status != CommitmentStatus.Draft)" />
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem("Home", href: "/", icon: Icons.Material.Filled.Home),
+        new BreadcrumbItem("Cost Management", href: null, disabled: true),
+        new BreadcrumbItem("Commitments", href: "/commitments", disabled: true)
+    };
+
+    private List<CommitmentListDto> _commitments = new();
+    private bool _loading = false;
+    private string _searchTerm = string.Empty;
+    private string _statusFilter = string.Empty;
+    private string _typeFilter = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCommitments();
+    }
+
+    private async Task LoadCommitments()
+    {
+        _loading = true;
+        try
+        {
+            var filter = new CommitmentFilterDto
+            {
+                SearchText = _searchTerm,
+                Status = string.IsNullOrEmpty(_statusFilter) ? null : Enum.Parse<CommitmentStatus>(_statusFilter),
+                Type = string.IsNullOrEmpty(_typeFilter) ? null : Enum.Parse<CommitmentType>(_typeFilter.Replace(" ", "")),
+                PageSize = 50
+            };
+
+            var result = await CommitmentService.GetCommitmentsAsync(filter);
+            _commitments = result?.Items?.ToList() ?? new List<CommitmentListDto>();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error loading commitments");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SearchCommitments(string searchTerm)
+    {
+        _searchTerm = searchTerm;
+        await LoadCommitments();
+    }
+
+    private async Task ResetFilters()
+    {
+        _searchTerm = string.Empty;
+        _statusFilter = string.Empty;
+        _typeFilter = string.Empty;
+        await LoadCommitments();
+    }
+
+    private void CreateCommitment()
+    {
+        Navigation.NavigateTo("/commitments/new");
+    }
+
+    private void ViewCommitment(Guid id)
+    {
+        Navigation.NavigateTo($"/commitments/{id}");
+    }
+
+    private void EditCommitment(Guid id)
+    {
+        Navigation.NavigateTo($"/commitments/{id}/edit");
+    }
+
+    private void ReviseCommitment(CommitmentListDto commitment)
+    {
+        Navigation.NavigateTo($"/commitments/{commitment.Id}/revise");
+    }
+
+    private void RecordInvoice(CommitmentListDto commitment)
+    {
+        Navigation.NavigateTo($"/commitments/{commitment.Id}/invoice");
+    }
+
+    private async Task SubmitForApproval(CommitmentListDto commitment)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Submit for Approval",
+            $"Are you sure you want to submit commitment '{commitment.CommitmentNumber}' for approval?",
+            yesText: "Submit", cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            _loading = true;
+            try
+            {
+                var result = await CommitmentService.SubmitForApprovalAsync(commitment.Id);
+                if (result != null)
+                {
+                    Toast.ShowSuccess("Commitment submitted for approval");
+                    await LoadCommitments();
+                }
+                else
+                {
+                    Toast.ShowError("Failed to submit commitment for approval");
+                }
+            }
+            catch (Exception ex)
+            {
+                Toast.ShowError("Error submitting commitment for approval");
+            }
+            finally
+            {
+                _loading = false;
+            }
+        }
+    }
+
+    private async Task ApproveCommitment(CommitmentListDto commitment)
+    {
+        var parameters = new DialogParameters<CommitmentApprovalDialog>
+        {
+            { x => x.CommitmentNumber, commitment.CommitmentNumber },
+            { x => x.CommitmentId, commitment.Id }
+        };
+
+        var dialog = await DialogService.ShowAsync<CommitmentApprovalDialog>("Approve Commitment", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadCommitments();
+        }
+    }
+
+    private async Task ActivateCommitment(CommitmentListDto commitment)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Activate Commitment",
+            $"Are you sure you want to activate commitment '{commitment.CommitmentNumber}'? This will make it available for processing.",
+            yesText: "Activate", cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            _loading = true;
+            try
+            {
+                var result = await CommitmentService.ActivateCommitmentAsync(commitment.Id);
+                if (result != null)
+                {
+                    Toast.ShowSuccess("Commitment activated successfully");
+                    await LoadCommitments();
+                }
+                else
+                {
+                    Toast.ShowError("Failed to activate commitment");
+                }
+            }
+            catch (Exception ex)
+            {
+                Toast.ShowError("Error activating commitment");
+            }
+            finally
+            {
+                _loading = false;
+            }
+        }
+    }
+
+    private async Task CloseCommitment(CommitmentListDto commitment)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Close Commitment",
+            $"Are you sure you want to close commitment '{commitment.CommitmentNumber}'? This action cannot be undone.",
+            yesText: "Close", cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            _loading = true;
+            try
+            {
+                var result = await CommitmentService.CloseCommitmentAsync(commitment.Id);
+                if (result != null)
+                {
+                    Toast.ShowSuccess("Commitment closed successfully");
+                    await LoadCommitments();
+                }
+                else
+                {
+                    Toast.ShowError("Failed to close commitment");
+                }
+            }
+            catch (Exception ex)
+            {
+                Toast.ShowError("Error closing commitment");
+            }
+            finally
+            {
+                _loading = false;
+            }
+        }
+    }
+
+    private async Task DeleteCommitment(CommitmentListDto commitment)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Delete Commitment",
+            $"Are you sure you want to delete commitment '{commitment.CommitmentNumber}'? This action cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            _loading = true;
+            try
+            {
+                var success = await CommitmentService.DeleteCommitmentAsync(commitment.Id);
+                if (success)
+                {
+                    Toast.ShowSuccess("Commitment deleted successfully");
+                    await LoadCommitments();
+                }
+                else
+                {
+                    Toast.ShowError("Failed to delete commitment");
+                }
+            }
+            catch (Exception ex)
+            {
+                Toast.ShowError("Error deleting commitment");
+            }
+            finally
+            {
+                _loading = false;
+            }
+        }
+    }
+
+    private Color GetStatusColor(string status)
+    {
+        return status switch
+        {
+            "Draft" => Color.Default,
+            "PendingApproval" => Color.Info,
+            "Approved" => Color.Success,
+            "Active" => Color.Primary,
+            "Closed" => Color.Secondary,
+            "Cancelled" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
+            return text;
+        
+        return text.Substring(0, maxLength) + "...";
+    }
+}

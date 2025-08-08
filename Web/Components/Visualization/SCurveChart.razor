@@ -1,0 +1,335 @@
+@using Core.DTOs.Visualization
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+<div class="scurve-chart-container">
+    <div class="scurve-header">
+        <h3>@ChartData?.Title</h3>
+        <div class="scurve-controls">
+            @if (ShowLegend)
+            {
+                <div class="scurve-legend">
+                    @foreach (var series in ChartData?.Series ?? new List<SCurveSeriesDto>())
+                    {
+                        <div class="legend-item">
+                            <span class="legend-color" style="background-color: @series.Color"></span>
+                            <span class="legend-label">@series.Name</span>
+                        </div>
+                    }
+                </div>
+            }
+
+            <MudButtonGroup Variant="Variant.Text" Size="Size.Small">
+                <MudIconButton Icon="@Icons.Material.Filled.ShowChart" 
+                              Color="@(ChartType == "line" ? Color.Primary : Color.Default)"
+                              OnClick="@(() => ChangeChartType("line"))"
+                              Title="Line Chart" />
+                <MudIconButton Icon="@Icons.Material.Filled.AreaChart" 
+                              Color="@(ChartType == "area" ? Color.Primary : Color.Default)"
+                              OnClick="@(() => ChangeChartType("area"))"
+                              Title="Area Chart" />
+                <MudIconButton Icon="@Icons.Material.Filled.BarChart" 
+                              Color="@(ChartType == "bar" ? Color.Primary : Color.Default)"
+                              OnClick="@(() => ChangeChartType("bar"))"
+                              Title="Bar Chart" />
+            </MudButtonGroup>
+
+            <MudMenu Icon="@Icons.Material.Filled.Settings" AnchorOrigin="Origin.BottomRight">
+                <MudMenuItem>
+                    <MudCheckBox T="bool" @bind-Checked="@ShowGrid" Label="Show Grid" />
+                </MudMenuItem>
+                <MudMenuItem>
+                    <MudCheckBox T="bool" @bind-Checked="@ShowDataLabels" Label="Show Data Labels" />
+                </MudMenuItem>
+                <MudMenuItem>
+                    <MudCheckBox T="bool" @bind-Checked="@ShowCumulative" Label="Show Cumulative" />
+                </MudMenuItem>
+                <MudMenuItem>
+                    <MudCheckBox T="bool" @bind-Checked="@EnableZoom" Label="Enable Zoom" />
+                </MudMenuItem>
+                <MudMenuItem>
+                    <MudCheckBox T="bool" @bind-Checked="@EnablePan" Label="Enable Pan" />
+                </MudMenuItem>
+            </MudMenu>
+
+            <MudIconButton Icon="@Icons.Material.Filled.Download" 
+                          Color="Color.Primary" 
+                          OnClick="ExportChart"
+                          Title="Export" />
+        </div>
+    </div>
+
+    @if (ShowMetrics && ChartData is CostSCurveDto costData)
+    {
+        <MudGrid Class="mb-3">
+            <MudItem xs="3">
+                <MudPaper Class="pa-2">
+                    <MudText Typo="Typo.caption">Total Budget</MudText>
+                    <MudText Typo="Typo.h6">@costData.TotalBudget.ToString("C")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="3">
+                <MudPaper Class="pa-2">
+                    <MudText Typo="Typo.caption">Current Cost</MudText>
+                    <MudText Typo="Typo.h6">@costData.CurrentCost.ToString("C")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="3">
+                <MudPaper Class="pa-2">
+                    <MudText Typo="Typo.caption">Forecast Cost</MudText>
+                    <MudText Typo="Typo.h6">@costData.ForecastCost.ToString("C")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="3">
+                <MudPaper Class="pa-2">
+                    <MudText Typo="Typo.caption">Variance</MudText>
+                    <MudText Typo="Typo.h6" Color="@(costData.ForecastCost > costData.TotalBudget ? Color.Error : Color.Success)">
+                        @((costData.ForecastCost - costData.TotalBudget).ToString("C"))
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+
+    @if (ShowMetrics && ChartData is ProgressSCurveDto progressData)
+    {
+        <MudGrid Class="mb-3">
+            <MudItem xs="4">
+                <MudPaper Class="pa-2">
+                    <MudText Typo="Typo.caption">Planned Progress</MudText>
+                    <MudText Typo="Typo.h6">@progressData.PlannedProgress.ToString("F1")%</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="4">
+                <MudPaper Class="pa-2">
+                    <MudText Typo="Typo.caption">Actual Progress</MudText>
+                    <MudText Typo="Typo.h6">@progressData.ActualProgress.ToString("F1")%</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="4">
+                <MudPaper Class="pa-2">
+                    <MudText Typo="Typo.caption">Progress Variance</MudText>
+                    <MudText Typo="Typo.h6" Color="@(progressData.ActualProgress < progressData.PlannedProgress ? Color.Error : Color.Success)">
+                        @((progressData.ActualProgress - progressData.PlannedProgress).ToString("F1"))%
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+
+    <div id="@ChartId" class="scurve-chart" style="width: 100%; height: @(Height)px;">
+        @if (IsLoading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+    </div>
+</div>
+
+<style>
+    .scurve-chart-container {
+        background-color: var(--mud-palette-surface);
+        border-radius: 4px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .scurve-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .scurve-controls {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .scurve-legend {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 2px;
+    }
+
+    .legend-label {
+        font-size: 14px;
+    }
+
+    .scurve-chart {
+        border: 1px solid var(--mud-palette-divider);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .scurve-tooltip {
+        position: absolute;
+        background-color: var(--mud-palette-surface);
+        border: 1px solid var(--mud-palette-divider);
+        border-radius: 4px;
+        padding: 8px;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 1000;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .scurve-grid {
+        stroke: var(--mud-palette-divider);
+        stroke-width: 0.5;
+    }
+
+    .scurve-axis {
+        stroke: var(--mud-palette-text-primary);
+        stroke-width: 1;
+    }
+
+    .scurve-axis-label {
+        fill: var(--mud-palette-text-secondary);
+        font-size: 12px;
+    }
+
+    .scurve-data-label {
+        fill: var(--mud-palette-text-primary);
+        font-size: 10px;
+        text-anchor: middle;
+    }
+</style>
+
+@code {
+    [Parameter] public SCurveDto? ChartData { get; set; }
+    [Parameter] public int Height { get; set; } = 400;
+    [Parameter] public bool ShowLegend { get; set; } = true;
+    [Parameter] public bool ShowMetrics { get; set; } = true;
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public EventCallback<SCurveDataPointDto> OnDataPointClick { get; set; }
+    [Parameter] public string ChartType { get; set; } = "line";
+
+    private string ChartId = $"scurve-{Guid.NewGuid():N}";
+    private bool ShowGrid = true;
+    private bool ShowDataLabels = false;
+    private bool ShowCumulative = true;
+    private bool EnableZoom = true;
+    private bool EnablePan = true;
+    private DotNetObjectReference<SCurveChart>? dotNetHelper;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await InitializeChart();
+        }
+        else if (ChartData != null)
+        {
+            await UpdateChart();
+        }
+    }
+
+    private async Task InitializeChart()
+    {
+        if (ChartData == null) return;
+
+        var config = new
+        {
+            containerId = ChartId,
+            data = PrepareChartData(),
+            options = new
+            {
+                chartType = ChartType,
+                showGrid = ShowGrid,
+                showDataLabels = ShowDataLabels,
+                showCumulative = ShowCumulative,
+                enableZoom = EnableZoom,
+                enablePan = EnablePan,
+                showTooltips = ChartData.Config.ShowTooltips,
+                valueFormat = ChartData.Config.ValueFormat,
+                xAxisLabel = ChartData.XAxisLabel,
+                yAxisLabel = ChartData.YAxisLabel,
+                height = Height
+            },
+            callbacks = new
+            {
+                onDataPointClick = nameof(HandleDataPointClick)
+            }
+        };
+
+        await JSRuntime.InvokeVoidAsync("sCurveChart.initialize", config, dotNetHelper);
+    }
+
+    private async Task UpdateChart()
+    {
+        if (ChartData == null) return;
+
+        await JSRuntime.InvokeVoidAsync("sCurveChart.update", ChartId, PrepareChartData());
+    }
+
+    private object PrepareChartData()
+    {
+        if (ChartData == null) return new { };
+
+        return new
+        {
+            series = ChartData.Series.Select(s => new
+            {
+                name = s.Name,
+                type = ChartType == "bar" && s.Type != "bar" ? "bar" : s.Type,
+                data = s.DataPoints.Select(p => new
+                {
+                    x = p.Date.ToString("yyyy-MM-dd"),
+                    y = ShowCumulative && p.CumulativeValue.HasValue ? p.CumulativeValue.Value : p.Value,
+                    label = p.Label,
+                    metadata = p.Metadata
+                }).ToList(),
+                color = s.Color,
+                showMarkers = s.ShowMarkers,
+                lineStyle = s.LineStyle,
+                lineWidth = s.LineWidth,
+                fill = s.Fill
+            }).ToList()
+        };
+    }
+
+    private async Task ChangeChartType(string type)
+    {
+        ChartType = type;
+        await UpdateChart();
+    }
+
+    private async Task ExportChart()
+    {
+        await JSRuntime.InvokeVoidAsync("sCurveChart.export", ChartId, "png");
+    }
+
+    [JSInvokable]
+    public async Task HandleDataPointClick(string seriesName, string date, decimal value)
+    {
+        if (OnDataPointClick.HasDelegate && ChartData != null)
+        {
+            var series = ChartData.Series.FirstOrDefault(s => s.Name == seriesName);
+            var dataPoint = series?.DataPoints.FirstOrDefault(p => p.Date.ToString("yyyy-MM-dd") == date);
+            
+            if (dataPoint != null)
+            {
+                await OnDataPointClick.InvokeAsync(dataPoint);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        dotNetHelper?.Dispose();
+    }
+}

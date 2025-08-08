@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Modules.Organization;
 
 /// <summary>
-/// Endpoints for OBS (Organizational Breakdown Structure) node management
+/// Endpoints para la gestión de nodos OBS (Estructura de Desglose Organizacional)
 /// </summary>
 public class OBSNodeModule : CarterModule
 {
@@ -24,47 +24,47 @@ public class OBSNodeModule : CarterModule
         // Query endpoints
         app.MapGet("/", GetOBSNodesAsync)
             .WithName("GetOBSNodes")
-            .WithSummary("Get all OBS nodes with pagination")
-            .WithDescription("Returns a paginated list of OBS nodes")
+            .WithSummary("Obtener todos los nodos OBS con paginación")
+            .WithDescription("Devuelve una lista paginada de nodos OBS")
             .WithTags("OBS")
             .Produces<PagedResult<OBSNodeDto>>();
 
         app.MapGet("/{id:guid}", GetOBSNodeByIdAsync)
             .WithName("GetOBSNodeById")
-            .WithSummary("Get OBS node by ID")
-            .WithDescription("Returns a specific OBS node by ID")
+            .WithSummary("Obtener nodo OBS por ID")
+            .WithDescription("Devuelve un nodo OBS específico por ID")
             .WithTags("OBS")
             .Produces<OBSNodeDto>()
             .Produces(404);
 
         app.MapGet("/project/{projectId:guid}", GetOBSNodesByProjectAsync)
             .WithName("GetOBSNodesByProject")
-            .WithSummary("Get OBS nodes by project")
-            .WithDescription("Returns all OBS nodes for a specific project")
+            .WithSummary("Obtener nodos OBS por proyecto")
+            .WithDescription("Devuelve todos los nodos OBS para un proyecto específico")
             .WithTags("OBS")
             .Produces<List<OBSNodeDto>>()
             .Produces(404);
 
         app.MapGet("/project/{projectId:guid}/hierarchy", GetOBSHierarchyAsync)
             .WithName("GetOBSHierarchy")
-            .WithSummary("Get OBS hierarchy")
-            .WithDescription("Returns the complete OBS hierarchy for a project")
+            .WithSummary("Obtener jerarquía OBS")
+            .WithDescription("Devuelve la jerarquía OBS completa para un proyecto")
             .WithTags("OBS")
             .Produces<OBSNodeTreeDto>()
             .Produces(404);
 
         app.MapGet("/{id:guid}/children", GetOBSNodeChildrenAsync)
             .WithName("GetOBSNodeChildren")
-            .WithSummary("Get OBS node children")
-            .WithDescription("Returns all child nodes of an OBS node")
+            .WithSummary("Obtener nodos hijos OBS")
+            .WithDescription("Devuelve todos los nodos hijos de un nodo OBS")
             .WithTags("OBS")
             .Produces<List<OBSNodeDto>>()
             .Produces(404);
 
         app.MapGet("/{id:guid}/team", GetOBSNodeTeamAsync)
             .WithName("GetOBSNodeTeam")
-            .WithSummary("Get OBS node team")
-            .WithDescription("Returns all team members assigned to an OBS node")
+            .WithSummary("Obtener equipo del nodo OBS")
+            .WithDescription("Devuelve todos los miembros del equipo asignados a un nodo OBS")
             .WithTags("OBS")
             .Produces<OBSNodeTeamDto>()
             .Produces(404);
@@ -72,8 +72,8 @@ public class OBSNodeModule : CarterModule
         // Command endpoints
         app.MapPost("/", CreateOBSNodeAsync)
             .WithName("CreateOBSNode")
-            .WithSummary("Create a new OBS node")
-            .WithDescription("Creates a new OBS node")
+            .WithSummary("Crear un nuevo nodo OBS")
+            .WithDescription("Crea un nuevo nodo OBS")
             .WithTags("OBS")
             .RequireAuthorization("ProjectEdit")
             .Produces<Result<Guid>>(201)
@@ -81,8 +81,8 @@ public class OBSNodeModule : CarterModule
 
         app.MapPut("/{id:guid}", UpdateOBSNodeAsync)
             .WithName("UpdateOBSNode")
-            .WithSummary("Update OBS node")
-            .WithDescription("Updates an existing OBS node")
+            .WithSummary("Actualizar nodo OBS")
+            .WithDescription("Actualiza un nodo OBS existente")
             .WithTags("OBS")
             .RequireAuthorization("ProjectEdit")
             .Produces<Result>()
@@ -91,8 +91,8 @@ public class OBSNodeModule : CarterModule
 
         app.MapPut("/{id:guid}/manager", UpdateOBSNodeManagerAsync)
             .WithName("UpdateOBSNodeManager")
-            .WithSummary("Update OBS node manager")
-            .WithDescription("Updates the manager of an OBS node")
+            .WithSummary("Actualizar gerente del nodo OBS")
+            .WithDescription("Actualiza el gerente de un nodo OBS")
             .WithTags("OBS")
             .RequireAuthorization("ProjectEdit")
             .Produces<Result>()
@@ -101,8 +101,8 @@ public class OBSNodeModule : CarterModule
 
         app.MapPut("/{id:guid}/cost-center", UpdateOBSNodeCostCenterAsync)
             .WithName("UpdateOBSNodeCostCenter")
-            .WithSummary("Update OBS node cost center")
-            .WithDescription("Updates the cost center of an OBS node")
+            .WithSummary("Actualizar centro de costos del nodo OBS")
+            .WithDescription("Actualiza el centro de costos de un nodo OBS")
             .WithTags("OBS")
             .RequireAuthorization("ProjectEdit")
             .Produces<Result>()
@@ -111,8 +111,8 @@ public class OBSNodeModule : CarterModule
 
         app.MapPost("/{id:guid}/move", MoveOBSNodeAsync)
             .WithName("MoveOBSNode")
-            .WithSummary("Move OBS node")
-            .WithDescription("Moves an OBS node to a new parent")
+            .WithSummary("Mover nodo OBS")
+            .WithDescription("Mueve un nodo OBS a un nuevo padre")
             .WithTags("OBS")
             .RequireAuthorization("ProjectEdit")
             .Produces<Result>()
@@ -121,8 +121,8 @@ public class OBSNodeModule : CarterModule
 
         app.MapPost("/bulk-update", BulkUpdateOBSNodesAsync)
             .WithName("BulkUpdateOBSNodes")
-            .WithSummary("Bulk update OBS nodes")
-            .WithDescription("Updates multiple OBS nodes in a single operation")
+            .WithSummary("Actualizar nodos OBS en lote")
+            .WithDescription("Actualiza múltiples nodos OBS en una sola operación")
             .WithTags("OBS")
             .RequireAuthorization("ProjectEdit")
             .Produces<BulkOperationResult>()
@@ -130,8 +130,8 @@ public class OBSNodeModule : CarterModule
 
         app.MapDelete("/{id:guid}", DeleteOBSNodeAsync)
             .WithName("DeleteOBSNode")
-            .WithSummary("Delete OBS node")
-            .WithDescription("Soft deletes an OBS node and all its children")
+            .WithSummary("Eliminar nodo OBS")
+            .WithDescription("Elimina de forma lógica un nodo OBS y todos sus hijos")
             .WithTags("OBS")
             .RequireAuthorization("ProjectEdit")
             .Produces<Result>()
@@ -209,12 +209,12 @@ public class OBSNodeModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await obsNodeService.CreateAsync(dto, userId, cancellationToken);
         
         return result != null 
             ? Results.CreatedAtRoute("GetOBSNodeById", new { id = result.Id }, result)
-            : Results.BadRequest("Failed to create OBS node");
+            : Results.BadRequest("Error al crear el nodo OBS");
     }
 
     private static async Task<IResult> UpdateOBSNodeAsync(
@@ -224,7 +224,7 @@ public class OBSNodeModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await obsNodeService.UpdateAsync(id, dto, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -237,7 +237,7 @@ public class OBSNodeModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await obsNodeService.SetManagerAsync(id, dto.ManagerId, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -250,7 +250,7 @@ public class OBSNodeModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         // This would need to be implemented using Update method
         var existing = await obsNodeService.GetByIdAsync(id, cancellationToken);
         if (existing == null) return Results.NotFound();
@@ -278,7 +278,7 @@ public class OBSNodeModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await obsNodeService.MoveNodeAsync(id, dto, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -290,7 +290,7 @@ public class OBSNodeModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         // This would need to be implemented by calling Update multiple times
         var results = new BulkOperationResult();
         
@@ -321,9 +321,9 @@ public class OBSNodeModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await obsNodeService.DeleteAsync(id, cancellationToken);
         
-        return result ? Results.Ok("OBS node deleted successfully") : Results.BadRequest("Failed to delete OBS node");
+        return result ? Results.Ok("Nodo OBS eliminado exitosamente") : Results.BadRequest("Error al eliminar el nodo OBS");
     }
 }

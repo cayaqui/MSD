@@ -7,108 +7,108 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Modules.Cost;
 
 /// <summary>
-/// Control Account management endpoints
+/// Endpoints de gestión de cuentas de control
 /// </summary>
 public class ControlAccountModule : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/control-accounts")
-            .WithTags("Control Accounts")
+            .WithTags("Cuentas de Control")
             .RequireAuthorization();
 
-        // Query endpoints
+        // Endpoints de consulta
         group.MapGet("/", GetControlAccounts)
             .WithName("GetControlAccounts")
-            .WithSummary("Get control accounts with optional filtering")
+            .WithSummary("Obtener cuentas de control con filtrado opcional")
             .Produces<PagedResult<ControlAccountDto>>();
 
         group.MapGet("/{id:guid}", GetControlAccountById)
             .WithName("GetControlAccountById")
-            .WithSummary("Get control account by ID")
+            .WithSummary("Obtener cuenta de control por ID")
             .Produces<ControlAccountDetailDto>()
             .ProducesProblem(404);
 
         group.MapGet("/phase/{phaseId:guid}", GetControlAccountsByPhase)
             .WithName("GetControlAccountsByPhase")
-            .WithSummary("Get control accounts by phase")
+            .WithSummary("Obtener cuentas de control por fase")
             .Produces<List<ControlAccountDto>>();
 
         group.MapGet("/{id:guid}/assignments", GetControlAccountAssignments)
             .WithName("GetControlAccountAssignments")
-            .WithSummary("Get control account assignments")
+            .WithSummary("Obtener asignaciones de cuenta de control")
             .Produces<List<ControlAccountAssignmentDto>>();
 
         group.MapGet("/{id:guid}/evm-summary", GetLatestEVMSummary)
             .WithName("GetLatestEVMSummary")
-            .WithSummary("Get latest EVM summary for control account")
+            .WithSummary("Obtener resumen EVM más reciente para cuenta de control")
             .Produces<EVMSummaryDto>()
             .ProducesProblem(404);
 
-        // Command endpoints
+        // Endpoints de comandos
         group.MapPost("/", CreateControlAccount)
             .WithName("CreateControlAccount")
-            .WithSummary("Create a new control account")
+            .WithSummary("Crear una nueva cuenta de control")
             .Produces<Guid>(201)
             .ProducesValidationProblem();
 
         group.MapPut("/{id:guid}", UpdateControlAccount)
             .WithName("UpdateControlAccount")
-            .WithSummary("Update a control account")
+            .WithSummary("Actualizar una cuenta de control")
             .Produces(200)
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapPut("/{id:guid}/status", UpdateControlAccountStatus)
             .WithName("UpdateControlAccountStatus")
-            .WithSummary("Update control account status")
+            .WithSummary("Actualizar estado de cuenta de control")
             .Produces(200)
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapDelete("/{id:guid}", DeleteControlAccount)
             .WithName("DeleteControlAccount")
-            .WithSummary("Delete a control account")
+            .WithSummary("Eliminar una cuenta de control")
             .Produces(204)
             .ProducesProblem(404);
 
-        // Assignment endpoints
+        // Endpoints de asignación
         group.MapPost("/{id:guid}/assignments", AssignUserToControlAccount)
             .WithName("AssignUserToControlAccount")
-            .WithSummary("Assign user to control account")
+            .WithSummary("Asignar usuario a cuenta de control")
             .Produces(200)
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapDelete("/{id:guid}/assignments/{userToRemove}", RemoveUserFromControlAccount)
             .WithName("RemoveUserFromControlAccount")
-            .WithSummary("Remove user from control account")
+            .WithSummary("Eliminar usuario de cuenta de control")
             .Produces(204)
             .ProducesProblem(404);
 
-        // Progress endpoints
+        // Endpoints de progreso
         group.MapPut("/{id:guid}/progress", UpdateControlAccountProgress)
             .WithName("UpdateControlAccountProgress")
-            .WithSummary("Update control account progress")
+            .WithSummary("Actualizar progreso de cuenta de control")
             .Produces(200)
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
-        // Workflow endpoints
+        // Endpoints de flujo de trabajo
         group.MapPost("/{id:guid}/baseline", BaselineControlAccount)
             .WithName("BaselineControlAccount")
-            .WithSummary("Baseline a control account")
+            .WithSummary("Establecer línea base de cuenta de control")
             .Produces(200)
             .ProducesProblem(404);
 
         group.MapPost("/{id:guid}/close", CloseControlAccount)
             .WithName("CloseControlAccount")
-            .WithSummary("Close a control account")
+            .WithSummary("Cerrar una cuenta de control")
             .Produces(200)
             .ProducesProblem(404);
     }
 
-    // Query handlers
+    // Manejadores de consultas
     private static async Task<IResult> GetControlAccounts(
         [FromQuery] Guid? projectId,
         [AsParameters] QueryParameters parameters,
@@ -155,7 +155,7 @@ public class ControlAccountModule : ICarterModule
         return result != null ? Results.Ok(result) : Results.NotFound();
     }
 
-    // Command handlers
+    // Manejadores de comandos
     private static async Task<IResult> CreateControlAccount(
         [FromBody] CreateControlAccountDto dto,
         IControlAccountService service,
@@ -204,7 +204,7 @@ public class ControlAccountModule : ICarterModule
         return result.IsSuccess ? Results.NoContent() : Results.BadRequest(result.Error);
     }
 
-    // Assignment handlers
+    // Manejadores de asignación
     private static async Task<IResult> AssignUserToControlAccount(
         [FromRoute] Guid id,
         [FromBody] CreateControlAccountAssignmentDto dto,
@@ -229,7 +229,7 @@ public class ControlAccountModule : ICarterModule
         return result.IsSuccess ? Results.NoContent() : Results.BadRequest(result.Error);
     }
 
-    // Progress handlers
+    // Manejadores de progreso
     private static async Task<IResult> UpdateControlAccountProgress(
         [FromRoute] Guid id,
         [FromBody] UpdateControlAccountProgressDto dto,
@@ -242,7 +242,7 @@ public class ControlAccountModule : ICarterModule
         return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
     }
 
-    // Workflow handlers
+    // Manejadores de flujo de trabajo
     private static async Task<IResult> BaselineControlAccount(
         [FromRoute] Guid id,
         IControlAccountService service,
@@ -266,5 +266,5 @@ public class ControlAccountModule : ICarterModule
     }
 }
 
-// Request DTOs
+// DTOs de solicitud
 public record UpdateControlAccountProgressDto(decimal PercentComplete);

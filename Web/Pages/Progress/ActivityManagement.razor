@@ -1,0 +1,627 @@
+@page "/progress/activities/{ProjectId:guid}"
+@using Core.DTOs.Progress.Activities
+@using Core.DTOs.Projects.WBSElement
+@using Core.Enums
+@using Core.Enums.Progress
+@using Web.Services.Interfaces.Progress
+@using Web.Services.Interfaces.Projects
+@inject IActivityApiService ActivityService
+@inject IWBSApiService WBSService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Gestión de Actividades</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+    <MudBreadcrumbs Items="_breadcrumbs" />
+    
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid>
+            <MudGrid xs="12" md="8">
+                <MudText Typo="Typo.h4" Class="mb-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" />
+                    Gestión de Actividades
+                </MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary">
+                    Administre las actividades del cronograma del proyecto
+                </MudText>
+            </MudGrid>
+            <MudGrid xs="12" md="4" Class="d-flex justify-end align-center">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="CreateActivity">
+                    Nueva Actividad
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Upload"
+                           OnClick="BulkCreateActivities"
+                           Class="ml-2">
+                    Carga Masiva
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" 
+                           StartIcon="@Icons.Material.Filled.Route"
+                           OnClick="RecalculateCriticalPath"
+                           Class="ml-2"
+                           Disabled="_recalculating">
+                    @if (_recalculating)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                        <MudText Class="ms-2">Recalculando...</MudText>
+                    }
+                    else
+                    {
+                        <MudText>Ruta Crítica</MudText>
+                    }
+                </MudButton>
+            </MudGrid>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" md="3">
+                <MudSelect T="Guid?" Label="Elemento WBS" Value="_selectedWBSElement" 
+                           ValueChanged="OnWBSElementChanged" Clearable="true">
+                    @foreach (var wbs in _wbsElements)
+                    {
+                        <MudSelectItem Value="@((Guid?)wbs.Id)">
+                            @($"{wbs.Code} - {wbs.Name}")
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="ActivityStatus?" Label="Estado" Value="_selectedStatus" 
+                           ValueChanged="OnFilterChanged" Clearable="true">
+                    @foreach (ActivityStatus status in Enum.GetValues(typeof(ActivityStatus)))
+                    {
+                        <MudSelectItem Value="@((ActivityStatus?)status)">
+                            @GetStatusDisplay(status)
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="bool?" Label="Ruta Crítica" Value="_isCritical" 
+                           ValueChanged="OnFilterChanged" Clearable="true">
+                    <MudSelectItem Value="@((bool?)true)">Sí</MudSelectItem>
+                    <MudSelectItem Value="@((bool?)false)">No</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudTextField T="string" Label="Buscar" @bind-Value="_searchTerm" 
+                              DebounceInterval="300" OnDebounceIntervalElapsed="OnFilterChanged"
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Class="pa-4">
+        <MudTable Items="_activities" Dense="true" Hover="true" Loading="_loading" 
+                  MultiSelection="true" @bind-SelectedItems="_selectedActivities">
+            <ToolBarContent>
+                @if (_selectedActivities.Count > 0)
+                {
+                    <MudText Class="mr-4">@_selectedActivities.Count actividades seleccionadas</MudText>
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" 
+                               OnClick="BulkUpdateProgress"
+                               StartIcon="@Icons.Material.Filled.Update">
+                        Actualizar Progreso
+                    </MudButton>
+                    <MudSpacer />
+                }
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh>Código</MudTh>
+                <MudTh>Nombre</MudTh>
+                <MudTh>WBS</MudTh>
+                <MudTh>Estado</MudTh>
+                <MudTh>Tipo</MudTh>
+                <MudTh>Inicio Plan.</MudTh>
+                <MudTh>Fin Plan.</MudTh>
+                <MudTh>Duración</MudTh>
+                <MudTh>Progreso</MudTh>
+                <MudTh>Acciones</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Código">
+                    <MudText>@context.ActivityCode</MudText>
+                    @if (context.IsCritical)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" Size="Size.Small" 
+                                 Title="Actividad Crítica" />
+                    }
+                </MudTd>
+                <MudTd DataLabel="Nombre">@context.Name</MudTd>
+                <MudTd DataLabel="WBS">@context.WBSElementCode</MudTd>
+                <MudTd DataLabel="Estado">
+                    <MudChip Color="@GetStatusColor(context.Status)" Size="Size.Small">
+                        @GetStatusDisplay(context.Status)
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Tipo">@GetActivityTypeDisplay(context.ActivityType)</MudTd>
+                <MudTd DataLabel="Inicio Plan.">@context.PlannedStartDate.ToShortDateString()</MudTd>
+                <MudTd DataLabel="Fin Plan.">@context.PlannedEndDate.ToShortDateString()</MudTd>
+                <MudTd DataLabel="Duración">@context.DurationDays días</MudTd>
+                <MudTd DataLabel="Progreso">
+                    <MudProgressLinear Value="@((double)context.ProgressPercentage)" Color="@GetProgressColor(context.ProgressPercentage)">
+                        <MudText Typo="Typo.body2">@context.ProgressPercentage%</MudText>
+                    </MudProgressLinear>
+                </MudTd>
+                <MudTd DataLabel="Acciones">
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                        <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="() => EditActivity(context.Id)">
+                            Editar
+                        </MudMenuItem>
+                        
+                        @if (context.Status == ActivityStatus.NotStarted)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Filled.PlayArrow" OnClick="() => StartActivity(context.Id)">
+                                Iniciar
+                            </MudMenuItem>
+                        }
+                        
+                        @if (context.Status == ActivityStatus.InProgress)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Filled.Update" OnClick="() => UpdateProgress(context.Id)">
+                                Actualizar Progreso
+                            </MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.Pause" OnClick="() => SuspendActivity(context.Id)">
+                                Suspender
+                            </MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.CheckCircle" OnClick="() => CompleteActivity(context.Id)">
+                                Completar
+                            </MudMenuItem>
+                        }
+                        
+                        @if (context.Status == ActivityStatus.Suspended)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Filled.PlayArrow" OnClick="() => ResumeActivity(context.Id)">
+                                Reanudar
+                            </MudMenuItem>
+                        }
+                        
+                        <MudMenuItem Icon="@Icons.Material.Filled.AccountTree" OnClick="() => ManageDependencies(context.Id)">
+                            Dependencias
+                        </MudMenuItem>
+                        
+                        <MudMenuItem Icon="@Icons.Material.Filled.People" OnClick="() => AssignResources(context.Id)">
+                            Recursos
+                        </MudMenuItem>
+                        
+                        <MudDivider />
+                        
+                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="() => DeleteActivity(context.Id)">
+                            Eliminar
+                        </MudMenuItem>
+                    </MudMenu>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+    
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    private List<ActivityDto> _activities = new();
+    private List<WBSElementDto> _wbsElements = new();
+    private HashSet<ActivityDto> _selectedActivities = new();
+    
+    private bool _loading;
+    private bool _recalculating;
+    
+    // Filters
+    private Guid? _selectedWBSElement;
+    private Core.Enums.Progress.ActivityStatus? _selectedStatus;
+    private bool? _isCritical;
+    private string _searchTerm = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Inicio", href: "/", icon: Icons.Material.Filled.Home),
+            new BreadcrumbItem("Proyectos", href: "/projects"),
+            new BreadcrumbItem("Progreso", href: $"/projects/{ProjectId}"),
+            new BreadcrumbItem("Actividades", href: null, disabled: true)
+        };
+
+        await LoadWBSElements();
+        await LoadActivities();
+    }
+
+    private async Task LoadWBSElements()
+    {
+        try
+        {
+            _wbsElements = await WBSService.GetHierarchyAsync(ProjectId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar elementos WBS: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadActivities()
+    {
+        _loading = true;
+
+        try
+        {
+            var filter = new ActivityFilterDto
+            {
+                ProjectId = ProjectId,
+                WBSElementId = _selectedWBSElement,
+                Status = _selectedStatus,
+                IsCritical = _isCritical,
+                SearchTerm = _searchTerm,
+                PageSize = 50,
+                SortBy = "PlannedStartDate"
+            };
+
+            var result = await ActivityService.GetActivitiesAsync(filter);
+            _activities = result.Items;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar actividades: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnWBSElementChanged(Guid? value)
+    {
+        _selectedWBSElement = value;
+        await LoadActivities();
+    }
+
+    private async Task OnFilterChanged(ActivityStatus? value)
+    {
+        _selectedStatus = value;
+        await LoadActivities();
+    }
+
+    private async Task OnFilterChanged(bool? value)
+    {
+        _isCritical = value;
+        await LoadActivities();
+    }
+
+    private async Task OnFilterChanged()
+    {
+        await LoadActivities();
+    }
+
+    private async Task CreateActivity()
+    {
+        var parameters = new DialogParameters
+        {
+            ["ProjectId"] = ProjectId,
+            ["WBSElements"] = _wbsElements
+        };
+
+        var dialog = await DialogService.ShowAsync<CreateActivityDialog>("Nueva Actividad", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadActivities();
+        }
+    }
+
+    private async Task BulkCreateActivities()
+    {
+        var parameters = new DialogParameters
+        {
+            ["ProjectId"] = ProjectId,
+            ["WBSElements"] = _wbsElements
+        };
+
+        var dialog = await DialogService.ShowAsync<BulkCreateActivitiesDialog>("Carga Masiva de Actividades", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadActivities();
+        }
+    }
+
+    private async Task RecalculateCriticalPath()
+    {
+        _recalculating = true;
+
+        try
+        {
+            await ActivityService.RecalculateCriticalPathAsync(ProjectId);
+            Snackbar.Add("Ruta crítica recalculada exitosamente", Severity.Success);
+            await LoadActivities();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al recalcular ruta crítica: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _recalculating = false;
+        }
+    }
+
+    private async Task EditActivity(Guid activityId)
+    {
+        var activity = _activities.FirstOrDefault(a => a.Id == activityId);
+        if (activity != null)
+        {
+            var parameters = new DialogParameters
+            {
+                ["Activity"] = activity,
+                ["WBSElements"] = _wbsElements
+            };
+
+            var dialog = await DialogService.ShowAsync<EditActivityDialog>("Editar Actividad", parameters);
+            var result = await dialog.Result;
+
+            if (!result.Canceled)
+            {
+                await LoadActivities();
+            }
+        }
+    }
+
+    private async Task StartActivity(Guid activityId)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Iniciar Actividad",
+            "¿Está seguro de que desea iniciar esta actividad?",
+            yesText: "Iniciar", cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            try
+            {
+                await ActivityService.StartActivityAsync(activityId);
+                Snackbar.Add("Actividad iniciada exitosamente", Severity.Success);
+                await LoadActivities();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error al iniciar actividad: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task UpdateProgress(Guid activityId)
+    {
+        var activity = _activities.FirstOrDefault(a => a.Id == activityId);
+        if (activity != null)
+        {
+            var parameters = new DialogParameters
+            {
+                ["Activity"] = activity
+            };
+
+            var dialog = await DialogService.ShowAsync<UpdateActivityProgressDialog>("Actualizar Progreso", parameters);
+            var result = await dialog.Result;
+
+            if (!result.Canceled)
+            {
+                await LoadActivities();
+            }
+        }
+    }
+
+    private async Task SuspendActivity(Guid activityId)
+    {
+        var parameters = new DialogParameters();
+        var dialog = await DialogService.ShowAsync<SuspendActivityDialog>("Suspender Actividad", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is string reason)
+        {
+            try
+            {
+                await ActivityService.SuspendActivityAsync(activityId, reason);
+                Snackbar.Add("Actividad suspendida", Severity.Warning);
+                await LoadActivities();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error al suspender actividad: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ResumeActivity(Guid activityId)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Reanudar Actividad",
+            "¿Está seguro de que desea reanudar esta actividad?",
+            yesText: "Reanudar", cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            try
+            {
+                await ActivityService.ResumeActivityAsync(activityId);
+                Snackbar.Add("Actividad reanudada exitosamente", Severity.Success);
+                await LoadActivities();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error al reanudar actividad: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task CompleteActivity(Guid activityId)
+    {
+        var parameters = new DialogParameters();
+        var dialog = await DialogService.ShowAsync<CompleteActivityDialog>("Completar Actividad", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                var actualEndDate = result.Data as DateTime?;
+                await ActivityService.CompleteActivityAsync(activityId, actualEndDate);
+                Snackbar.Add("Actividad completada exitosamente", Severity.Success);
+                await LoadActivities();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error al completar actividad: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ManageDependencies(Guid activityId)
+    {
+        var activity = _activities.FirstOrDefault(a => a.Id == activityId);
+        if (activity != null)
+        {
+            var parameters = new DialogParameters
+            {
+                ["Activity"] = activity,
+                ["AllActivities"] = _activities
+            };
+
+            var dialog = await DialogService.ShowAsync<ManageDependenciesDialog>("Gestionar Dependencias", parameters);
+            var result = await dialog.Result;
+
+            if (!result.Canceled)
+            {
+                await LoadActivities();
+            }
+        }
+    }
+
+    private async Task AssignResources(Guid activityId)
+    {
+        var activity = _activities.FirstOrDefault(a => a.Id == activityId);
+        if (activity != null)
+        {
+            var parameters = new DialogParameters
+            {
+                ["Activity"] = activity
+            };
+
+            var dialog = await DialogService.ShowAsync<AssignResourcesDialog>("Asignar Recursos", parameters);
+            var result = await dialog.Result;
+
+            if (!result.Canceled)
+            {
+                await LoadActivities();
+            }
+        }
+    }
+
+    private async Task DeleteActivity(Guid activityId)
+    {
+        var canDelete = await ActivityService.CanDeleteActivityAsync(activityId);
+        if (!canDelete)
+        {
+            Snackbar.Add("No se puede eliminar esta actividad porque tiene progreso registrado", Severity.Warning);
+            return;
+        }
+
+        var confirm = await DialogService.ShowMessageBox(
+            "Eliminar Actividad",
+            "¿Está seguro de que desea eliminar esta actividad?",
+            yesText: "Eliminar", cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            try
+            {
+                await ActivityService.DeleteActivityAsync(activityId);
+                Snackbar.Add("Actividad eliminada exitosamente", Severity.Success);
+                await LoadActivities();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error al eliminar actividad: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task BulkUpdateProgress()
+    {
+        var parameters = new DialogParameters
+        {
+            ["Activities"] = _selectedActivities.ToList()
+        };
+
+        var dialog = await DialogService.ShowAsync<BulkUpdateProgressDialog>("Actualizar Progreso en Lote", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadActivities();
+            _selectedActivities.Clear();
+        }
+    }
+
+    private string GetStatusDisplay(Core.Enums.Progress.ActivityStatus status)
+    {
+        return status switch
+        {
+            ActivityStatus.NotStarted => "No Iniciada",
+            ActivityStatus.InProgress => "En Progreso",
+            ActivityStatus.Completed => "Completada",
+            ActivityStatus.Suspended => "Suspendida",
+            ActivityStatus.Cancelled => "Cancelada",
+            _ => status.ToString()
+        };
+    }
+
+    private Color GetStatusColor(Core.Enums.Progress.ActivityStatus status)
+    {
+        return status switch
+        {
+            ActivityStatus.NotStarted => Color.Default,
+            ActivityStatus.InProgress => Color.Info,
+            ActivityStatus.Completed => Color.Success,
+            ActivityStatus.Suspended => Color.Warning,
+            ActivityStatus.Cancelled => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string GetActivityTypeDisplay(ActivityType type)
+    {
+        return type switch
+        {
+            ActivityType.TaskDependent => "Dependiente",
+            ActivityType.ResourceDependent => "Recursos",
+            ActivityType.FinishToStart => "Fin-Inicio",
+            ActivityType.StartToStart => "Inicio-Inicio",
+            ActivityType.FinishToFinish => "Fin-Fin",
+            ActivityType.StartMilestone => "Hito Inicio",
+            ActivityType.FinishMilestone => "Hito Fin",
+            _ => type.ToString()
+        };
+    }
+
+    private Color GetProgressColor(decimal progress)
+    {
+        return progress switch
+        {
+            0 => Color.Default,
+            < 25 => Color.Error,
+            < 50 => Color.Warning,
+            < 75 => Color.Info,
+            < 100 => Color.Primary,
+            100 => Color.Success,
+            _ => Color.Default
+        };
+    }
+}

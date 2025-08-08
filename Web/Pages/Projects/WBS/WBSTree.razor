@@ -1,0 +1,451 @@
+@page "/projects/{ProjectId:guid}/wbs"
+@using Core.DTOs.Projects.WBSElement
+@using Core.Enums.Projects
+@using MudBlazor
+@using Web.Services.Interfaces.Projects
+@using Web.Services.Interfaces.Organization
+@inject IWBSApiService WBSService
+@inject IProjectApiService ProjectService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Estructura de Desglose del Trabajo - @projectName</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <MudGrid>
+        <MudItem xs="12">
+            <MudPaper Class="pa-4 mb-4">
+                <MudBreadcrumbs Items="_breadcrumbs" />
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudCard>
+                <MudCardContent>
+                    <MudGrid AlignItems="Center">
+                        <MudItem xs="12" md="8">
+                            <MudText Typo="Typo.h5">Estructura de Desglose del Trabajo (WBS)</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@projectName</MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="4" Class="text-right">
+                            <MudButton Variant="Variant.Filled" 
+                                      Color="Color.Primary" 
+                                      StartIcon="@Icons.Material.Filled.Add"
+                                      OnClick="@(() => OpenCreateDialog(null))">
+                                Agregar Elemento
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" 
+                                      Color="Color.Primary" 
+                                      StartIcon="@Icons.Material.Filled.Book"
+                                      OnClick="@(() => NavigationManager.NavigateTo($"/projects/{ProjectId}/wbs/dictionary"))"
+                                      Class="ml-2">
+                                Diccionario
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" 
+                                      Color="Color.Primary" 
+                                      StartIcon="@Icons.Material.Filled.Upload"
+                                      OnClick="ImportWBS"
+                                      Class="ml-2">
+                                Importar
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" 
+                                      Color="Color.Primary" 
+                                      StartIcon="@Icons.Material.Filled.Download"
+                                      OnClick="ExportWBS"
+                                      Class="ml-2">
+                                Exportar
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="3">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Class="mb-2">Filtros</MudText>
+                    
+                    <MudTextField @bind-Value="searchTerm" 
+                                  Label="Buscar" 
+                                  Variant="Variant.Outlined"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Immediate="true"
+                                  OnDebounceIntervalElapsed="FilterWBS"
+                                  DebounceInterval="300"
+                                  Class="mb-2" />
+                    
+                    <MudSelect T="WBSElementType?" 
+                               @bind-Value="filterType" 
+                               Label="Tipo de Elemento"
+                               Variant="Variant.Outlined"
+                               Class="mb-2"
+                               AnchorOrigin="Origin.BottomCenter">
+                        <MudSelectItem T="WBSElementType?" Value="@null">Todos</MudSelectItem>
+                        <MudSelectItem T="WBSElementType?" Value="WBSElementType.Summary">Resumen</MudSelectItem>
+                        <MudSelectItem T="WBSElementType?" Value="WBSElementType.WorkPackage">Paquete de Trabajo</MudSelectItem>
+                        <MudSelectItem T="WBSElementType?" Value="WBSElementType.PlanningPackage">Paquete de Planificación</MudSelectItem>
+                    </MudSelect>
+
+                    <MudSwitch @bind-Value="showInactive" 
+                               Label="Mostrar Inactivos" 
+                               Color="Color.Primary" />
+                </MudCardContent>
+            </MudCard>
+
+            <MudCard Class="mt-4">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Class="mb-2">Leyenda</MudText>
+                    <MudList T="string" Dense="true">
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Folder" IconColor="Color.Primary">
+                            <MudText Typo="Typo.body2">Nivel WBS</MudText>
+                        </MudListItem>
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Work" IconColor="Color.Success">
+                            <MudText Typo="Typo.body2">Paquete de Trabajo</MudText>
+                        </MudListItem>
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.Schedule" IconColor="Color.Warning">
+                            <MudText Typo="Typo.body2">Paquete de Planificación</MudText>
+                        </MudListItem>
+                    </MudList>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="9">
+            @if (isLoading)
+            {
+                <MudCard>
+                    <MudCardContent>
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                        <MudText Align="Align.Center" Class="mt-4">Cargando estructura WBS...</MudText>
+                    </MudCardContent>
+                </MudCard>
+            }
+            else if (wbsElements.Any())
+            {
+                <MudCard>
+                    <MudCardContent>
+                        <MudTreeView Items="@wbsTreeItems" 
+                                     @bind-SelectedValue="selectedWBSElement"
+                                     ExpandOnClick="true"
+                                     Dense="true">
+                            <ItemTemplate>
+                                <MudTreeViewItem Items="@context.Children"
+                                                 Value="@context.Value"
+                                                 Icon="@GetIcon(context.Value)"
+                                                 IconColor="@GetIconColor(context.Value)">
+                                    <Content>
+                                        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                            <div style="display: flex; align-items: center;">
+                                                <MudText Class="mr-2">@context.Value.Code</MudText>
+                                                <MudText>@context.Value.Name</MudText>
+                                                @if (!context.Value.IsActive)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-2">Inactivo</MudChip>
+                                                }
+                                            </div>
+                                            <div>
+                                                @if ((context.Value.ElementType == WBSElementType.Summary || context.Value.ElementType == WBSElementType.Project || context.Value.ElementType == WBSElementType.Phase) && context.Value.CanHaveChildren)
+                                                {
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                                                   Size="Size.Small"
+                                                                   Title="Agregar hijo"
+                                                                   OnClick="@(() => OpenCreateDialog(context.Value.Id))" />
+                                                }
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                               Size="Size.Small"
+                                                               Title="Editar"
+                                                               OnClick="@(() => OpenEditDialog(context.Value))" />
+                                                <MudIconButton Icon="@Icons.Material.Filled.Info"
+                                                               Size="Size.Small"
+                                                               Title="Ver detalles"
+                                                               OnClick="@(() => ViewDetails(context.Value.Id))" />
+                                                @if ((context.Value.ElementType == WBSElementType.Summary || context.Value.ElementType == WBSElementType.Project || context.Value.ElementType == WBSElementType.Phase) && context.Value.ChildrenCount == 0)
+                                                {
+                                                    <MudMenu Icon="@Icons.Material.Filled.Transform" Size="Size.Small">
+                                                        <MudMenuItem OnClick="@(() => ConvertToWorkPackage(context.Value.Id))">
+                                                            Convertir a Paquete de Trabajo
+                                                        </MudMenuItem>
+                                                        <MudMenuItem OnClick="@(() => ConvertToPlanningPackage(context.Value.Id))">
+                                                            Convertir a Paquete de Planificación
+                                                        </MudMenuItem>
+                                                    </MudMenu>
+                                                }
+                                            </div>
+                                        </div>
+                                    </Content>
+                                </MudTreeViewItem>
+                            </ItemTemplate>
+                        </MudTreeView>
+                    </MudCardContent>
+                </MudCard>
+            }
+            else
+            {
+                <MudCard>
+                    <MudCardContent>
+                        <MudText Align="Align.Center" Typo="Typo.h6">No hay elementos WBS</MudText>
+                        <MudText Align="Align.Center" Typo="Typo.body1" Color="Color.Secondary">
+                            Comience agregando el primer elemento de la estructura
+                        </MudText>
+                    </MudCardContent>
+                </MudCard>
+            }
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+
+    private bool isLoading = true;
+    private string projectName = string.Empty;
+    private List<WBSElementDto> wbsElements = new();
+    private List<MudBlazor.TreeItemData<WBSElementDto>> wbsTreeItems = new();
+    private WBSElementDto? selectedWBSElement;
+    private string searchTerm = string.Empty;
+    private WBSElementType? filterType;
+    private bool showInactive = false;
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProject();
+        await LoadWBSElements();
+        SetupBreadcrumbs();
+    }
+
+    private async Task LoadProject()
+    {
+        try
+        {
+            var project = await ProjectService.GetProjectByIdAsync(ProjectId);
+            if (project != null)
+            {
+                projectName = project.Name;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar proyecto: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadWBSElements()
+    {
+        try
+        {
+            isLoading = true;
+            var hierarchy = await WBSService.GetWBSHierarchyAsync(ProjectId);
+            wbsElements = hierarchy ?? new List<WBSElementDto>();
+            BuildTree();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar elementos WBS: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void BuildTree()
+    {
+        wbsTreeItems.Clear();
+        var filteredElements = FilterElements(wbsElements);
+        wbsTreeItems = BuildTreeItems(filteredElements, null).ToList();
+    }
+
+    private List<WBSElementDto> FilterElements(List<WBSElementDto> elements)
+    {
+        var filtered = elements.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filtered = filtered.Where(e => 
+                e.Code.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                e.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (filterType.HasValue)
+        {
+            filtered = filtered.Where(e => e.ElementType == filterType.Value);
+        }
+
+        if (!showInactive)
+        {
+            filtered = filtered.Where(e => e.IsActive);
+        }
+
+        return filtered.ToList();
+    }
+
+    private List<MudBlazor.TreeItemData<WBSElementDto>> BuildTreeItems(List<WBSElementDto> elements, Guid? parentId)
+    {
+        var items = new List<MudBlazor.TreeItemData<WBSElementDto>>();
+        var children = elements.Where(e => e.ParentId == parentId).OrderBy(e => e.Code);
+
+        foreach (var child in children)
+        {
+            var treeItem = new MudBlazor.TreeItemData<WBSElementDto>
+            {
+                Value = child,
+                Children = BuildTreeItems(elements, child.Id)
+            };
+            items.Add(treeItem);
+        }
+
+        return items;
+    }
+
+    private void SetupBreadcrumbs()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Inicio", href: "/"),
+            new BreadcrumbItem("Proyectos", href: "/projects"),
+            new BreadcrumbItem(projectName, href: $"/projects/{ProjectId}"),
+            new BreadcrumbItem("WBS", href: null, disabled: true)
+        };
+    }
+
+    private string GetIcon(WBSElementDto element)
+    {
+        return element.ElementType switch
+        {
+            WBSElementType.WorkPackage => Icons.Material.Filled.Work,
+            WBSElementType.PlanningPackage => Icons.Material.Filled.Schedule,
+            _ => Icons.Material.Filled.Folder
+        };
+    }
+
+    private Color GetIconColor(WBSElementDto element)
+    {
+        return element.ElementType switch
+        {
+            WBSElementType.WorkPackage => Color.Success,
+            WBSElementType.PlanningPackage => Color.Warning,
+            _ => Color.Primary
+        };
+    }
+
+    private async Task FilterWBS()
+    {
+        BuildTree();
+    }
+
+    private async Task OpenCreateDialog(Guid? parentId)
+    {
+        var parameters = new DialogParameters<WBSElementDialog>
+        {
+            { x => x.ProjectId, ProjectId },
+            { x => x.ParentId, parentId },
+            { x => x.IsEdit, false }
+        };
+
+        var dialog = await DialogService.ShowAsync<WBSElementDialog>("Crear Elemento WBS", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadWBSElements();
+        }
+    }
+
+    private async Task OpenEditDialog(WBSElementDto element)
+    {
+        var parameters = new DialogParameters<WBSElementDialog>
+        {
+            { x => x.ProjectId, ProjectId },
+            { x => x.ElementId, element.Id },
+            { x => x.IsEdit, true }
+        };
+
+        var dialog = await DialogService.ShowAsync<WBSElementDialog>("Editar Elemento WBS", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadWBSElements();
+        }
+    }
+
+    private void ViewDetails(Guid elementId)
+    {
+        NavigationManager.NavigateTo($"/projects/{ProjectId}/wbs/{elementId}");
+    }
+
+    private async Task ConvertToWorkPackage(Guid elementId)
+    {
+        var parameters = new DialogParameters<ConvertToWorkPackageDialog>
+        {
+            { x => x.WBSElementId, elementId },
+            { x => x.ProjectId, ProjectId }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConvertToWorkPackageDialog>("Convertir a Paquete de Trabajo", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadWBSElements();
+        }
+    }
+
+    private async Task ConvertToPlanningPackage(Guid elementId)
+    {
+        var parameters = new DialogParameters<ConvertToPlanningPackageDialog>
+        {
+            { x => x.WBSElementId, elementId },
+            { x => x.ProjectId, ProjectId }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConvertToPlanningPackageDialog>("Convertir a Paquete de Planificación", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadWBSElements();
+        }
+    }
+
+    private async Task ImportWBS()
+    {
+        var parameters = new DialogParameters<ImportWBSDialog>
+        {
+            { x => x.ProjectId, ProjectId }
+        };
+
+        var dialog = await DialogService.ShowAsync<ImportWBSDialog>("Importar WBS", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadWBSElements();
+        }
+    }
+
+    private async Task ExportWBS()
+    {
+        try
+        {
+            var bytes = await WBSService.ExportWBSAsync(ProjectId);
+            var fileName = $"WBS_{projectName}_{DateTime.Now:yyyyMMddHHmmss}.xlsx";
+            
+            // Create a blob URL and trigger download
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, bytes);
+            
+            Snackbar.Add("WBS exportado exitosamente", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al exportar WBS: {ex.Message}", Severity.Error);
+        }
+    }
+
+}

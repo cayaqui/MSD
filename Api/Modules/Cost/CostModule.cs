@@ -11,106 +11,106 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Modules.Cost;
 
 /// <summary>
-/// Cost management endpoints
+/// Endpoints de gestión de costos
 /// </summary>
 public class CostModule : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/costs")
-            .WithTags("Costs")
+            .WithTags("Costos")
             .RequireAuthorization();
 
         // Cost Items endpoints
         group.MapGet("/items/project/{projectId:guid}", GetCostItems)
             .WithName("GetCostItems")
-            .WithSummary("Get cost items for a project")
+            .WithSummary("Obtener elementos de costo para un proyecto")
             .Produces<PagedResult<CostItemDto>>();
 
         group.MapGet("/items/{id:guid}", GetCostItemById)
             .WithName("GetCostItemById")
-            .WithSummary("Get cost item by ID")
+            .WithSummary("Obtener elemento de costo por ID")
             .Produces<CostItemDetailDto>()
             .ProducesProblem(404);
 
         group.MapPost("/items", CreateCostItem)
             .WithName("CreateCostItem")
-            .WithSummary("Create a new cost item")
+            .WithSummary("Crear un nuevo elemento de costo")
             .Produces<Guid>(201)
             .ProducesValidationProblem();
 
         group.MapPut("/items/{id:guid}", UpdateCostItem)
             .WithName("UpdateCostItem")
-            .WithSummary("Update a cost item")
+            .WithSummary("Actualizar un elemento de costo")
             .Produces(200)
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapDelete("/items/{id:guid}", DeleteCostItem)
             .WithName("DeleteCostItem")
-            .WithSummary("Delete a cost item")
+            .WithSummary("Eliminar un elemento de costo")
             .Produces(204)
             .ProducesProblem(404);
 
         // Cost recording endpoints
         group.MapPost("/items/{id:guid}/actual", RecordActualCost)
             .WithName("RecordActualCost")
-            .WithSummary("Record actual cost")
+            .WithSummary("Registrar costo real")
             .Produces(200)
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapPost("/items/{id:guid}/commitment", RecordCommitment)
             .WithName("RecordCommitment")
-            .WithSummary("Record commitment")
+            .WithSummary("Registrar compromiso")
             .Produces(200)
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapPost("/items/{id:guid}/approve", ApproveCostItem)
             .WithName("ApproveCostItem")
-            .WithSummary("Approve a cost item")
+            .WithSummary("Aprobar un elemento de costo")
             .Produces(200)
             .ProducesProblem(404);
 
         // Reporting endpoints
         group.MapGet("/reports/project/{projectId:guid}", GetProjectCostReport)
             .WithName("GetProjectCostReport")
-            .WithSummary("Get project cost report")
+            .WithSummary("Obtener reporte de costos del proyecto")
             .Produces<ProjectCostReportDto>();
 
         group.MapGet("/reports/project/{projectId:guid}/by-category", GetCostSummaryByCategory)
             .WithName("GetCostSummaryByCategory")
-            .WithSummary("Get cost summary by category")
+            .WithSummary("Obtener resumen de costos por categoría")
             .Produces<List<CostSummaryByCategoryDto>>();
 
         group.MapGet("/reports/project/{projectId:guid}/by-control-account", GetCostSummaryByControlAccount)
             .WithName("GetCostSummaryByControlAccount")
-            .WithSummary("Get cost summary by control account")
+            .WithSummary("Obtener resumen de costos por cuenta de control")
             .Produces<List<CostSummaryByControlAccountDto>>();
 
         // Planning Package endpoints
         group.MapGet("/planning-packages/{controlAccountId:guid}", GetPlanningPackages)
-            .WithName("GetPlanningPackages")
-            .WithSummary("Get planning packages for control account")
+            .WithName("GetCostPlanningPackages")
+            .WithSummary("Obtener paquetes de planificación para cuenta de control")
             .Produces<PagedResult<PlanningPackageDto>>();
 
         group.MapPost("/planning-packages", CreatePlanningPackage)
-            .WithName("CreatePlanningPackage")
-            .WithSummary("Create a planning package")
+            .WithName("CreateCostPlanningPackage")
+            .WithSummary("Crear un paquete de planificación")
             .Produces<Guid>(201)
             .ProducesValidationProblem();
 
         group.MapPut("/planning-packages/{id:guid}", UpdatePlanningPackage)
-            .WithName("UpdatePlanningPackage")
-            .WithSummary("Update a planning package")
+            .WithName("UpdateCostPlanningPackage")
+            .WithSummary("Actualizar un paquete de planificación")
             .Produces(200)
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapPost("/planning-packages/{id:guid}/convert", ConvertPlanningPackageToWorkPackages)
             .WithName("ConvertPlanningPackageToWorkPackages")
-            .WithSummary("Convert planning package to work packages")
+            .WithSummary("Convertir paquete de planificación a paquetes de trabajo")
             .Produces(200)
             .ProducesValidationProblem()
             .ProducesProblem(404);

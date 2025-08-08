@@ -9,68 +9,68 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Modules.Cost;
 
 /// <summary>
-/// Earned Value Management (EVM) endpoints
+/// Endpoints de Gestión del Valor Ganado (EVM)
 /// </summary>
 public class EVMModule : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/evm")
-            .WithTags("EVM")
+            .WithTags("Valor Ganado (EVM)")
             .RequireAuthorization();
 
         // Query endpoints
         group.MapGet("/control-account/{controlAccountId:guid}/records", GetEVMRecords)
             .WithName("GetEVMRecords")
-            .WithSummary("Get EVM records for control account")
+            .WithSummary("Obtener registros EVM para cuenta de control")
             .Produces<PagedResult<EVMRecordDto>>();
 
         group.MapGet("/records/{id:guid}", GetEVMRecordById)
             .WithName("GetEVMRecordById")
-            .WithSummary("Get EVM record by ID")
+            .WithSummary("Obtener registro EVM por ID")
             .Produces<EVMRecordDetailDto>()
             .ProducesProblem(404);
 
         group.MapGet("/project/{projectId:guid}/report", GetProjectEVMReport)
             .WithName("GetProjectEVMReport")
-            .WithSummary("Get project EVM report")
+            .WithSummary("Obtener reporte EVM del proyecto")
             .Produces<EVMPerformanceReportDto>();
 
         group.MapGet("/control-account/{controlAccountId:guid}/trends", GetEVMTrends)
             .WithName("GetEVMTrends")
-            .WithSummary("Get EVM trends for control account")
+            .WithSummary("Obtener tendencias EVM para cuenta de control")
             .Produces<List<EVMTrendDto>>();
 
         // Command endpoints
         group.MapPost("/records", CreateEVMRecord)
             .WithName("CreateEVMRecord")
-            .WithSummary("Create EVM record")
+            .WithSummary("Crear registro EVM")
             .Produces<Guid>(201)
             .ProducesValidationProblem();
 
         group.MapPut("/records/{id:guid}/actuals", UpdateEVMActuals)
             .WithName("UpdateEVMActuals")
-            .WithSummary("Update EVM actuals")
+            .WithSummary("Actualizar valores reales EVM")
             .Produces(200)
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapPost("/project/{projectId:guid}/calculate", CalculateProjectEVM)
             .WithName("CalculateProjectEVM")
-            .WithSummary("Calculate project EVM")
+            .WithSummary("Calcular EVM del proyecto")
             .Produces(200)
             .ProducesProblem(404);
 
         group.MapPost("/project/{projectId:guid}/generate-monthly", GenerateMonthlyEVM)
             .WithName("GenerateMonthlyEVM")
-            .WithSummary("Generate monthly EVM")
+            .WithSummary("Generar EVM mensual")
             .Produces(200)
             .ProducesProblem(404);
 
         // Forecast endpoints
         group.MapPut("/records/{id:guid}/eac", UpdateEAC)
             .WithName("UpdateEAC")
-            .WithSummary("Update Estimate at Completion")
+            .WithSummary("Actualizar Estimación a la Terminación (EAC)")
             .Produces(200)
             .ProducesValidationProblem()
             .ProducesProblem(404);
@@ -78,37 +78,37 @@ public class EVMModule : ICarterModule
         // Nine Column Report endpoints
         group.MapGet("/project/{projectId:guid}/nine-column-report", GetNineColumnReport)
             .WithName("GetNineColumnReport")
-            .WithSummary("Get Nine Column Report for project")
+            .WithSummary("Obtener Reporte de Nueve Columnas para el proyecto")
             .Produces<NineColumnReportDto>();
 
         group.MapPost("/nine-column-report/filtered", GetFilteredNineColumnReport)
             .WithName("GetFilteredNineColumnReport")
-            .WithSummary("Get filtered Nine Column Report")
+            .WithSummary("Obtener Reporte de Nueve Columnas filtrado")
             .Produces<NineColumnReportDto>();
 
         group.MapGet("/project/{projectId:guid}/nine-column-report/excel", ExportNineColumnReportToExcel)
             .WithName("ExportNineColumnReportToExcel")
-            .WithSummary("Export Nine Column Report to Excel")
+            .WithSummary("Exportar Reporte de Nueve Columnas a Excel")
             .Produces(200);
 
         group.MapGet("/project/{projectId:guid}/nine-column-report/pdf", ExportNineColumnReportToPdf)
             .WithName("ExportNineColumnReportToPdf")
-            .WithSummary("Export Nine Column Report to PDF")
+            .WithSummary("Exportar Reporte de Nueve Columnas a PDF")
             .Produces(200);
 
         group.MapGet("/control-account/{controlAccountId:guid}/nine-column-report", GetNineColumnReportByControlAccount)
             .WithName("GetNineColumnReportByControlAccount")
-            .WithSummary("Get Nine Column Report by Control Account")
+            .WithSummary("Obtener Reporte de Nueve Columnas por Cuenta de Control")
             .Produces<NineColumnReportDto>();
 
         group.MapGet("/project/{projectId:guid}/nine-column-report/trend", GetNineColumnReportTrend)
             .WithName("GetNineColumnReportTrend")
-            .WithSummary("Get Nine Column Report trend data")
+            .WithSummary("Obtener datos de tendencia del Reporte de Nueve Columnas")
             .Produces<List<NineColumnReportDto>>();
 
         group.MapGet("/project/{projectId:guid}/nine-column-report/validate", ValidateNineColumnReportData)
             .WithName("ValidateNineColumnReportData")
-            .WithSummary("Validate Nine Column Report data")
+            .WithSummary("Validar datos del Reporte de Nueve Columnas")
             .Produces<NineColumnReportValidationResult>();
     }
 

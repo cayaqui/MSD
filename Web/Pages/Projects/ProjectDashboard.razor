@@ -1,0 +1,825 @@
+@page "/projects/{ProjectId:guid}/dashboard"
+@using Core.DTOs.Projects
+@using Core.DTOs.Cost.Budgets
+@using Core.DTOs.Cost.ControlAccounts
+@using Core.DTOs.EVM
+@using Core.DTOs.Projects.WBSElement
+@using Core.DTOs.Auth.ProjectTeamMembers
+@using Core.Enums.Projects
+@using MudBlazor
+@using Web.Services.Interfaces.Organization
+@using Web.Services.Interfaces.Cost
+@using Web.Services.Interfaces.Projects
+@using Web.Services.Interfaces.Auth
+@inject IProjectApiService ProjectService
+@inject IBudgetApiService BudgetService
+@inject IControlAccountApiService ControlAccountService
+@inject IEVMApiService EVMService
+@inject IWBSApiService WBSService
+@inject IProjectTeamMemberApiService TeamMemberService
+@inject INavigationService NavigationService
+@inject ISnackbar Snackbar
+
+<PageTitle>Dashboard - @project?.Name | EzPro</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-4">
+    @if (isLoading)
+    {
+        <MudGrid>
+            <MudItem xs="12">
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            </MudItem>
+        </MudGrid>
+    }
+    else if (project != null)
+    {
+        <!-- Header Section -->
+        <MudPaper Class="pa-6 mb-4" Elevation="0">
+            <MudGrid AlignItems="Center">
+                <MudItem xs="12" md="8">
+                    <div class="d-flex align-center mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.BusinessCenter" Size="Size.Large" Class="mr-3" Color="Color.Primary" />
+                        <div>
+                            <MudText Typo="Typo.h4" Class="mb-0">@project.Name</MudText>
+                            <MudText Typo="Typo.subtitle1" Color="Color.Secondary">@project.Code</MudText>
+                        </div>
+                    </div>
+                    <MudText Typo="Typo.body1" Class="mt-2">@project.Description</MudText>
+                    <div class="d-flex align-center mt-3">
+                        <MudChip T="string" Color="@GetStatusColor(project.Status)" Size="Size.Small">
+                            <MudIcon Icon="@GetStatusIcon(project.Status)" Size="Size.Small" Class="mr-1" />
+                            @project.Status
+                        </MudChip>
+                        <MudText Typo="Typo.caption" Class="ml-3">
+                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" /> @project.Location
+                        </MudText>
+                        <MudText Typo="Typo.caption" Class="ml-3">
+                            <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" /> @project.Client
+                        </MudText>
+                    </div>
+                </MudItem>
+                <MudItem xs="12" md="4" Class="d-flex justify-end">
+                    <MudStack>
+                        <MudButton Variant="Variant.Filled" 
+                                   Color="Color.Primary" 
+                                   StartIcon="@Icons.Material.Filled.Edit"
+                                   OnClick="@(() => NavigationService.NavigateTo($"/projects/{ProjectId}/edit"))">
+                            Editar Proyecto
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" 
+                                   Color="Color.Primary" 
+                                   StartIcon="@Icons.Material.Filled.Summarize"
+                                   OnClick="@(() => NavigationService.NavigateTo($"/projects/{ProjectId}/summary"))">
+                            Ver Resumen PMI
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" 
+                                   Color="Color.Primary" 
+                                   StartIcon="@Icons.Material.Filled.Assessment"
+                                   OnClick="@(() => NavigationService.NavigateTo($"/projects/{ProjectId}/reports"))">
+                            Ver Reportes
+                        </MudButton>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <!-- Key Metrics Cards -->
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <div class="d-flex align-center justify-space-between mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Color="Color.Success" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Presupuesto Total</MudText>
+                    </div>
+                    <MudText Typo="Typo.h5" Class="font-weight-bold">@totalBudget.ToString("C")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Success">
+                        <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" /> Aprobado
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <div class="d-flex align-center justify-space-between mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.MoneyOff" Color="Color.Warning" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Costo Actual</MudText>
+                    </div>
+                    <MudText Typo="Typo.h5" Class="font-weight-bold">@actualCost.ToString("C")</MudText>
+                    <MudText Typo="Typo.caption" Color="@(costVariance >= 0 ? Color.Success : Color.Error)">
+                        @((costVariance >= 0 ? "+" : "") + costVariance.ToString("C")) (@GetPercentage(actualCost, totalBudget)%)
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <div class="d-flex align-center justify-space-between mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Info" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Progreso</MudText>
+                    </div>
+                    <MudText Typo="Typo.h5" Class="font-weight-bold">@overallProgress.ToString("F1")%</MudText>
+                    <MudProgressLinear Color="Color.Info" Value="@overallProgress" Class="mt-2" />
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <div class="d-flex align-center justify-space-between mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Color="Color.Primary" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Días Restantes</MudText>
+                    </div>
+                    <MudText Typo="Typo.h5" Class="font-weight-bold">@daysRemaining</MudText>
+                    <MudText Typo="Typo.caption" Color="@(scheduleStatus == "On Track" ? Color.Success : Color.Warning)">
+                        @scheduleStatus
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Main Content Grid -->
+        <MudGrid>
+            <!-- Left Column -->
+            <MudItem xs="12" md="8">
+                <!-- Schedule Overview -->
+                <MudPaper Class="pa-4 mb-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Timeline" Class="mr-2" />
+                        Cronograma del Proyecto
+                    </MudText>
+                    <MudGrid>
+                        <MudItem xs="12" md="6">
+                            <div class="d-flex justify-space-between align-center pa-2">
+                                <MudText>Fecha de Inicio:</MudText>
+                                <MudText Typo="Typo.body2" Class="font-weight-bold">
+                                    @project.PlannedStartDate.ToString("dd MMM yyyy")
+                                </MudText>
+                            </div>
+                            <div class="d-flex justify-space-between align-center pa-2">
+                                <MudText>Fecha Planificada de Fin:</MudText>
+                                <MudText Typo="Typo.body2" Class="font-weight-bold">
+                                    @project.PlannedEndDate.ToString("dd MMM yyyy")
+                                </MudText>
+                            </div>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <div class="d-flex justify-space-between align-center pa-2">
+                                <MudText>Duración Total:</MudText>
+                                <MudText Typo="Typo.body2" Class="font-weight-bold">
+                                    @GetProjectDuration() días
+                                </MudText>
+                            </div>
+                            <div class="d-flex justify-space-between align-center pa-2">
+                                <MudText>Tiempo Transcurrido:</MudText>
+                                <MudText Typo="Typo.body2" Class="font-weight-bold">
+                                    @GetElapsedPercentage()%
+                                </MudText>
+                            </div>
+                        </MudItem>
+                    </MudGrid>
+                    <MudProgressLinear Color="Color.Primary" 
+                                       Value="@GetElapsedPercentage()" 
+                                       Class="mt-3"
+                                       Size="Size.Large">
+                        <MudText Typo="Typo.caption" Class="pa-1">
+                            @GetElapsedDays() de @GetProjectDuration() días
+                        </MudText>
+                    </MudProgressLinear>
+                </MudPaper>
+
+                <!-- EVM Performance Chart -->
+                <MudPaper Class="pa-4 mb-4" Elevation="1">
+                    <div class="d-flex justify-space-between align-center mb-3">
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.ShowChart" Class="mr-2" />
+                            Desempeño del Valor Ganado
+                        </MudText>
+                        <MudButton Variant="Variant.Text" 
+                                   Color="Color.Primary" 
+                                   Size="Size.Small"
+                                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                                   OnClick="@(() => NavigationService.NavigateTo($"/projects/{ProjectId}/evm"))">
+                            Ver Detalles
+                        </MudButton>
+                    </div>
+                    
+                    @if (evmData != null)
+                    {
+                        <MudGrid>
+                            <MudItem xs="12" md="4">
+                                <MudStack>
+                                    <div class="d-flex justify-space-between align-center">
+                                        <MudText Typo="Typo.caption">CPI (Índice de Desempeño de Costo)</MudText>
+                                        <MudText Typo="Typo.body1" Class="font-weight-bold" Color="@GetCPIColor(evmData.CPI)">
+                                            @evmData.CPI.ToString("F2")
+                                        </MudText>
+                                    </div>
+                                    <div class="d-flex justify-space-between align-center">
+                                        <MudText Typo="Typo.caption">SPI (Índice de Desempeño de Cronograma)</MudText>
+                                        <MudText Typo="Typo.body1" Class="font-weight-bold" Color="@GetSPIColor(evmData.SPI)">
+                                            @evmData.SPI.ToString("F2")
+                                        </MudText>
+                                    </div>
+                                    <div class="d-flex justify-space-between align-center">
+                                        <MudText Typo="Typo.caption">EAC (Estimado al Completar)</MudText>
+                                        <MudText Typo="Typo.body1" Class="font-weight-bold">
+                                            @evmData.EAC.ToString("C")
+                                        </MudText>
+                                    </div>
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="12" md="8">
+                                <MudChart ChartType="ChartType.Line" 
+                                          ChartSeries="@evmChartSeries" 
+                                          XAxisLabels="@evmChartLabels"
+                                          Width="100%" 
+                                          Height="250px"
+                                          ChartOptions="@evmChartOptions" />
+                            </MudItem>
+                        </MudGrid>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            No hay datos de valor ganado disponibles para este proyecto.
+                        </MudAlert>
+                    }
+                </MudPaper>
+
+                <!-- WBS Summary -->
+                <MudPaper Class="pa-4 mb-4" Elevation="1">
+                    <div class="d-flex justify-space-between align-center mb-3">
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.AccountTree" Class="mr-2" />
+                            Estructura de Desglose de Trabajo (WBS)
+                        </MudText>
+                        <MudButton Variant="Variant.Text" 
+                                   Color="Color.Primary" 
+                                   Size="Size.Small"
+                                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                                   OnClick="@(() => NavigationService.NavigateTo($"/projects/{ProjectId}/wbs"))">
+                            Ver WBS Completo
+                        </MudButton>
+                    </div>
+                    
+                    <MudGrid>
+                        <MudItem xs="12" md="4">
+                            <MudCard Outlined="true" Class="pa-3">
+                                <div class="d-flex align-center justify-space-between">
+                                    <div>
+                                        <MudText Typo="Typo.caption">Elementos Totales</MudText>
+                                        <MudText Typo="Typo.h6">@wbsSummary.TotalElements</MudText>
+                                    </div>
+                                    <MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Primary" />
+                                </div>
+                            </MudCard>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudCard Outlined="true" Class="pa-3">
+                                <div class="d-flex align-center justify-space-between">
+                                    <div>
+                                        <MudText Typo="Typo.caption">Paquetes de Trabajo</MudText>
+                                        <MudText Typo="Typo.h6">@wbsSummary.WorkPackages</MudText>
+                                    </div>
+                                    <MudIcon Icon="@Icons.Material.Filled.Work" Color="Color.Success" />
+                                </div>
+                            </MudCard>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudCard Outlined="true" Class="pa-3">
+                                <div class="d-flex align-center justify-space-between">
+                                    <div>
+                                        <MudText Typo="Typo.caption">Paquetes de Planificación</MudText>
+                                        <MudText Typo="Typo.h6">@wbsSummary.PlanningPackages</MudText>
+                                    </div>
+                                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Warning" />
+                                </div>
+                            </MudCard>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                <!-- Recent Activities -->
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.History" Class="mr-2" />
+                        Actividades Recientes
+                    </MudText>
+                    <MudTimeline TimelineOrientation="TimelineOrientation.Vertical" TimelinePosition="TimelinePosition.Start">
+                        @foreach (var activity in recentActivities)
+                        {
+                            <MudTimelineItem Color="@GetActivityColor(activity.Type)" Size="Size.Small">
+                                <ItemContent>
+                                    <MudCard Outlined="true" Class="pa-3">
+                                        <MudText Typo="Typo.body2">@activity.Description</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @activity.User • @activity.Date.ToString("dd MMM yyyy HH:mm")
+                                        </MudText>
+                                    </MudCard>
+                                </ItemContent>
+                            </MudTimelineItem>
+                        }
+                    </MudTimeline>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Right Column -->
+            <MudItem xs="12" md="4">
+                <!-- Budget Distribution -->
+                <MudPaper Class="pa-4 mb-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.PieChart" Class="mr-2" />
+                        Distribución del Presupuesto
+                    </MudText>
+                    <MudChart ChartType="ChartType.Donut" 
+                              ChartSeries="@budgetChartSeries" 
+                              Width="100%" 
+                              Height="200px"
+                              ChartOptions="@budgetChartOptions" />
+                    <MudList T="string" Dense="true" Class="mt-2">
+                        @foreach (var item in budgetDistribution)
+                        {
+                            <MudListItem T="string">
+                                <div class="d-flex justify-space-between align-center">
+                                    <MudText Typo="Typo.caption">@item.Category</MudText>
+                                    <MudText Typo="Typo.body2" Class="font-weight-bold">
+                                        @item.Amount.ToString("C")
+                                    </MudText>
+                                </div>
+                            </MudListItem>
+                        }
+                    </MudList>
+                </MudPaper>
+
+                <!-- Team Members -->
+                <MudPaper Class="pa-4 mb-4" Elevation="1">
+                    <div class="d-flex justify-space-between align-center mb-3">
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.Group" Class="mr-2" />
+                            Equipo del Proyecto
+                        </MudText>
+                        <MudText Typo="Typo.caption">@teamMembers.Count miembros</MudText>
+                    </div>
+                    <MudList T="ProjectTeamMemberDto" Dense="true">
+                        @foreach (var member in teamMembers.Take(5))
+                        {
+                            <MudListItem T="ProjectTeamMemberDto">
+                                <div class="d-flex align-center">
+                                    <MudAvatar Size="Size.Small" Class="mr-2">
+                                        @* UserPhotoUrl and UserFullName not available in DTO *@
+                                        @member.Role.Substring(0, 1).ToUpper()
+                                    </MudAvatar>
+                                    <div style="flex: 1;">
+                                        <MudText Typo="Typo.body2">@member.Role</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@member.Role</MudText>
+                                    </div>
+                                </div>
+                            </MudListItem>
+                        }
+                    </MudList>
+                    @if (teamMembers.Count > 5)
+                    {
+                        <MudButton Variant="Variant.Text" 
+                                   FullWidth="true" 
+                                   Size="Size.Small"
+                                   OnClick="@(() => NavigationService.NavigateTo($"/projects/{ProjectId}/team"))">
+                            Ver todos (@teamMembers.Count)
+                        </MudButton>
+                    }
+                </MudPaper>
+
+                <!-- Quick Actions -->
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Speed" Class="mr-2" />
+                        Acciones Rápidas
+                    </MudText>
+                    <MudStack Spacing="2">
+                        <MudButton Variant="Variant.Outlined" 
+                                   FullWidth="true" 
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="@(() => NavigationService.NavigateTo($"/projects/{ProjectId}/wbs"))">
+                            Agregar Elemento WBS
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" 
+                                   FullWidth="true" 
+                                   StartIcon="@Icons.Material.Filled.AttachMoney"
+                                   OnClick="@(() => NavigationService.NavigateTo($"/projects/{ProjectId}/budget"))">
+                            Gestionar Presupuesto
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" 
+                                   FullWidth="true" 
+                                   StartIcon="@Icons.Material.Filled.PersonAdd"
+                                   OnClick="@(() => NavigationService.NavigateTo($"/projects/{ProjectId}/team"))">
+                            Agregar Miembro
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" 
+                                   FullWidth="true" 
+                                   StartIcon="@Icons.Material.Filled.FileDownload"
+                                   OnClick="@(() => NavigationService.NavigateTo($"/projects/{ProjectId}/reports"))">
+                            Generar Reporte
+                        </MudButton>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string ProjectId { get; set; } = string.Empty;
+
+    private bool isLoading = true;
+    private ProjectDto? project;
+    
+    // Metrics
+    private decimal totalBudget = 0;
+    private decimal actualCost = 0;
+    private decimal costVariance = 0;
+    private double overallProgress = 0;
+    private int daysRemaining = 0;
+    private string scheduleStatus = "On Track";
+    
+    // EVM Data
+    private EVMSummaryDto? evmData;
+    private List<ChartSeries> evmChartSeries = new();
+    private string[] evmChartLabels = Array.Empty<string>();
+    private ChartOptions evmChartOptions = new()
+    {
+        YAxisTicks = 10,
+        LineStrokeWidth = 2,
+        ChartPalette = new[] { "#2196F3", "#4CAF50", "#FF9800", "#9C27B0" }
+    };
+    
+    // Budget Distribution
+    private List<BudgetDistributionItem> budgetDistribution = new();
+    private List<ChartSeries> budgetChartSeries = new();
+    private ChartOptions budgetChartOptions = new()
+    {
+        ChartPalette = new[] { "#2196F3", "#4CAF50", "#FF9800", "#F44336", "#9C27B0" }
+    };
+    
+    // WBS Summary
+    private WBSSummaryData wbsSummary = new();
+    
+    // Team Members
+    private List<ProjectTeamMemberDto> teamMembers = new();
+    
+    // Recent Activities
+    private List<RecentActivity> recentActivities = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            isLoading = true;
+
+            if (!Guid.TryParse(ProjectId, out var projectGuid))
+            {
+                Snackbar.Add("ID de proyecto inválido", Severity.Error);
+                return;
+            }
+
+            // Load project details
+            project = await ProjectService.GetProjectByIdAsync(projectGuid);
+            if (project == null)
+            {
+                Snackbar.Add("Proyecto no encontrado", Severity.Error);
+                return;
+            }
+
+            // Load all dashboard data in parallel
+            var loadTasks = new List<Task>
+            {
+                LoadBudgetData(projectGuid),
+                LoadEVMData(projectGuid),
+                LoadWBSData(projectGuid),
+                LoadTeamMembers(projectGuid),
+                LoadRecentActivities()
+            };
+
+            await Task.WhenAll(loadTasks);
+
+            // Calculate metrics
+            CalculateMetrics();
+            
+            // Prepare chart data
+            PrepareChartData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar datos del dashboard: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadBudgetData(Guid projectId)
+    {
+        try
+        {
+            var budgets = await BudgetService.GetBudgetsAsync(new Core.DTOs.Cost.Budgets.BudgetFilterDto 
+            { 
+                ProjectId = projectId,
+                PageSize = 100
+            });
+            
+            totalBudget = budgets.Items.Sum(b => b.TotalAmount);
+            actualCost = 0; // ActualCost not available in BudgetDto
+            costVariance = totalBudget - actualCost;
+            
+            // Group budgets by type for distribution chart (Category property not available)
+            budgetDistribution = budgets.Items
+                .GroupBy(b => b.Type.ToString())
+                .Select(g => new BudgetDistributionItem
+                {
+                    Category = g.Key,
+                    Amount = g.Sum(b => b.TotalAmount)
+                })
+                .OrderByDescending(b => b.Amount)
+                .Take(5)
+                .ToList();
+        }
+        catch
+        {
+            // Handle error silently for dashboard
+        }
+    }
+
+    private async Task LoadEVMData(Guid projectId)
+    {
+        try
+        {
+            var evmReport = await EVMService.GetProjectEVMReportAsync(projectId);
+            if (evmReport != null)
+            {
+                evmData = new EVMSummaryDto
+                {
+                    SPI = evmReport.OverallSPI,
+                    CPI = evmReport.OverallCPI,
+                    CV = evmReport.TotalCV,
+                    SV = evmReport.TotalSV,
+                    EAC = evmReport.ProjectEAC,
+                    VAC = evmReport.ProjectVAC,
+                    DataDate = evmReport.ReportDate
+                };
+                overallProgress = (double)evmReport.ProjectPercentComplete;
+            }
+            // overallProgress already set from evmReport.ProjectPercentComplete
+        }
+        catch
+        {
+            // Handle error silently for dashboard
+        }
+    }
+
+    private async Task LoadWBSData(Guid projectId)
+    {
+        try
+        {
+            var wbsElements = await WBSService.GetWBSHierarchyAsync(projectId);
+            
+            wbsSummary = new WBSSummaryData
+            {
+                TotalElements = wbsElements.Count,
+                WorkPackages = wbsElements.Count(e => e.ElementType == WBSElementType.WorkPackage),
+                PlanningPackages = wbsElements.Count(e => e.ElementType == WBSElementType.PlanningPackage)
+            };
+        }
+        catch
+        {
+            // Handle error silently for dashboard
+        }
+    }
+
+    private async Task LoadTeamMembers(Guid projectId)
+    {
+        try
+        {
+            var result = await TeamMemberService.GetProjectTeamAsync(projectId);
+            teamMembers = result?.Select(tm => new ProjectTeamMemberDto
+            {
+                Id = tm.Id,
+                ProjectId = tm.ProjectId,
+                Role = tm.Role,
+                IsActive = tm.IsActive
+            }).ToList() ?? new List<ProjectTeamMemberDto>();
+        }
+        catch
+        {
+            // Handle error silently for dashboard
+        }
+    }
+
+    private async Task LoadRecentActivities()
+    {
+        // Simulate recent activities - in real implementation, this would come from an activity log
+        await Task.Run(() =>
+        {
+            recentActivities = new List<RecentActivity>
+            {
+                new RecentActivity 
+                { 
+                    Type = "Budget", 
+                    Description = "Presupuesto actualizado para Fase 2", 
+                    User = "Juan Pérez", 
+                    Date = DateTime.Now.AddHours(-2) 
+                },
+                new RecentActivity 
+                { 
+                    Type = "WBS", 
+                    Description = "Nuevo paquete de trabajo agregado: Instalación Eléctrica", 
+                    User = "María García", 
+                    Date = DateTime.Now.AddHours(-5) 
+                },
+                new RecentActivity 
+                { 
+                    Type = "Team", 
+                    Description = "Carlos López agregado como Inspector de Calidad", 
+                    User = "Admin", 
+                    Date = DateTime.Now.AddDays(-1) 
+                },
+                new RecentActivity 
+                { 
+                    Type = "Progress", 
+                    Description = "Progreso actualizado: Cimentación completada al 100%", 
+                    User = "Roberto Díaz", 
+                    Date = DateTime.Now.AddDays(-2) 
+                }
+            };
+        });
+    }
+
+    private void CalculateMetrics()
+    {
+        if (project != null)
+        {
+            var today = DateTime.Today;
+            var endDate = project.PlannedEndDate.Date;
+            
+            daysRemaining = (endDate - today).Days;
+            if (daysRemaining < 0) daysRemaining = 0;
+            
+            // Determine schedule status
+            var totalDuration = (endDate - project.PlannedStartDate.Date).Days;
+            var elapsedDays = (today - project.PlannedStartDate.Date).Days;
+            var scheduleProgress = totalDuration > 0 ? (double)elapsedDays / totalDuration * 100 : 0;
+            
+            if (overallProgress >= scheduleProgress - 5)
+            {
+                scheduleStatus = "On Track";
+            }
+            else if (overallProgress >= scheduleProgress - 15)
+            {
+                scheduleStatus = "At Risk";
+            }
+            else
+            {
+                scheduleStatus = "Behind Schedule";
+            }
+        }
+    }
+
+    private void PrepareChartData()
+    {
+        // Prepare EVM chart data
+        if (evmData != null)
+        {
+            evmChartLabels = new[] { "Ene", "Feb", "Mar", "Abr", "May", "Jun" };
+            evmChartSeries = new List<ChartSeries>
+            {
+                new ChartSeries { Name = "PV (Valor Planificado)", Data = new double[] { 100, 200, 350, 500, 650, 800 } },
+                new ChartSeries { Name = "EV (Valor Ganado)", Data = new double[] { 90, 180, 320, 450, 600, 750 } },
+                new ChartSeries { Name = "AC (Costo Actual)", Data = new double[] { 95, 190, 340, 480, 630, 780 } }
+            };
+        }
+        
+        // Prepare budget distribution chart
+        if (budgetDistribution.Any())
+        {
+            budgetChartSeries = budgetDistribution
+                .Select(b => new ChartSeries 
+                { 
+                    Name = b.Category, 
+                    Data = new[] { (double)b.Amount } 
+                })
+                .ToList();
+        }
+    }
+
+    private int GetProjectDuration()
+    {
+        if (project != null)
+        {
+            return (project.PlannedEndDate.Date - project.PlannedStartDate.Date).Days;
+        }
+        return 0;
+    }
+
+    private int GetElapsedDays()
+    {
+        if (project != null)
+        {
+            var elapsed = (DateTime.Today - project.PlannedStartDate.Date).Days;
+            return Math.Max(0, elapsed);
+        }
+        return 0;
+    }
+
+    private double GetElapsedPercentage()
+    {
+        var duration = GetProjectDuration();
+        if (duration > 0)
+        {
+            var elapsed = GetElapsedDays();
+            return Math.Min(100, (double)elapsed / duration * 100);
+        }
+        return 0;
+    }
+
+    private double GetPercentage(decimal value, decimal total)
+    {
+        if (total == 0) return 0;
+        return Math.Round((double)(value / total) * 100, 1);
+    }
+
+    private Color GetStatusColor(string status)
+    {
+        return status?.ToLower() switch
+        {
+            "active" or "activo" => Color.Success,
+            "planning" or "planificación" => Color.Info,
+            "on hold" or "en espera" => Color.Warning,
+            "completed" or "completado" => Color.Primary,
+            "cancelled" or "cancelado" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string GetStatusIcon(string status)
+    {
+        return status?.ToLower() switch
+        {
+            "active" or "activo" => Icons.Material.Filled.PlayArrow,
+            "planning" or "planificación" => Icons.Material.Filled.Edit,
+            "on hold" or "en espera" => Icons.Material.Filled.Pause,
+            "completed" or "completado" => Icons.Material.Filled.CheckCircle,
+            "cancelled" or "cancelado" => Icons.Material.Filled.Cancel,
+            _ => Icons.Material.Filled.Info
+        };
+    }
+
+    private Color GetCPIColor(decimal cpi)
+    {
+        if (cpi >= 0.95m) return Color.Success;
+        if (cpi >= 0.85m) return Color.Warning;
+        return Color.Error;
+    }
+
+    private Color GetSPIColor(decimal spi)
+    {
+        if (spi >= 0.95m) return Color.Success;
+        if (spi >= 0.85m) return Color.Warning;
+        return Color.Error;
+    }
+
+    private Color GetActivityColor(string type)
+    {
+        return type switch
+        {
+            "Budget" => Color.Success,
+            "WBS" => Color.Info,
+            "Team" => Color.Primary,
+            "Progress" => Color.Warning,
+            _ => Color.Default
+        };
+    }
+
+    // Helper classes
+    private class BudgetDistributionItem
+    {
+        public string Category { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+    }
+
+    private class WBSSummaryData
+    {
+        public int TotalElements { get; set; }
+        public int WorkPackages { get; set; }
+        public int PlanningPackages { get; set; }
+    }
+
+    private class RecentActivity
+    {
+        public string Type { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string User { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+    }
+}

@@ -318,18 +318,6 @@ public class UserService : IUserService
                     // Update additional properties
                     if (!string.IsNullOrEmpty(graphUser.JobTitle))
                         user.JobTitle = graphUser.JobTitle;
-                        
-                    if (!string.IsNullOrEmpty(graphUser.Department))
-                        user.Department = graphUser.Department;
-                        
-                    if (!string.IsNullOrEmpty(graphUser.OfficeLocation))
-                        user.OfficeLocation = graphUser.OfficeLocation;
-                        
-                    if (!string.IsNullOrEmpty(graphUser.MobilePhone))
-                        user.MobilePhone = graphUser.MobilePhone;
-                        
-                    if (!string.IsNullOrEmpty(graphUser.BusinessPhone))
-                        user.BusinessPhone = graphUser.BusinessPhone;
                     
                     // Try to get and save user photo
                     var photoUrl = await _graphApiService.GetUserPhotoAsDataUrlAsync(user.EntraId);

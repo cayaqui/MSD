@@ -1,4 +1,4 @@
-@page "/companies/{Id:guid}"
+@page "/MSD"
 @using Core.DTOs.Organization.Company
 @using Core.DTOs.Organization.Operation
 @using Web.Services.Interfaces.Organization
@@ -288,7 +288,8 @@
     }
 </MudContainer>
 
-@code {
+    @code {
+
     [Parameter] public Guid Id { get; set; }
 
     private CompanyDto? _company;
@@ -307,12 +308,17 @@
         try
         {
             _loading = true;
-            _company = await CompanyService.GetCompanyByIdAsync(Id);
-            
-            if (_company == null)
+
+            var companies = await CompanyService.GetCompaniesAsync();
+
+            if (companies?.Items != null && companies.Items.Any())
             {
-                Snackbar.Add("Compañía no encontrada", Severity.Error);
-                Navigation.NavigateTo("/companies");
+                _company = companies.Items.FirstOrDefault();
+                if (_company == null)
+                {
+                    Snackbar.Add("Compañía no encontrada", Severity.Error);
+                    Navigation.NavigateTo("/home");
+                }
             }
         }
         catch (Exception ex)

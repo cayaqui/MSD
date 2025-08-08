@@ -1,0 +1,134 @@
+@using Core.DTOs.Auth.ProjectTeamMembers
+@using Core.Constants
+@using Web.Services.Interfaces.Auth
+@inject IProjectTeamMemberApiService TeamMemberApiService
+@inject IToastService ToastService
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="@_isFormValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudText Typo="Typo.h6">Editar Asignación al Proyecto</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@TeamMember.ProjectName</MudText>
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudSelect @bind-Value="_model.Role" Label="Rol en el Proyecto"
+                               Required="true" RequiredError="El rol es requerido"
+                               Variant="Variant.Outlined">
+                        @foreach (var role in SimplifiedRoles.Project.All)
+                        {
+                            <MudSelectItem Value="@role">@SimplifiedRoles.GetDisplayName(role)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                
+                <MudItem xs="12" sm="6">
+                    <MudNumericField @bind-Value="_model.AllocationPercentage"
+                                     Label="Asignación %" Min="0" Max="100" Step="5"
+                                     Required="true" RequiredError="La asignación es requerida"
+                                     Variant="Variant.Outlined" Adornment="Adornment.End"
+                                     AdornmentText="%" />
+                </MudItem>
+                
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="_model.StartDate" Label="Fecha Inicio"
+                                   Required="true" RequiredError="La fecha de inicio es requerida"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+                
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="_model.EndDate" Label="Fecha Fin"
+                                   Variant="Variant.Outlined"
+                                   MinDate="_model.StartDate" />
+                </MudItem>
+                
+                <MudItem xs="12" sm="6">
+                    <MudSwitch @bind-Value="_model.IsActive" Label="Asignación Activa"
+                               Color="Color.Primary" />
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.Responsibilities" Label="Responsabilidades"
+                                  Lines="3" Variant="Variant.Outlined" />
+                </MudItem>
+                
+                @if (_model.AllocationPercentage > 100)
+                {
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Warning" Dense="true">
+                            La asignación supera el 100%. Esto causará una sobreasignación del recurso.
+                        </MudAlert>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save"
+                   Disabled="@(!_isFormValid || _isProcessing)">
+            @if (_isProcessing)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Guardando...</MudText>
+            }
+            else
+            {
+                <MudText>Guardar Cambios</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public ProjectTeamMemberDetailDto TeamMember { get; set; } = null!;
+    
+    private MudForm _form = default!;
+    private bool _isFormValid;
+    private bool _isProcessing;
+    private UpdateProjectTeamMemberDto _model = new();
+    
+    protected override void OnInitialized()
+    {
+        _model = new UpdateProjectTeamMemberDto
+        {
+            Role = TeamMember.Role,
+            AllocationPercentage = TeamMember.AllocationPercentage,
+            StartDate = TeamMember.StartDate,
+            EndDate = TeamMember.EndDate,
+            IsActive = TeamMember.IsActive
+        };
+    }
+    
+    private async Task Save()
+    {
+        try
+        {
+            _isProcessing = true;
+            
+            var result = await TeamMemberApiService.UpdateTeamMemberAsync(TeamMember.Id, _model);
+            if (result != null)
+            {
+                ToastService.ShowSuccess("Asignación actualizada exitosamente");
+                MudDialog.Close(DialogResult.Ok(result));
+            }
+            else
+            {
+                ToastService.ShowError("Error al actualizar la asignación");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error: {ex.Message}");
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+    
+    private void Cancel() => MudDialog.Cancel();
+}

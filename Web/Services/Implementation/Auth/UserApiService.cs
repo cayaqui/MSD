@@ -1,4 +1,9 @@
+using Core.DTOs.Auth.ProjectTeamMembers;
+using Core.DTOs.Auth.Users;
+using Core.DTOs.Auth.Permissions;
+using Core.DTOs.Common;
 using Web.Services.Interfaces.Auth;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace Web.Services.Implementation.Auth
 {
@@ -23,38 +28,26 @@ namespace Web.Services.Implementation.Auth
         {
             try
             {
-                var authState = await _authStateProvider.GetAuthenticationStateAsync();
-                var user = authState.User;
-                
-                if (!user.Identity?.IsAuthenticated ?? true)
-                {
-                    _logger.LogWarning("Usuario no autenticado");
-                    return null;
-                }
-
-                // Obtener EntraId del usuario actual
-                var entraId = user.FindFirst("oid")?.Value 
-                    ?? user.FindFirst("http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
-                    
-                if (string.IsNullOrEmpty(entraId))
-                {
-                    _logger.LogWarning("No se pudo obtener EntraId del usuario");
-                    return null;
-                }
-
-                // Buscar usuario por EntraId
-                var response = await _apiService.GetAsync<UserDto>($"{BaseUrl}/by-entra-id/{entraId}");
-                if (response != null)
-                {
-                    return response;
-                }
-
-                _logger.LogWarning($"Usuario con EntraId {entraId} no encontrado en la base de datos");
-                return null;
+                var response = await _apiService.GetAsync<UserDto>("api/auth/me");
+                return response;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al obtener usuario actual");
+                return null;
+            }
+        }
+
+        public async Task<UserPermissionsDto?> GetCurrentUserPermissionsAsync()
+        {
+            try
+            {
+                var response = await _apiService.GetAsync<UserPermissionsDto>("api/auth/me/permissions");
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener permisos del usuario actual");
                 return null;
             }
         }
@@ -124,30 +117,6 @@ namespace Web.Services.Implementation.Auth
             }
         }
 
-        public async Task<string?> GetUserPhotoAsync(Guid userId)
-        {
-            try
-            {
-                _logger.LogInfo($"Obteniendo foto del usuario {userId}...");
-                
-                // Llamar al endpoint de foto del API
-                var response = await _apiService.GetAsync<UserPhotoResponse>($"{BaseUrl}/{userId}/photo");
-                
-                if (response != null)
-                {
-                    _logger.LogInfo("Foto del usuario obtenida exitosamente");
-                    return response.PhotoDataUrl;
-                }
-
-                _logger.LogWarning("No se pudo obtener la foto del usuario");
-                return null;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al obtener foto del usuario");
-                return null;
-            }
-        }
 
         public async Task<PagedResult<UserDto>> SearchUsersAsync(UserFilterDto filter)
         {
@@ -232,12 +201,118 @@ namespace Web.Services.Implementation.Auth
                 return false;
             }
         }
-    }
-
-    
-    public class UserPhotoResponse
-    {
-        public string? PhotoDataUrl { get; set; }
-        public string? ContentType { get; set; }
+        
+        public async Task<PagedResult<UserDto>> GetUsersAsync(int pageNumber = 1, int pageSize = 20)
+        {
+            try
+            {
+                var queryParams = $"?pageNumber={pageNumber}&pageSize={pageSize}";
+                var response = await _apiService.GetAsync<PagedResult<UserDto>>($"{BaseUrl}{queryParams}");
+                return response ?? new PagedResult<UserDto>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener lista de usuarios");
+                return new PagedResult<UserDto>();
+            }
+        }
+        
+        public async Task<bool> DeleteUserAsync(Guid id)
+        {
+            try
+            {
+                await _apiService.DeleteAsync($"{BaseUrl}/{id}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error al eliminar usuario {id}");
+                return false;
+            }
+        }
+        
+        public async Task<BulkOperationResult> BulkActivateUsersAsync(List<Guid> userIds)
+        {
+            try
+            {
+                var request = new { UserIds = userIds };
+                var response = await _apiService.PostAsync<object, BulkOperationResult>($"{BaseUrl}/bulk/activate", request);
+                return response ?? new BulkOperationResult(0, userIds.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al activar usuarios en lote");
+                return new BulkOperationResult(0, userIds.Count);
+            }
+        }
+        
+        public async Task<BulkOperationResult> BulkDeactivateUsersAsync(List<Guid> userIds)
+        {
+            try
+            {
+                var request = new { UserIds = userIds };
+                var response = await _apiService.PostAsync<object, BulkOperationResult>($"{BaseUrl}/bulk/deactivate", request);
+                return response ?? new BulkOperationResult(0, userIds.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al desactivar usuarios en lote");
+                return new BulkOperationResult(0, userIds.Count);
+            }
+        }
+        
+        public async Task<List<ProjectTeamMemberDto>> GetUserProjectsAsync(Guid userId)
+        {
+            try
+            {
+                var response = await _apiService.GetAsync<List<ProjectTeamMemberDto>>($"{BaseUrl}/{userId}/projects");
+                return response ?? new List<ProjectTeamMemberDto>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error al obtener proyectos del usuario {userId}");
+                return new List<ProjectTeamMemberDto>();
+            }
+        }
+        
+        public async Task<UserPhotoResponse?> GetUserPhotoAsync(Guid userId)
+        {
+            try
+            {
+                _logger.LogInfo($"Obteniendo foto del usuario {userId}...");
+                var response = await _apiService.GetAsync<dynamic>($"{BaseUrl}/{userId}/photo");
+                
+                if (response != null)
+                {
+                    _logger.LogInfo("Foto del usuario obtenida exitosamente");
+                    return new UserPhotoResponse(
+                        response.ContentType?.ToString() ?? "image/png",
+                        response.Data ?? Array.Empty<byte>()
+                    );
+                }
+                
+                _logger.LogWarning("No se pudo obtener la foto del usuario");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener foto del usuario");
+                return null;
+            }
+        }
+        
+        public async Task<CanDeleteResult> CanDeleteUserAsync(Guid userId)
+        {
+            try
+            {
+                var response = await _apiService.GetAsync<CanDeleteResult>($"{BaseUrl}/{userId}/can-delete");
+                return response ?? new CanDeleteResult(false, "Error al verificar");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error al verificar si se puede eliminar usuario {userId}");
+                return new CanDeleteResult(false, ex.Message);
+            }
+        }
     }
 }

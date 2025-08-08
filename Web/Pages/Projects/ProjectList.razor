@@ -1,0 +1,416 @@
+@page "/projects"
+@using Core.DTOs.Projects
+@using Core.DTOs.Common
+@using Core.DTOs.Auth.ProjectTeamMembers
+@using MudBlazor
+@using Web.Services.Interfaces.Organization
+@using Web.Services.Interfaces.Auth
+@inject IProjectApiService ProjectService
+@inject IProjectTeamMemberApiService TeamMemberService
+@inject ICurrentUserService CurrentUserService
+@inject INavigationService NavigationService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Proyectos | EzPro</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    <MudGrid>
+        <!-- Header -->
+        <MudItem xs="12">
+            <MudPaper Class="pa-4 mb-4" Elevation="0">
+                <MudGrid AlignItems="Center">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h4">
+                            <MudIcon Icon="@Icons.Material.Filled.BusinessCenter" Class="mr-2" />
+                            Mis Proyectos
+                        </MudText>
+                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">
+                            @if (activeProject != null)
+                            {
+                                <span>Proyecto activo: <strong>@activeProject.ProjectName</strong></span>
+                            }
+                            else
+                            {
+                                <span>Sin proyecto activo asignado</span>
+                            }
+                        </MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="6" Class="d-flex justify-end">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="@(() => NavigationService.NavigateTo("/projects/new"))">
+                            Nuevo Proyecto
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Filters -->
+        <MudItem xs="12">
+            <MudPaper Class="pa-4 mb-4">
+                <MudGrid>
+                    <MudItem xs="12" md="4">
+                        <MudTextField T="string"
+                                      @bind-Value="searchTerm"
+                                      Label="Buscar"
+                                      Placeholder="Nombre, código o descripción..."
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      Immediate="true"
+                                      DebounceInterval="300"
+                                      Variant="Variant.Outlined"
+                                      Clearable="true"
+                                      OnClearButtonClick="@(() => { searchTerm = string.Empty; LoadData(); })" />
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudSelect T="string"
+                                   @bind-Value="statusFilter"
+                                   Label="Estado"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true">
+                            <MudSelectItem T="string" Value="@("")">Todos</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("Active")">Activo</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("Planning")">En Planificación</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("On Hold")">En Espera</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("Completed")">Completado</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("Cancelled")">Cancelado</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudSelect T="string"
+                                   @bind-Value="sortBy"
+                                   Label="Ordenar por"
+                                   Variant="Variant.Outlined">
+                            <MudSelectItem T="string" Value="@("Name")">Nombre</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("Code")">Código</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("StartDate")">Fecha de Inicio</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("EndDate")">Fecha de Fin</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("CreatedAt")">Fecha de Creación</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="2" Class="d-flex align-center">
+                        <MudSwitch @bind-Value="showInactive"
+                                   Label="Mostrar inactivos"
+                                   Color="Color.Primary" />
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Projects Grid -->
+        <MudItem xs="12">
+            @if (isLoading)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            }
+            else
+            {
+                <MudGrid>
+                    @foreach (var project in projects)
+                    {
+                        var isActiveProject = activeProject?.ProjectId == project.Id;
+                        <MudItem xs="12" md="6" lg="4">
+                            <MudCard Class="@($"project-card {(isActiveProject ? "active-project" : "")}")" @onclick="@(() => ViewProjectDashboard(project))">
+                                <MudCardHeader>
+                                    <CardHeaderContent>
+                                        <MudText Typo="Typo.h6">
+                                            @project.Name
+                                            @if (isActiveProject)
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.Star" Color="Color.Warning" Style="font-size: 1.2rem; margin-left: 8px;" />
+                                            }
+                                        </MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">@project.Code</MudText>
+                                    </CardHeaderContent>
+                                    <CardHeaderActions>
+                                        <MudChip T="string" Color="@GetStatusColor(project.Status)" Size="Size.Small">
+                                            @project.Status
+                                        </MudChip>
+                                    </CardHeaderActions>
+                                </MudCardHeader>
+                                <MudCardContent>
+                                    <MudText Typo="Typo.body2" Class="mb-2">
+                                        @(string.IsNullOrWhiteSpace(project.Description) ? "Sin descripción" : project.Description)
+                                    </MudText>
+                                    
+                                    @{
+                                        var userProjectInfo = userProjects.FirstOrDefault(up => up.ProjectId == project.Id);
+                                    }
+                                    @if (userProjectInfo != null)
+                                    {
+                                        <MudChip T="string" Color="@GetRoleColor(userProjectInfo.Role)" Size="Size.Small" Icon="@Icons.Material.Filled.Person">
+                                            Mi rol: @Core.Constants.SimplifiedRoles.GetDisplayName(userProjectInfo.Role)
+                                        </MudChip>
+                                        <MudDivider Class="my-2" />
+                                    }
+                                    
+                                    <MudGrid>
+                                        <MudItem xs="6">
+                                            <MudText Typo="Typo.caption">Cliente</MudText>
+                                            <MudText Typo="Typo.body2">@(project.Client ?? "N/A")</MudText>
+                                        </MudItem>
+                                        <MudItem xs="6">
+                                            <MudText Typo="Typo.caption">Ubicación</MudText>
+                                            <MudText Typo="Typo.body2">@(project.Location ?? "N/A")</MudText>
+                                        </MudItem>
+                                    </MudGrid>
+                                    @* ProjectDto has PlannedStartDate/PlannedEndDate not StartDate/EndDate *@
+                                    {
+                                        <MudDivider Class="my-2" />
+                                        <div class="d-flex justify-space-between align-center">
+                                            <MudText Typo="Typo.caption">
+                                                @project.PlannedStartDate.ToString("dd/MM/yyyy") - @project.PlannedEndDate.ToString("dd/MM/yyyy")
+                                            </MudText>
+                                            <MudProgressCircular Color="Color.Primary" 
+                                                                 Size="Size.Small" 
+                                                                 Value="@GetProjectProgress(project)" />
+                                        </div>
+                                    }
+                                </MudCardContent>
+                                <MudCardActions>
+                                    <MudButton Color="Color.Primary" 
+                                               Variant="Variant.Text" 
+                                               StartIcon="@Icons.Material.Filled.Dashboard"
+                                               OnClick="@(() => ViewProjectDashboard(project))"
+                                               OnClickStopPropagation="true">
+                                        Dashboard
+                                    </MudButton>
+                                    <MudButton Color="Color.Primary" 
+                                               Variant="Variant.Text" 
+                                               StartIcon="@Icons.Material.Filled.Summarize"
+                                               OnClick="@(() => ViewProjectSummary(project))"
+                                               OnClickStopPropagation="true">
+                                        Resumen
+                                    </MudButton>
+                                    <MudButton Color="Color.Primary" 
+                                               Variant="Variant.Text" 
+                                               StartIcon="@Icons.Material.Filled.Edit"
+                                               OnClick="@(() => EditProject(project))"
+                                               OnClickStopPropagation="true">
+                                        Editar
+                                    </MudButton>
+                                </MudCardActions>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+                
+                @if (!projects.Any())
+                {
+                    <MudPaper Class="pa-8" Elevation="0">
+                        <MudText Typo="Typo.h6" Align="Align.Center" Color="Color.Secondary">
+                            No se encontraron proyectos
+                        </MudText>
+                        <MudText Typo="Typo.body2" Align="Align.Center" Class="mt-2">
+                            Intenta ajustar los filtros o crea un nuevo proyecto
+                        </MudText>
+                    </MudPaper>
+                }
+            }
+        </MudItem>
+
+        <!-- Pagination -->
+        @if (totalPages > 1)
+        {
+            <MudItem xs="12" Class="d-flex justify-center">
+                <MudPagination Color="Color.Primary" 
+                               Count="@totalPages" 
+                               Selected="@pageNumber"
+                               SelectedChanged="@(async (int page) => { pageNumber = page; await LoadData(); })" />
+            </MudItem>
+        }
+    </MudGrid>
+</MudContainer>
+
+<style>
+    .project-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    
+    .project-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .project-card.active-project {
+        border: 2px solid var(--mud-palette-warning);
+        background-color: var(--mud-palette-warning-lighten);
+    }
+    
+    .project-card.active-project::before {
+        content: 'PROYECTO ACTIVO';
+        position: absolute;
+        top: -10px;
+        left: 20px;
+        background-color: var(--mud-palette-warning);
+        color: white;
+        padding: 4px 12px;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 4px;
+        letter-spacing: 0.5px;
+    }
+</style>
+
+@code {
+    private List<ProjectDto> projects = new();
+    private ProjectTeamMemberDetailDto? activeProject;
+    private List<ProjectTeamMemberDetailDto> userProjects = new();
+    private bool isLoading;
+    private string searchTerm = string.Empty;
+    private string statusFilter = string.Empty;
+    private string sortBy = "Name";
+    private bool showInactive = false;
+    
+    private int pageNumber = 1;
+    private int pageSize = 12;
+    private int totalPages;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserProjects();
+        await LoadData();
+    }
+
+    private async Task LoadUserProjects()
+    {
+        try
+        {
+            var userId = await CurrentUserService.GetUserIdAsync();
+            if (Guid.TryParse(userId, out var userGuid))
+            {
+                userProjects = await TeamMemberService.GetUserProjectsAsync(userGuid) ?? new List<ProjectTeamMemberDetailDto>();
+                activeProject = userProjects.FirstOrDefault(p => p.IsActive && p.StartDate <= DateTime.Today);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar proyectos del usuario: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            
+            // Si el usuario tiene proyectos asignados, mostrar solo esos
+            if (userProjects.Any())
+            {
+                var projectIds = userProjects.Select(p => p.ProjectId).ToList();
+                projects = new List<ProjectDto>();
+                
+                foreach (var projectId in projectIds)
+                {
+                    var project = await ProjectService.GetProjectByIdAsync(projectId);
+                    if (project != null)
+                    {
+                        projects.Add(project);
+                    }
+                }
+                
+                // Aplicar filtros localmente
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    projects = projects.Where(p => 
+                        p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        p.Code.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        (p.Description != null && p.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                    ).ToList();
+                }
+                
+                if (!string.IsNullOrWhiteSpace(statusFilter))
+                {
+                    projects = projects.Where(p => p.Status == statusFilter).ToList();
+                }
+                
+                if (!showInactive)
+                {
+                    projects = projects.Where(p => p.IsActive).ToList();
+                }
+                
+                totalPages = 1; // Solo una página ya que son pocos proyectos por usuario
+            }
+            else
+            {
+                projects = new List<ProjectDto>();
+                totalPages = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar proyectos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ViewProjectDashboard(ProjectDto project)
+    {
+        NavigationService.NavigateTo($"/projects/{project.Id}/dashboard");
+    }
+
+    private void ViewProjectSummary(ProjectDto project)
+    {
+        NavigationService.NavigateTo($"/projects/{project.Id}/summary");
+    }
+
+    private void EditProject(ProjectDto project)
+    {
+        NavigationService.NavigateTo($"/projects/{project.Id}/edit");
+    }
+
+    private async Task OpenProjectMenu(MouseEventArgs args, ProjectDto project)
+    {
+        // Aquí puedes implementar un menú contextual si lo deseas
+    }
+
+    private Color GetStatusColor(string status)
+    {
+        return status?.ToLower() switch
+        {
+            "active" or "activo" => Color.Success,
+            "planning" or "planificación" => Color.Info,
+            "on hold" or "en espera" => Color.Warning,
+            "completed" or "completado" => Color.Primary,
+            "cancelled" or "cancelado" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private double GetProjectProgress(ProjectDto project)
+    {
+        // Simulación de progreso - en producción vendría del backend
+        if (project.Status?.ToLower() == "completed" || project.Status?.ToLower() == "completado")
+            return 100;
+        
+        // ProjectDto has PlannedStartDate/PlannedEndDate not nullable
+        var totalDays = (project.PlannedEndDate - project.PlannedStartDate).Days;
+        var elapsedDays = (DateTime.Today - project.PlannedStartDate).Days;
+            
+        if (totalDays > 0)
+        {
+            var progress = (double)elapsedDays / totalDays * 100;
+            return Math.Max(0, Math.Min(100, progress));
+        }
+        
+        return 0;
+    }
+    
+    private Color GetRoleColor(string role) => Core.Constants.SimplifiedRoles.GetProjectRoleLevel(role) switch
+    {
+        4 => Color.Error,      // Project Manager
+        3 => Color.Warning,    // Team Lead
+        2 => Color.Primary,    // Team Member
+        1 => Color.Info,       // Viewer
+        _ => Color.Default
+    };
+}

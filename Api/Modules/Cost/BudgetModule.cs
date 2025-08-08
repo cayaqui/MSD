@@ -9,122 +9,122 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Modules.Cost;
 
 /// <summary>
-/// Budget management endpoints
+/// Endpoints de gestión de presupuestos
 /// </summary>
 public class BudgetModule : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/budgets")
-            .WithTags("Budgets")
+            .WithTags("Presupuestos")
             .RequireAuthorization();
 
         // Query endpoints
         group.MapGet("/project/{projectId:guid}", GetProjectBudgets)
             .WithName("GetProjectBudgets")
-            .WithSummary("Get budgets for a project")
+            .WithSummary("Obtener presupuestos para un proyecto")
             .Produces<PagedResult<BudgetDto>>();
 
         group.MapGet("/{id:guid}", GetBudgetById)
             .WithName("GetBudgetById")
-            .WithSummary("Get budget by ID")
+            .WithSummary("Obtener presupuesto por ID")
             .Produces<BudgetDto>()
             .ProducesProblem(404);
 
         group.MapGet("/project/{projectId:guid}/baseline", GetCurrentBaselineBudget)
             .WithName("GetCurrentBaselineBudget")
-            .WithSummary("Get current baseline budget for a project")
+            .WithSummary("Obtener presupuesto de línea base actual para un proyecto")
             .Produces<BudgetDetailDto>()
             .ProducesProblem(404);
 
         group.MapGet("/{budgetId:guid}/items", GetBudgetItems)
             .WithName("GetBudgetItems")
-            .WithSummary("Get items for a budget")
+            .WithSummary("Obtener elementos de un presupuesto")
             .Produces<List<BudgetItemDto>>();
 
         // Command endpoints
         group.MapPost("/", CreateBudget)
             .WithName("CreateBudget")
-            .WithSummary("Create a new budget")
+            .WithSummary("Crear un nuevo presupuesto")
             .Produces<BudgetDto>(201)
             .ProducesValidationProblem();
 
         group.MapPut("/{id:guid}", UpdateBudget)
             .WithName("UpdateBudget")
-            .WithSummary("Update a budget")
+            .WithSummary("Actualizar un presupuesto")
             .Produces<BudgetDto>()
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapDelete("/{id:guid}", DeleteBudget)
             .WithName("DeleteBudget")
-            .WithSummary("Delete a budget")
+            .WithSummary("Eliminar un presupuesto")
             .Produces(204)
             .ProducesProblem(404);
 
         // Workflow endpoints
         group.MapPost("/{id:guid}/submit", SubmitBudgetForApproval)
             .WithName("SubmitBudgetForApproval")
-            .WithSummary("Submit budget for approval")
+            .WithSummary("Enviar presupuesto para aprobación")
             .Produces(200)
             .ProducesProblem(404);
 
         group.MapPost("/{id:guid}/approve", ApproveBudget)
             .WithName("ApproveBudget")
-            .WithSummary("Approve a budget")
+            .WithSummary("Aprobar un presupuesto")
             .Produces(200)
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapPost("/{id:guid}/reject", RejectBudget)
             .WithName("RejectBudget")
-            .WithSummary("Reject a budget")
+            .WithSummary("Rechazar un presupuesto")
             .Produces(200)
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapPost("/{id:guid}/baseline", SetBudgetAsBaseline)
             .WithName("SetBudgetAsBaseline")
-            .WithSummary("Set budget as baseline")
+            .WithSummary("Establecer presupuesto como línea base")
             .Produces(200)
             .ProducesProblem(404);
 
         group.MapPost("/{id:guid}/lock", LockBudget)
             .WithName("LockBudget")
-            .WithSummary("Lock a budget")
+            .WithSummary("Bloquear un presupuesto")
             .Produces(200)
             .ProducesProblem(404);
 
         // Budget Item endpoints
         group.MapPost("/items", AddBudgetItem)
             .WithName("AddBudgetItem")
-            .WithSummary("Add item to budget")
+            .WithSummary("Agregar elemento al presupuesto")
             .Produces<Guid>(201)
             .ProducesValidationProblem();
 
         group.MapPut("/items/{itemId:guid}", UpdateBudgetItem)
             .WithName("UpdateBudgetItem")
-            .WithSummary("Update budget item")
+            .WithSummary("Actualizar elemento del presupuesto")
             .Produces(200)
             .ProducesValidationProblem()
             .ProducesProblem(404);
 
         group.MapDelete("/items/{itemId:guid}", RemoveBudgetItem)
             .WithName("RemoveBudgetItem")
-            .WithSummary("Remove budget item")
+            .WithSummary("Eliminar elemento del presupuesto")
             .Produces(204)
             .ProducesProblem(404);
 
         // Revision endpoints
         group.MapPost("/{budgetId:guid}/revisions", CreateBudgetRevision)
             .WithName("CreateBudgetRevision")
-            .WithSummary("Create budget revision")
+            .WithSummary("Crear revisión del presupuesto")
             .Produces<Guid>(201)
             .ProducesValidationProblem();
 
         group.MapPost("/revisions/{revisionId:guid}/approve", ApproveBudgetRevision)
             .WithName("ApproveBudgetRevision")
-            .WithSummary("Approve budget revision")
+            .WithSummary("Aprobar revisión del presupuesto")
             .Produces(200)
             .ProducesProblem(404);
     }

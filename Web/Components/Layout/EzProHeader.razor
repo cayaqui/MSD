@@ -1,10 +1,16 @@
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Web
 @using Core.DTOs.Organization.Project
+@using Core.DTOs.Auth.ProjectTeamMembers
+@using Core.Constants
+@using Web.Components.Common
 @using Web.Services.Interfaces
+@using Web.Services.Interfaces.Auth
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject IProjectApiService ProjectService
+@inject IProjectTeamMemberApiService TeamMemberService
+@inject ICurrentUserService CurrentUserService
 @inject ILoggingService Logger
 @implements IDisposable
 
@@ -45,7 +51,7 @@
             </MudHidden>
 
             <!-- Project Selector -->
-            <MudTooltip Text="Proyecto Actual">
+            <MudTooltip Text="Cambiar Proyecto">
                 <MudMenu AnchorOrigin="Origin.BottomCenter"
                          TransformOrigin="Origin.TopCenter"
                          Dense="true"
@@ -57,14 +63,22 @@
                                    EndIcon="@Icons.Material.Filled.KeyboardArrowDown"
                                    Class="project-selector-button">
                             <MudHidden Breakpoint="Breakpoint.SmAndDown">
-                                <span class="project-name">@(_selectedProjectName)</span>
+                                <div class="d-flex flex-column align-start">
+                                    <span class="project-name">@(_selectedProjectName)</span>
+                                    @if (!string.IsNullOrEmpty(_userRole))
+                                    {
+                                        <MudText Typo="Typo.caption" Style="font-size: 0.7rem; opacity: 0.8;">
+                                            @SimplifiedRoles.GetDisplayName(_userRole)
+                                        </MudText>
+                                    }
+                                </div>
                             </MudHidden>
                         </MudButton>
                     </ActivatorContent>
                     <ChildContent>
-                        <div class="pa-3" style="min-width: 300px;">
-                        <MudText Typo="Typo.subtitle2" Class="mb-2">Seleccionar Proyecto</MudText>
-                        @if (_projects != null && _projects.Any())
+                        <div class="pa-3" style="min-width: 350px;">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Mis Proyectos</MudText>
+                        @if (_userProjects != null && _userProjects.Any())
                         {
                             <MudTextField T="string" 
                                           @bind-Value="_projectSearchText"
@@ -76,18 +90,41 @@
                                           Class="mb-2" />
                             <MudDivider Class="mb-2" />
                             <div style="max-height: 300px; overflow-y: auto;">
-                                @foreach (var project in FilteredProjects)
+                                @foreach (var project in FilteredUserProjects)
                                 {
-                                    <MudMenuItem OnClick="@(() => SelectProject(project))" 
-                                                 Icon="@(project.Id == _selectedProjectId ? Icons.Material.Filled.Check : Icons.Material.Filled.FolderOpen)"
-                                                 IconColor="@(project.Id == _selectedProjectId ? Color.Primary : Color.Default)">
-                                        <div>
-                                            <MudText Typo="Typo.body2">@project.Name</MudText>
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@project.Code</MudText>
+                                    var isActive = project.ProjectId == _selectedProjectId;
+                                    var isActiveProject = _activeProject?.ProjectId == project.ProjectId;
+                                    <MudMenuItem OnClick="@(() => SelectUserProject(project))" 
+                                                 Icon="@(isActive ? Icons.Material.Filled.Check : Icons.Material.Filled.FolderOpen)"
+                                                 IconColor="@(isActive ? Color.Primary : Color.Default)"
+                                                 Class="@(isActiveProject ? "active-project-item" : "")">
+                                        <div style="flex: 1;">
+                                            <div class="d-flex justify-space-between align-center">
+                                                <MudText Typo="Typo.body2">
+                                                    @project.ProjectName
+                                                    @if (isActiveProject)
+                                                    {
+                                                        <MudIcon Icon="@Icons.Material.Filled.Star" Color="Color.Warning" Size="Size.Small" Style="margin-left: 4px;" />
+                                                    }
+                                                </MudText>
+                                                <MudChip T="string" Size="Size.Small" Color="@GetRoleColor(project.Role)">
+                                                    @SimplifiedRoles.GetDisplayName(project.Role)
+                                                </MudChip>
+                                            </div>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@project.ProjectCode</MudText>
                                         </div>
                                     </MudMenuItem>
                                 }
                             </div>
+                            @if (_userProjects.Count > 5)
+                            {
+                                <MudDivider Class="mt-2 mb-2" />
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true"
+                                           StartIcon="@Icons.Material.Filled.ViewList"
+                                           OnClick="@(() => Navigation.NavigateTo("/projects"))">
+                                    Ver todos mis proyectos
+                                </MudButton>
+                            }
                         }
                         else if (_loadingProjects)
                         {
@@ -98,7 +135,7 @@
                         else
                         {
                             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-3 text-center">
-                                No hay proyectos disponibles
+                                No tienes proyectos asignados
                             </MudText>
                         }
                     </div>
@@ -208,15 +245,9 @@
                 <ActivatorContent>
                     <MudButton Variant="Variant.Text" 
                                Color="Color.Inherit" 
-                               StartIcon="@(string.IsNullOrEmpty(UserAvatar) ? Icons.Material.Filled.AccountCircle : null)"
                                EndIcon="@Icons.Material.Filled.KeyboardArrowDown"
                                Class="user-menu-button">
-                        @if (!string.IsNullOrEmpty(UserAvatar))
-                        {
-                            <MudAvatar Size="Size.Small" Class="me-2">
-                                <MudImage Src="@UserAvatar" />
-                            </MudAvatar>
-                        }
+                        <UserAvatar PhotoUrl="@UserAvatar" UserName="@UserName" Size="Size.Small" Class="me-2" />
                         <MudHidden Breakpoint="Breakpoint.SmAndDown">
                             <span class="user-name">@UserName</span>
                         </MudHidden>
@@ -225,16 +256,7 @@
                 <ChildContent>
                     <div class="user-menu-header pa-4">
                         <div class="d-flex align-center gap-3">
-                            <MudAvatar Size="Size.Large" Color="Color.Primary">
-                                @if (!string.IsNullOrEmpty(UserAvatar))
-                                {
-                                    <MudImage Src="@UserAvatar" />
-                                }
-                                else
-                                {
-                                    @(GetUserInitials())
-                                }
-                            </MudAvatar>
+                            <UserAvatar PhotoUrl="@UserAvatar" UserName="@UserName" Size="Size.Large" />
                             <div>
                                 <MudText Typo="Typo.h6">@UserName</MudText>
                                 <MudText Typo="Typo.caption" Color="Color.Default">@UserEmail</MudText>
@@ -338,6 +360,15 @@
         max-width: 200px;
         display: inline-block;
     }
+    
+    .active-project-item {
+        background-color: var(--mud-palette-warning-lighten) !important;
+        border-left: 4px solid var(--mud-palette-warning);
+    }
+    
+    .active-project-item:hover {
+        background-color: var(--mud-palette-warning-lighten) !important;
+    }
 </style>
 
 @code {
@@ -364,9 +395,12 @@
     
     // Project selector fields
     private List<ProjectListDto>? _projects;
+    private List<ProjectTeamMemberDetailDto>? _userProjects;
+    private ProjectTeamMemberDetailDto? _activeProject;
     private bool _loadingProjects = false;
     private Guid? _selectedProjectId;
     private string _selectedProjectName = "Sin proyecto";
+    private string _userRole = "";
     private string _projectSearchText = "";
     
     private string SearchText
@@ -412,19 +446,19 @@
         ");
     }
     
-    private IEnumerable<ProjectListDto> FilteredProjects
+    private IEnumerable<ProjectTeamMemberDetailDto> FilteredUserProjects
     {
         get
         {
-            if (_projects == null) return Enumerable.Empty<ProjectListDto>();
+            if (_userProjects == null) return Enumerable.Empty<ProjectTeamMemberDetailDto>();
             
             if (string.IsNullOrWhiteSpace(_projectSearchText))
-                return _projects;
+                return _userProjects;
             
             var searchTerm = _projectSearchText.ToLower();
-            return _projects.Where(p => 
-                p.Name.ToLower().Contains(searchTerm) || 
-                p.Code.ToLower().Contains(searchTerm));
+            return _userProjects.Where(p => 
+                p.ProjectName.ToLower().Contains(searchTerm) || 
+                p.ProjectCode.ToLower().Contains(searchTerm));
         }
     }
 
@@ -438,23 +472,38 @@
         try
         {
             _loadingProjects = true;
-            var result = await ProjectService.GetProjectsAsync();
-            if (result != null && result.Items != null)
+            
+            // Obtener el ID del usuario actual
+            var userId = await CurrentUserService.GetUserIdAsync();
+            if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userGuid))
             {
-                _projects = result.Items.ToList();
-                Logger.LogDebug($"Loaded {_projects.Count} projects");
+                Logger.LogWarning("No se pudo obtener el ID del usuario actual");
+                return;
+            }
+            
+            // Cargar proyectos del usuario
+            _userProjects = await TeamMemberService.GetUserProjectsAsync(userGuid) ?? new List<ProjectTeamMemberDetailDto>();
+            Logger.LogDebug($"Usuario tiene {_userProjects.Count} proyectos asignados");
+            
+            if (_userProjects.Any())
+            {
+                // Identificar el proyecto activo
+                _activeProject = _userProjects.FirstOrDefault(p => p.IsActive && p.StartDate <= DateTime.Today);
                 
-                // Select first project if available
-                if (_projects.Any() && !_selectedProjectId.HasValue)
+                // Seleccionar el proyecto activo o el primero disponible
+                if (_activeProject != null)
                 {
-                    var firstProject = _projects.First();
-                    await SelectProject(firstProject);
+                    await SelectUserProject(_activeProject);
+                }
+                else if (!_selectedProjectId.HasValue)
+                {
+                    await SelectUserProject(_userProjects.First());
                 }
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading projects");
+            Logger.LogError(ex, "Error al cargar proyectos del usuario");
         }
         finally
         {
@@ -462,21 +511,23 @@
         }
     }
 
-    private async Task SelectProject(ProjectListDto project)
+    private async Task SelectUserProject(ProjectTeamMemberDetailDto project)
     {
-        _selectedProjectId = project.Id;
-        _selectedProjectName = project.Name;
+        _selectedProjectId = project.ProjectId;
+        _selectedProjectName = project.ProjectName;
+        _userRole = project.Role;
         
         // Store selected project in local storage
-        await JS.InvokeVoidAsync("localStorage.setItem", "selectedProjectId", project.Id.ToString());
-        await JS.InvokeVoidAsync("localStorage.setItem", "selectedProjectName", project.Name);
+        await JS.InvokeVoidAsync("localStorage.setItem", "selectedProjectId", project.ProjectId.ToString());
+        await JS.InvokeVoidAsync("localStorage.setItem", "selectedProjectName", project.ProjectName);
+        await JS.InvokeVoidAsync("localStorage.setItem", "selectedProjectRole", project.Role);
         
-        Logger.LogInfo($"Selected project: {project.Name} ({project.Id})");
+        Logger.LogInfo($"Proyecto seleccionado: {project.ProjectName} ({project.ProjectId}) - Rol: {project.Role}");
         
         // Notify parent component about project change
         if (OnProjectChanged.HasDelegate)
         {
-            await OnProjectChanged.InvokeAsync(project.Id);
+            await OnProjectChanged.InvokeAsync(project.ProjectId);
         }
         
         StateHasChanged();
@@ -498,6 +549,15 @@
         
         return UserName.Substring(0, Math.Min(2, UserName.Length)).ToUpper();
     }
+    
+    private Color GetRoleColor(string role) => SimplifiedRoles.GetProjectRoleLevel(role) switch
+    {
+        4 => Color.Error,      // Project Manager
+        3 => Color.Warning,    // Team Lead
+        2 => Color.Primary,    // Team Member
+        1 => Color.Info,       // Viewer
+        _ => Color.Default
+    };
     
     private void DebounceSearch()
     {
@@ -529,17 +589,19 @@
             {
                 var savedProjectId = await JS.InvokeAsync<string>("localStorage.getItem", "selectedProjectId");
                 var savedProjectName = await JS.InvokeAsync<string>("localStorage.getItem", "selectedProjectName");
+                var savedProjectRole = await JS.InvokeAsync<string>("localStorage.getItem", "selectedProjectRole");
                 
                 if (!string.IsNullOrEmpty(savedProjectId) && Guid.TryParse(savedProjectId, out var projectId))
                 {
                     _selectedProjectId = projectId;
                     _selectedProjectName = savedProjectName ?? "Sin proyecto";
+                    _userRole = savedProjectRole ?? "";
                     StateHasChanged();
                 }
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error loading saved project from local storage");
+                Logger.LogError(ex, "Error al cargar proyecto guardado de localStorage");
             }
             
             // Listen for fullscreen changes

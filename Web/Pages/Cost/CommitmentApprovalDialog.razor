@@ -1,0 +1,73 @@
+@using Core.DTOs.Cost.Commitments
+@using Web.Services.Interfaces.Cost
+@using Web.Services.Interfaces
+@using MudBlazor
+@inject ICommitmentApiService CommitmentService
+@inject IToastService Toast
+
+<MudDialog>
+    <DialogContent>
+        <MudText Class="mb-4">
+            Please provide approval details for commitment '@CommitmentNumber':
+        </MudText>
+        <MudTextField @bind-Value="_comments" Label="Approval Notes" 
+                      Variant="Variant.Outlined" Lines="4" MaxLength="500" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Success" Variant="Variant.Filled" 
+                   OnClick="Submit" Disabled="@_processing">
+            @if (_processing)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ms-2" />
+            }
+            else
+            {
+                <span>Approve</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public string CommitmentNumber { get; set; } = string.Empty;
+    [Parameter] public Guid CommitmentId { get; set; }
+    
+    private string _comments = string.Empty;
+    private bool _processing = false;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        _processing = true;
+        try
+        {
+            var dto = new ApproveCommitmentDto 
+            { 
+                ApprovalNotes = _comments
+            };
+            
+            var result = await CommitmentService.ApproveCommitmentAsync(CommitmentId, dto);
+            if (result != null)
+            {
+                Toast.ShowSuccess("Commitment approved successfully");
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Toast.ShowError("Failed to approve commitment");
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error approving commitment");
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+}

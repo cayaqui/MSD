@@ -1,0 +1,48 @@
+@using MudBlazor
+
+<MudAvatar Size="@Size" Color="@Color" Class="@Class">
+    @if (HasValidPhoto)
+    {
+        @if (IsDataUrl)
+        {
+            <MudImage Src="@PhotoUrl" Alt="@UserName" />
+        }
+        else
+        {
+            <MudImage Src="@PhotoUrl" Alt="@UserName" />
+        }
+    }
+    else
+    {
+        @GetInitials()
+    }
+</MudAvatar>
+
+@code {
+    [Parameter] public string? PhotoUrl { get; set; }
+    [Parameter] public string UserName { get; set; } = "Usuario";
+    [Parameter] public Size Size { get; set; } = Size.Medium;
+    [Parameter] public Color Color { get; set; } = Color.Primary;
+    [Parameter] public string? Class { get; set; }
+
+    private bool HasValidPhoto => !string.IsNullOrEmpty(PhotoUrl) && 
+                                  !PhotoUrl.StartsWith("/images/avatars/default");
+
+    private bool IsDataUrl => PhotoUrl?.StartsWith("data:image") ?? false;
+
+    private string GetInitials()
+    {
+        if (string.IsNullOrEmpty(UserName))
+            return "U";
+
+        var parts = UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+        {
+            return $"{char.ToUpper(parts[0][0])}{char.ToUpper(parts[1][0])}";
+        }
+
+        return UserName.Length >= 2 
+            ? UserName.Substring(0, 2).ToUpper() 
+            : UserName.ToUpper();
+    }
+}

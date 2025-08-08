@@ -7,38 +7,38 @@ using Microsoft.AspNetCore.Authorization;
 namespace Api.Modules;
 
 /// <summary>
-/// Authentication and authorization endpoints
+/// Endpoints de autenticación y autorización
 /// </summary>
 public class AuthModule : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
         var auth = app.MapGroup("/api/auth")
-            .WithTags("Authentication")
+            .WithTags("Autenticación")
             .RequireAuthorization();
 
         // Current user endpoints
         auth.MapGet("/me", GetCurrentUser)
             .WithName("GetCurrentUser")
-            .WithSummary("Get current authenticated user")
+            .WithSummary("Obtener usuario autenticado actual")
             .Produces<UserDto>(200)
             .Produces(401);
 
         auth.MapGet("/me/permissions", GetMyPermissions)
             .WithName("GetMyPermissions")
-            .WithSummary("Get current user permissions")
+            .WithSummary("Obtener permisos del usuario actual")
             .Produces<UserPermissionsDto>(200)
             .Produces(401);
 
         auth.MapGet("/me/projects", GetMyProjects)
             .WithName("GetMyProjects")
-            .WithSummary("Get projects accessible to current user")
+            .WithSummary("Obtener proyectos accesibles para el usuario actual")
             .Produces<List<Guid>>(200)
             .Produces(401);
 
         auth.MapGet("/me/projects/{projectId}/permissions", GetMyProjectPermissions)
             .WithName("GetMyProjectPermissions")
-            .WithSummary("Get current user permissions for a specific project")
+            .WithSummary("Obtener permisos del usuario actual para un proyecto específico")
             .Produces<ProjectPermissionDto>(200)
             .Produces(401)
             .Produces(404);
@@ -46,31 +46,31 @@ public class AuthModule : ICarterModule
         // Azure AD sync endpoints
         auth.MapPost("/sync", SyncCurrentUserWithAzure)
             .WithName("SyncCurrentUserWithAzure")
-            .WithSummary("Sync current user data with Azure AD")
+            .WithSummary("Sincronizar datos del usuario actual con Azure AD")
             .Produces<UserDto>(200)
             .Produces(401);
 
         // Permission check endpoints
         auth.MapPost("/check-permission", CheckPermission)
             .WithName("CheckPermission")
-            .WithSummary("Check if current user has a specific permission")
+            .WithSummary("Verificar si el usuario actual tiene un permiso específico")
             .Produces<bool>(200)
             .Produces(401);
 
         auth.MapPost("/check-project-access", CheckProjectAccess)
             .WithName("CheckProjectAccess")
-            .WithSummary("Check if current user can access a project")
+            .WithSummary("Verificar si el usuario actual puede acceder a un proyecto")
             .Produces<bool>(200)
             .Produces(401);
 
         // Public endpoints (no auth required)
         var publicAuth = app.MapGroup("/api/auth/public")
-            .WithTags("Authentication - Public")
+            .WithTags("Autenticación - Público")
             .AllowAnonymous();
 
         publicAuth.MapGet("/login-info", GetLoginInfo)
             .WithName("GetLoginInfo")
-            .WithSummary("Get login configuration info")
+            .WithSummary("Obtener información de configuración de inicio de sesión")
             .Produces<LoginInfoDto>(200);
     }
 
@@ -83,8 +83,8 @@ public class AuthModule : ICarterModule
         if (user == null)
         {
             return Results.Problem(
-                title: "User not found",
-                detail: "Authenticated user does not exist in the system. Please contact an administrator.",
+                title: "Usuario no encontrado",
+                detail: "El usuario autenticado no existe en el sistema. Por favor contacte a un administrador.",
                 statusCode: 401);
         }
 
@@ -99,8 +99,8 @@ public class AuthModule : ICarterModule
         if (permissions == null)
         {
             return Results.Problem(
-                title: "Permissions not found",
-                detail: "Could not retrieve user permissions",
+                title: "Permisos no encontrados",
+                detail: "No se pudieron obtener los permisos del usuario",
                 statusCode: 401);
         }
 
@@ -123,13 +123,13 @@ public class AuthModule : ICarterModule
         var hasAccess = await currentUserService.HasProjectAccessAsync(projectId);
         if (!hasAccess)
         {
-            return Results.NotFound($"Project {projectId} not found or access denied");
+            return Results.NotFound($"Proyecto {projectId} no encontrado o acceso denegado");
         }
 
         var permissions = await authService.GetUserProjectPermissionsAsync(projectId);
         if (permissions == null)
         {
-            return Results.NotFound($"No permissions found for project {projectId}");
+            return Results.NotFound($"No se encontraron permisos para el proyecto {projectId}");
         }
 
         return Results.Ok(permissions);
@@ -145,8 +145,8 @@ public class AuthModule : ICarterModule
             if (user == null)
             {
                 return Results.Problem(
-                    title: "Sync failed",
-                    detail: "Could not sync user with Azure AD. User may not exist in the system.",
+                    title: "Sincronización fallida",
+                    detail: "No se pudo sincronizar el usuario con Azure AD. El usuario puede no existir en el sistema.",
                     statusCode: 400);
             }
 
@@ -155,7 +155,7 @@ public class AuthModule : ICarterModule
         catch (Exception ex)
         {
             return Results.Problem(
-                title: "Sync error",
+                title: "Error de sincronización",
                 detail: ex.Message,
                 statusCode: 500);
         }
@@ -167,7 +167,7 @@ public class AuthModule : ICarterModule
     {
         if (string.IsNullOrWhiteSpace(request.Permission))
         {
-            return Results.BadRequest("Permission is required");
+            return Results.BadRequest("El permiso es requerido");
         }
 
         var hasPermission = await currentUserService.HasPermissionAsync(request.Permission);

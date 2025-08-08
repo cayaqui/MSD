@@ -1,0 +1,297 @@
+@using Core.DTOs.Cost.PlanningPackages
+@using MudBlazor
+@using Web.Services.Interfaces.Projects
+@inject IPlanningPackageApiService PlanningPackageService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6" Class="mb-2">Redistribuir Presupuesto</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Ajuste el presupuesto de cada paquete de planificación. El total debe coincidir con el presupuesto disponible.
+                </MudText>
+            </MudItem>
+
+            <!-- Budget Summary -->
+            <MudItem xs="12">
+                <MudPaper Class="pa-3 mb-3" Outlined="true">
+                    <MudGrid>
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption">Presupuesto Total</MudText>
+                            <MudText Typo="Typo.h6">@BudgetSummary.TotalBudget.ToString("C")</MudText>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption">Total Asignado</MudText>
+                            <MudText Typo="Typo.h6" Color="@(GetTotalAllocated() == BudgetSummary.TotalBudget ? Color.Success : Color.Warning)">
+                                @GetTotalAllocated().ToString("C")
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption">Diferencia</MudText>
+                            <MudText Typo="Typo.h6" Color="@(GetDifference() == 0 ? Color.Success : Color.Error)">
+                                @GetDifference().ToString("C")
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Distribution Method -->
+            <MudItem xs="12">
+                <MudRadioGroup T="DistributionMethod" @bind-Value="distributionMethod">
+                    <MudRadio Value="DistributionMethod.Manual" Color="Color.Primary">
+                        Distribución Manual
+                    </MudRadio>
+                    <MudRadio Value="DistributionMethod.Equal" Color="Color.Primary">
+                        Distribución Equitativa
+                    </MudRadio>
+                    <MudRadio Value="DistributionMethod.Proportional" Color="Color.Primary">
+                        Distribución Proporcional (basada en presupuesto actual)
+                    </MudRadio>
+                </MudRadioGroup>
+            </MudItem>
+
+            @if (distributionMethod != DistributionMethod.Manual)
+            {
+                <MudItem xs="12">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Calculate"
+                               OnClick="ApplyDistribution"
+                               FullWidth="true">
+                        Aplicar Distribución @(distributionMethod == DistributionMethod.Equal ? "Equitativa" : "Proporcional")
+                    </MudButton>
+                </MudItem>
+            }
+
+            <!-- Planning Packages Budget Allocation -->
+            <MudItem xs="12">
+                <MudTable Items="@allocations" Dense="true" Hover="true" Class="mt-3">
+                    <HeaderContent>
+                        <MudTh>Código WBS</MudTh>
+                        <MudTh>Nombre</MudTh>
+                        <MudTh Style="text-align:right">Presupuesto Actual</MudTh>
+                        <MudTh Style="text-align:right; width: 200px;">Nuevo Presupuesto</MudTh>
+                        <MudTh Style="text-align:right">Diferencia</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Código">@context.PlanningPackage.Code</MudTd>
+                        <MudTd DataLabel="Nombre">@context.PlanningPackage.Name</MudTd>
+                        <MudTd DataLabel="Presupuesto Actual" Style="text-align:right">
+                            @context.PlanningPackage.Budget.ToString("C")
+                        </MudTd>
+                        <MudTd DataLabel="Nuevo Presupuesto" Style="text-align:right">
+                            <MudNumericField T="decimal"
+                                             @bind-Value="context.NewBudget"
+                                             Format="C"
+                                             Min="0"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Immediate="true" />
+                        </MudTd>
+                        <MudTd DataLabel="Diferencia" Style="text-align:right">
+                            <MudText Color="@(GetDifferenceColor(context))">
+                                @((context.NewBudget - context.PlanningPackage.Budget).ToString("C"))
+                            </MudText>
+                        </MudTd>
+                    </RowTemplate>
+                    <FooterContent>
+                        <MudTh colspan="3" Style="text-align:right">
+                            <MudText Typo="Typo.h6">Total:</MudText>
+                        </MudTh>
+                        <MudTh Style="text-align:right">
+                            <MudText Typo="Typo.h6" Color="@(GetTotalAllocated() == BudgetSummary.TotalBudget ? Color.Success : Color.Warning)">
+                                @GetTotalAllocated().ToString("C")
+                            </MudText>
+                        </MudTh>
+                        <MudTh Style="text-align:right">
+                            <MudText Typo="Typo.h6" Color="@(GetDifference() == 0 ? Color.Success : Color.Error)">
+                                @GetDifference().ToString("C")
+                            </MudText>
+                        </MudTh>
+                    </FooterContent>
+                </MudTable>
+            </MudItem>
+
+            @if (GetDifference() != 0)
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Warning" Dense="true">
+                        La suma de los nuevos presupuestos debe ser igual al presupuesto total disponible.
+                    </MudAlert>
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="Submit"
+                   Disabled="@(GetDifference() != 0 || isProcessing)">
+            @if (isProcessing)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Aplicando cambios...</MudText>
+            }
+            else
+            {
+                <MudText>Aplicar Redistribución</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public Guid ControlAccountId { get; set; }
+    [Parameter] public List<PlanningPackageDto> PlanningPackages { get; set; } = new();
+    [Parameter] public Core.DTOs.Cost.PlanningPackages.PlanningPackageBudgetSummaryDto BudgetSummary { get; set; } = new();
+
+    private bool isProcessing;
+    private List<BudgetAllocationItem> allocations = new();
+    private DistributionMethod distributionMethod = DistributionMethod.Manual;
+
+    protected override void OnInitialized()
+    {
+        // Inicializar las asignaciones con los valores actuales
+        allocations = PlanningPackages
+            .Select(pp => new BudgetAllocationItem
+            {
+                PlanningPackage = pp,
+                NewBudget = pp.Budget
+            })
+            .OrderBy(a => a.PlanningPackage.Code)
+            .ToList();
+    }
+
+    private decimal GetTotalAllocated()
+    {
+        return allocations.Sum(a => a.NewBudget);
+    }
+
+    private decimal GetDifference()
+    {
+        return BudgetSummary.TotalBudget - GetTotalAllocated();
+    }
+
+    private Color GetDifferenceColor(BudgetAllocationItem item)
+    {
+        var diff = item.NewBudget - item.PlanningPackage.Budget;
+        if (diff > 0) return Color.Success;
+        if (diff < 0) return Color.Error;
+        return Color.Default;
+    }
+
+    private void ApplyDistribution()
+    {
+        switch (distributionMethod)
+        {
+            case DistributionMethod.Equal:
+                ApplyEqualDistribution();
+                break;
+            case DistributionMethod.Proportional:
+                ApplyProportionalDistribution();
+                break;
+        }
+    }
+
+    private void ApplyEqualDistribution()
+    {
+        if (allocations.Count == 0) return;
+        
+        var equalAmount = Math.Round(BudgetSummary.TotalBudget / allocations.Count, 2);
+        var remainder = BudgetSummary.TotalBudget - (equalAmount * allocations.Count);
+        
+        foreach (var allocation in allocations)
+        {
+            allocation.NewBudget = equalAmount;
+        }
+        
+        // Agregar el resto al primer paquete para que cuadre exactamente
+        if (remainder != 0 && allocations.Any())
+        {
+            allocations.First().NewBudget += remainder;
+        }
+    }
+
+    private void ApplyProportionalDistribution()
+    {
+        var currentTotal = allocations.Sum(a => a.PlanningPackage.Budget);
+        if (currentTotal == 0)
+        {
+            // Si no hay presupuesto actual, aplicar distribución equitativa
+            ApplyEqualDistribution();
+            return;
+        }
+        
+        var totalAllocated = 0m;
+        
+        for (int i = 0; i < allocations.Count; i++)
+        {
+            var allocation = allocations[i];
+            var proportion = allocation.PlanningPackage.Budget / currentTotal;
+            
+            if (i == allocations.Count - 1)
+            {
+                // Último elemento: asignar lo que queda para evitar errores de redondeo
+                allocation.NewBudget = BudgetSummary.TotalBudget - totalAllocated;
+            }
+            else
+            {
+                allocation.NewBudget = Math.Round(BudgetSummary.TotalBudget * proportion, 2);
+                totalAllocated += allocation.NewBudget;
+            }
+        }
+    }
+
+    private async Task Submit()
+    {
+        try
+        {
+            isProcessing = true;
+            
+            var budgetAllocations = allocations
+                .Select(a => new BudgetAllocation(a.PlanningPackage.Id, a.NewBudget))
+                .ToList();
+            
+            var success = await PlanningPackageService.RedistributeBudgetAsync(ControlAccountId, budgetAllocations);
+            
+            if (success)
+            {
+                Snackbar.Add("Presupuesto redistribuido exitosamente", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add("Error al redistribuir el presupuesto", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private class BudgetAllocationItem
+    {
+        public PlanningPackageDto PlanningPackage { get; set; } = new();
+        public decimal NewBudget { get; set; }
+    }
+
+    private enum DistributionMethod
+    {
+        Manual,
+        Equal,
+        Proportional
+    }
+}

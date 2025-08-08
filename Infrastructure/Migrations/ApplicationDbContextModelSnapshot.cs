@@ -38,164 +38,6 @@ namespace Infrastructure.Migrations
                     b.ToTable("CBSBudgetItems", "Cost");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Auth.Permissions.Permission", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Module")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Resource")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.HasIndex("IsDeleted");
-
-                    b.HasIndex("Module", "Resource");
-
-                    b.ToTable("Permissions", "Security");
-                });
-
-            modelBuilder.Entity("Domain.Entities.Auth.Permissions.UserProjectPermission", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("GrantedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("GrantedBy")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsGranted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("PermissionCode")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<Guid?>("PermissionId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Reason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("RevokedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("RevokedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PermissionId");
-
-                    b.HasIndex("ProjectId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("IsActive", "GrantedAt", "ExpiresAt");
-
-                    b.HasIndex("UserId", "ProjectId", "PermissionCode")
-                        .IsUnique();
-
-                    b.ToTable("UserProjectPermissions", "Security", t =>
-                        {
-                            t.HasCheckConstraint("CK_UserProjectPermissions_ValidDates", "[ExpiresAt] IS NULL OR [ExpiresAt] > [GrantedAt]");
-                        });
-                });
-
             modelBuilder.Entity("Domain.Entities.Auth.Security.ProjectTeamMember", b =>
                 {
                     b.Property<Guid>("Id")
@@ -267,10 +109,6 @@ namespace Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("BusinessPhone")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
                     b.Property<string>("CompanyId")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -288,10 +126,6 @@ namespace Infrastructure.Migrations
                     b.Property<string>("DeletedBy")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("Department")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -323,18 +157,13 @@ namespace Infrastructure.Migrations
                     b.Property<int>("LoginCount")
                         .HasColumnType("int");
 
-                    b.Property<string>("MobilePhone")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
-                    b.Property<string>("OfficeLocation")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                    b.Property<string>("Phone")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(50)
@@ -353,6 +182,10 @@ namespace Infrastructure.Migrations
                     b.Property<string>("Surname")
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("SystemRole")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -2923,6 +2756,13 @@ namespace Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AttachedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("AttachedDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("ChangeOrderId")
                         .HasColumnType("uniqueidentifier");
 
@@ -3998,6 +3838,13 @@ namespace Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AttachedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("AttachedDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("ContractId")
                         .HasColumnType("uniqueidentifier");
 
@@ -4340,6 +4187,13 @@ namespace Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AttachedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("AttachedDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -4670,6 +4524,13 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AttachedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("AttachedDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -10277,7 +10138,7 @@ namespace Infrastructure.Migrations
                     b.ToTable("RAMAssignments", "Organization");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.Activity", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.Activity", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -10404,7 +10265,7 @@ namespace Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.Equipment", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.Equipment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -10558,7 +10419,7 @@ namespace Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.Milestone", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.Milestone", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -10734,7 +10595,7 @@ namespace Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.Resource", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.Resource", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -10891,7 +10752,7 @@ namespace Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.ScheduleVersion", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.ScheduleVersion", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -11022,7 +10883,7 @@ namespace Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.WBSElementProgress", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.WBSElementProgress", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -11258,7 +11119,7 @@ namespace Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.WorkPackageProgress", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.WorkPackageProgress", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -11394,483 +11255,6 @@ namespace Infrastructure.Migrations
                             t.HasCheckConstraint("CK_WorkPackageProgress_EVM", "([EarnedValue] IS NULL OR [EarnedValue] >= 0) AND ([PlannedValue] IS NULL OR [PlannedValue] >= 0)");
 
                             t.HasCheckConstraint("CK_WorkPackageProgress_Progress", "[CurrentProgress] >= 0 AND [CurrentProgress] <= 100 AND [PreviousProgress] >= 0 AND [PreviousProgress] <= 100 AND [CurrentProgress] >= [PreviousProgress]");
-                        });
-                });
-
-            modelBuilder.Entity("Domain.Entities.Projects.WBS.PlanningPackage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<Guid>("ControlAccountId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("ConversionDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ConversionNotes")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<string>("ConvertedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<decimal>("EstimatedBudget")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("EstimatedHours")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(18,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("IsConverted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<Guid>("PhaseId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("PlannedConversionDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("PlannedEndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("PlannedStartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Priority")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(99);
-
-                    b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("Status")
-                        .HasMaxLength(50)
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.HasIndex("ControlAccountId");
-
-                    b.HasIndex("IsActive");
-
-                    b.HasIndex("IsConverted");
-
-                    b.HasIndex("IsDeleted");
-
-                    b.HasIndex("PhaseId");
-
-                    b.HasIndex("PlannedConversionDate");
-
-                    b.HasIndex("Priority");
-
-                    b.HasIndex("ProjectId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("ControlAccountId", "IsConverted");
-
-                    b.HasIndex("ProjectId", "Code")
-                        .IsUnique();
-
-                    b.HasIndex("Status", "PlannedConversionDate");
-
-                    b.ToTable("PlanningPackages", "Projects", t =>
-                        {
-                            t.HasCheckConstraint("CK_PlanningPackages_ConversionDate", "[PlannedConversionDate] <= [PlannedStartDate]");
-
-                            t.HasCheckConstraint("CK_PlanningPackages_Dates", "[PlannedEndDate] > [PlannedStartDate]");
-
-                            t.HasCheckConstraint("CK_PlanningPackages_EstimatedBudget", "[EstimatedBudget] >= 0");
-
-                            t.HasCheckConstraint("CK_PlanningPackages_EstimatedHours", "[EstimatedHours] >= 0");
-
-                            t.HasCheckConstraint("CK_PlanningPackages_Priority", "[Priority] >= 1 AND [Priority] <= 99");
-                        });
-                });
-
-            modelBuilder.Entity("Domain.Entities.Projects.WBS.WBSElement", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("AcceptanceCriteria")
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<string>("Assumptions")
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Constraints")
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<Guid?>("ControlAccountId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DeletedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("DeliverableDescription")
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<int>("ElementType")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ExclusionsInclusions")
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<string>("FullPath")
-                        .IsRequired()
-                        .HasMaxLength(2048)
-                        .HasColumnType("nvarchar(2048)");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<int>("Level")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<Guid?>("ParentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("PhaseId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("SequenceNumber")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.HasIndex("ControlAccountId");
-
-                    b.HasIndex("ElementType");
-
-                    b.HasIndex("IsActive");
-
-                    b.HasIndex("IsDeleted");
-
-                    b.HasIndex("Level");
-
-                    b.HasIndex("ParentId");
-
-                    b.HasIndex("PhaseId");
-
-                    b.HasIndex("ProjectId");
-
-                    b.HasIndex("ProjectId", "Code")
-                        .IsUnique();
-
-                    b.HasIndex("ProjectId", "ElementType");
-
-                    b.HasIndex("ProjectId", "Level");
-
-                    b.ToTable("WBSElements", "Projects", t =>
-                        {
-                            t.HasCheckConstraint("CK_WBSElements_Level", "[Level] >= 0");
-
-                            t.HasCheckConstraint("CK_WBSElements_SequenceNumber", "[SequenceNumber] > 0");
-                        });
-                });
-
-            modelBuilder.Entity("Domain.Entities.Projects.WBS.WorkPackageDetails", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("ActualCost")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<int?>("ActualDuration")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("ActualEndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ActualStartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("BaselineDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("BaselineEndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("BaselineStartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("Budget")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("CPI")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("CommittedCost")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(3)
-                        .HasColumnType("nvarchar(3)")
-                        .HasDefaultValue("USD");
-
-                    b.Property<decimal>("EarnedValue")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<decimal>("ForecastCost")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("ForecastEndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ForecastStartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("FreeFloat")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<bool>("IsBaselined")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<bool>("IsCriticalPath")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<decimal>("PhysicalProgressPercentage")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(18,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<int>("PlannedDuration")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("PlannedEndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("PlannedStartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("PlannedValue")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<Guid?>("PrimaryDisciplineId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("ProgressMethod")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("ProgressPercentage")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(18,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<int?>("RemainingDuration")
-                        .HasColumnType("int");
-
-                    b.Property<Guid?>("ResponsibleUserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal?>("SPI")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Tags")
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<decimal>("TotalFloat")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<Guid>("WBSElementId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal?>("WeightFactor")
-                        .HasPrecision(10, 4)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IsBaselined");
-
-                    b.HasIndex("IsCriticalPath");
-
-                    b.HasIndex("PlannedEndDate");
-
-                    b.HasIndex("PlannedStartDate");
-
-                    b.HasIndex("PrimaryDisciplineId");
-
-                    b.HasIndex("ResponsibleUserId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("WBSElementId")
-                        .IsUnique();
-
-                    b.HasIndex("ResponsibleUserId", "Status");
-
-                    b.HasIndex("Status", "PlannedStartDate");
-
-                    b.ToTable("WorkPackageDetails", "Projects", t =>
-                        {
-                            t.HasCheckConstraint("CK_WorkPackageDetails_Budget", "[Budget] >= 0");
-
-                            t.HasCheckConstraint("CK_WorkPackageDetails_Costs", "[ActualCost] >= 0 AND [CommittedCost] >= 0 AND [ForecastCost] >= 0");
-
-                            t.HasCheckConstraint("CK_WorkPackageDetails_Dates", "[PlannedEndDate] > [PlannedStartDate]");
-
-                            t.HasCheckConstraint("CK_WorkPackageDetails_Duration", "[PlannedDuration] > 0");
-
-                            t.HasCheckConstraint("CK_WorkPackageDetails_PhysicalProgress", "[PhysicalProgressPercentage] >= 0 AND [PhysicalProgressPercentage] <= 100");
-
-                            t.HasCheckConstraint("CK_WorkPackageDetails_Progress", "[ProgressPercentage] >= 0 AND [ProgressPercentage] <= 100");
                         });
                 });
 
@@ -12480,6 +11864,483 @@ namespace Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Domain.Entities.WBS.PlanningPackage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("ControlAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ConversionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ConversionNotes")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("ConvertedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<decimal>("EstimatedBudget")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("EstimatedHours")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsConverted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid>("PhaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("PlannedConversionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("PlannedEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("PlannedStartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Priority")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(99);
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasMaxLength(50)
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("ControlAccountId");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("IsConverted");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("PhaseId");
+
+                    b.HasIndex("PlannedConversionDate");
+
+                    b.HasIndex("Priority");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("ControlAccountId", "IsConverted");
+
+                    b.HasIndex("ProjectId", "Code")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "PlannedConversionDate");
+
+                    b.ToTable("PlanningPackages", "Projects", t =>
+                        {
+                            t.HasCheckConstraint("CK_PlanningPackages_ConversionDate", "[PlannedConversionDate] <= [PlannedStartDate]");
+
+                            t.HasCheckConstraint("CK_PlanningPackages_Dates", "[PlannedEndDate] > [PlannedStartDate]");
+
+                            t.HasCheckConstraint("CK_PlanningPackages_EstimatedBudget", "[EstimatedBudget] >= 0");
+
+                            t.HasCheckConstraint("CK_PlanningPackages_EstimatedHours", "[EstimatedHours] >= 0");
+
+                            t.HasCheckConstraint("CK_PlanningPackages_Priority", "[Priority] >= 1 AND [Priority] <= 99");
+                        });
+                });
+
+            modelBuilder.Entity("Domain.Entities.WBS.WBSElement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AcceptanceCriteria")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("Assumptions")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Constraints")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<Guid?>("ControlAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("DeliverableDescription")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<int>("ElementType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ExclusionsInclusions")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("FullPath")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("PhaseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("ControlAccountId");
+
+                    b.HasIndex("ElementType");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("Level");
+
+                    b.HasIndex("ParentId");
+
+                    b.HasIndex("PhaseId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("ProjectId", "Code")
+                        .IsUnique();
+
+                    b.HasIndex("ProjectId", "ElementType");
+
+                    b.HasIndex("ProjectId", "Level");
+
+                    b.ToTable("WBSElements", "Projects", t =>
+                        {
+                            t.HasCheckConstraint("CK_WBSElements_Level", "[Level] >= 0");
+
+                            t.HasCheckConstraint("CK_WBSElements_SequenceNumber", "[SequenceNumber] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Domain.Entities.WBS.WorkPackageDetails", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("ActualCost")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int?>("ActualDuration")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ActualEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ActualStartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("BaselineDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("BaselineEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("BaselineStartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Budget")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("CPI")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("CommittedCost")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)")
+                        .HasDefaultValue("USD");
+
+                    b.Property<decimal>("EarnedValue")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("ForecastCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("ForecastEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ForecastStartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("FreeFloat")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsBaselined")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsCriticalPath")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<decimal>("PhysicalProgressPercentage")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int>("PlannedDuration")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("PlannedEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("PlannedStartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("PlannedValue")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<Guid?>("PrimaryDisciplineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ProgressMethod")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("ProgressPercentage")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int?>("RemainingDuration")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("ResponsibleUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("SPI")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Tags")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<decimal>("TotalFloat")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid>("WBSElementId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("WeightFactor")
+                        .HasPrecision(10, 4)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsBaselined");
+
+                    b.HasIndex("IsCriticalPath");
+
+                    b.HasIndex("PlannedEndDate");
+
+                    b.HasIndex("PlannedStartDate");
+
+                    b.HasIndex("PrimaryDisciplineId");
+
+                    b.HasIndex("ResponsibleUserId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("WBSElementId")
+                        .IsUnique();
+
+                    b.HasIndex("ResponsibleUserId", "Status");
+
+                    b.HasIndex("Status", "PlannedStartDate");
+
+                    b.ToTable("WorkPackageDetails", "Projects", t =>
+                        {
+                            t.HasCheckConstraint("CK_WorkPackageDetails_Budget", "[Budget] >= 0");
+
+                            t.HasCheckConstraint("CK_WorkPackageDetails_Costs", "[ActualCost] >= 0 AND [CommittedCost] >= 0 AND [ForecastCost] >= 0");
+
+                            t.HasCheckConstraint("CK_WorkPackageDetails_Dates", "[PlannedEndDate] > [PlannedStartDate]");
+
+                            t.HasCheckConstraint("CK_WorkPackageDetails_Duration", "[PlannedDuration] > 0");
+
+                            t.HasCheckConstraint("CK_WorkPackageDetails_PhysicalProgress", "[PhysicalProgressPercentage] >= 0 AND [PhysicalProgressPercentage] <= 100");
+
+                            t.HasCheckConstraint("CK_WorkPackageDetails_Progress", "[ProgressPercentage] >= 0 AND [ProgressPercentage] <= 100");
+                        });
+                });
+
             modelBuilder.Entity("OBSNodeMembers", b =>
                 {
                     b.Property<Guid>("OBSNodeId")
@@ -12508,32 +12369,6 @@ namespace Infrastructure.Migrations
                         .HasForeignKey("CBSId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("Domain.Entities.Auth.Permissions.UserProjectPermission", b =>
-                {
-                    b.HasOne("Domain.Entities.Auth.Permissions.Permission", "Permission")
-                        .WithMany("UserProjectPermissions")
-                        .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Domain.Entities.Organization.Core.Project", "Project")
-                        .WithMany("UserProjectPermissions")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Entities.Auth.Security.User", "User")
-                        .WithMany("UserProjectPermissions")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Permission");
-
-                    b.Navigation("Project");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Domain.Entities.Auth.Security.ProjectTeamMember", b =>
@@ -12584,7 +12419,7 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Domain.Entities.Projects.WBS.WBSElement", "WBSElement")
+                    b.HasOne("Domain.Entities.WBS.WBSElement", "WBSElement")
                         .WithMany()
                         .HasForeignKey("WBSElementId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -12663,7 +12498,7 @@ namespace Infrastructure.Migrations
                         .HasForeignKey("TrendId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Domain.Entities.Projects.WBS.WBSElement", "WBSElement")
+                    b.HasOne("Domain.Entities.WBS.WBSElement", "WBSElement")
                         .WithMany()
                         .HasForeignKey("WBSElementId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -12771,7 +12606,7 @@ namespace Infrastructure.Migrations
                         .HasForeignKey("RaisedByUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Domain.Entities.Projects.WBS.WBSElement", "WBSElement")
+                    b.HasOne("Domain.Entities.WBS.WBSElement", "WBSElement")
                         .WithMany()
                         .HasForeignKey("WBSElementId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -13288,7 +13123,7 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Domain.Entities.Projects.WBS.WBSElement", "WBSElement")
+                    b.HasOne("Domain.Entities.WBS.WBSElement", "WBSElement")
                         .WithMany()
                         .HasForeignKey("WBSElementId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -13378,7 +13213,7 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Domain.Entities.Projects.WBS.WBSElement", "WBSElement")
+                    b.HasOne("Domain.Entities.WBS.WBSElement", "WBSElement")
                         .WithMany()
                         .HasForeignKey("WBSElementId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -13458,12 +13293,12 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Domain.Entities.Projects.WBS.WBSElement", "WBSElement")
+                    b.HasOne("Domain.Entities.WBS.WBSElement", "WBSElement")
                         .WithMany()
                         .HasForeignKey("WBSElementId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Domain.Entities.Projects.WBS.WorkPackageDetails", "WorkPackage")
+                    b.HasOne("Domain.Entities.WBS.WorkPackageDetails", "WorkPackage")
                         .WithMany()
                         .HasForeignKey("WorkPackageId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -13551,7 +13386,7 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Domain.Entities.Projects.WBS.WBSElement", "WBSElement")
+                    b.HasOne("Domain.Entities.WBS.WBSElement", "WBSElement")
                         .WithMany("CBSMappings")
                         .HasForeignKey("WBSElementId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -13961,7 +13796,7 @@ namespace Infrastructure.Migrations
                         .HasForeignKey("PhaseId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Domain.Entities.Projects.WBS.WBSElement", "WBSElement")
+                    b.HasOne("Domain.Entities.WBS.WBSElement", "WBSElement")
                         .WithMany()
                         .HasForeignKey("WBSElementId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -14051,7 +13886,7 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Domain.Entities.Projects.WBS.WBSElement", "WBSElement")
+                    b.HasOne("Domain.Entities.WBS.WBSElement", "WBSElement")
                         .WithMany()
                         .HasForeignKey("WBSElementId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -14066,19 +13901,19 @@ namespace Infrastructure.Migrations
                     b.Navigation("WBSElement");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.Activity", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.Activity", b =>
                 {
-                    b.HasOne("Domain.Entities.Projects.Progress.ScheduleVersion", null)
+                    b.HasOne("Domain.Entities.Progress.ScheduleVersion", null)
                         .WithMany("Activities")
                         .HasForeignKey("ScheduleVersionId");
 
-                    b.HasOne("Domain.Entities.Projects.WBS.WBSElement", "WBSElement")
+                    b.HasOne("Domain.Entities.WBS.WBSElement", "WBSElement")
                         .WithMany()
                         .HasForeignKey("WBSElementId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Domain.Entities.Projects.WBS.WorkPackageDetails", "WorkPackageDetails")
+                    b.HasOne("Domain.Entities.WBS.WorkPackageDetails", "WorkPackageDetails")
                         .WithMany()
                         .HasForeignKey("WorkPackageDetailsId");
 
@@ -14087,7 +13922,7 @@ namespace Infrastructure.Migrations
                     b.Navigation("WorkPackageDetails");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.Equipment", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.Equipment", b =>
                 {
                     b.HasOne("Domain.Entities.Organization.Core.Contractor", "Contractor")
                         .WithMany()
@@ -14104,7 +13939,7 @@ namespace Infrastructure.Migrations
                     b.Navigation("CurrentProject");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.Milestone", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.Milestone", b =>
                 {
                     b.HasOne("Domain.Entities.Organization.Core.Phase", "Phase")
                         .WithMany("Milestones")
@@ -14122,9 +13957,9 @@ namespace Infrastructure.Migrations
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.Resource", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.Resource", b =>
                 {
-                    b.HasOne("Domain.Entities.Projects.Progress.Activity", "Activity")
+                    b.HasOne("Domain.Entities.Progress.Activity", "Activity")
                         .WithMany("Resources")
                         .HasForeignKey("ActivityId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -14135,7 +13970,7 @@ namespace Infrastructure.Migrations
                         .HasForeignKey("ContractorId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Domain.Entities.Projects.Progress.Equipment", null)
+                    b.HasOne("Domain.Entities.Progress.Equipment", null)
                         .WithMany("ResourceAllocations")
                         .HasForeignKey("EquipmentId");
 
@@ -14151,7 +13986,7 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.ScheduleVersion", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.ScheduleVersion", b =>
                 {
                     b.HasOne("Domain.Entities.Organization.Core.Project", "Project")
                         .WithMany()
@@ -14162,94 +13997,13 @@ namespace Infrastructure.Migrations
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.WBSElementProgress", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.WBSElementProgress", b =>
                 {
-                    b.HasOne("Domain.Entities.Projects.WBS.WBSElement", "WBSElement")
+                    b.HasOne("Domain.Entities.WBS.WBSElement", "WBSElement")
                         .WithMany()
                         .HasForeignKey("WBSElementId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("WBSElement");
-                });
-
-            modelBuilder.Entity("Domain.Entities.Projects.WBS.PlanningPackage", b =>
-                {
-                    b.HasOne("Domain.Entities.Cost.Control.ControlAccount", "ControlAccount")
-                        .WithMany("PlanningPackages")
-                        .HasForeignKey("ControlAccountId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Entities.Organization.Core.Phase", "Phase")
-                        .WithMany("PlanningPackages")
-                        .HasForeignKey("PhaseId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Domain.Entities.Organization.Core.Project", "Project")
-                        .WithMany("PlanningPackages")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ControlAccount");
-
-                    b.Navigation("Phase");
-
-                    b.Navigation("Project");
-                });
-
-            modelBuilder.Entity("Domain.Entities.Projects.WBS.WBSElement", b =>
-                {
-                    b.HasOne("Domain.Entities.Cost.Control.ControlAccount", "ControlAccount")
-                        .WithMany("WorkPackages")
-                        .HasForeignKey("ControlAccountId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Domain.Entities.Projects.WBS.WBSElement", "Parent")
-                        .WithMany("Children")
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Domain.Entities.Organization.Core.Phase", null)
-                        .WithMany("WBSElements")
-                        .HasForeignKey("PhaseId");
-
-                    b.HasOne("Domain.Entities.Organization.Core.Project", "Project")
-                        .WithMany("WBSElements")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("ControlAccount");
-
-                    b.Navigation("Parent");
-
-                    b.Navigation("Project");
-                });
-
-            modelBuilder.Entity("Domain.Entities.Projects.WBS.WorkPackageDetails", b =>
-                {
-                    b.HasOne("Domain.Entities.Organization.Core.Discipline", "PrimaryDiscipline")
-                        .WithMany()
-                        .HasForeignKey("PrimaryDisciplineId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Domain.Entities.Auth.Security.User", "ResponsibleUser")
-                        .WithMany()
-                        .HasForeignKey("ResponsibleUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Domain.Entities.Projects.WBS.WBSElement", "WBSElement")
-                        .WithOne("WorkPackageDetails")
-                        .HasForeignKey("Domain.Entities.Projects.WBS.WorkPackageDetails", "WBSElementId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("PrimaryDiscipline");
-
-                    b.Navigation("ResponsibleUser");
 
                     b.Navigation("WBSElement");
                 });
@@ -14358,6 +14112,87 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Domain.Entities.WBS.PlanningPackage", b =>
+                {
+                    b.HasOne("Domain.Entities.Cost.Control.ControlAccount", "ControlAccount")
+                        .WithMany("PlanningPackages")
+                        .HasForeignKey("ControlAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Organization.Core.Phase", "Phase")
+                        .WithMany("PlanningPackages")
+                        .HasForeignKey("PhaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Organization.Core.Project", "Project")
+                        .WithMany("PlanningPackages")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ControlAccount");
+
+                    b.Navigation("Phase");
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("Domain.Entities.WBS.WBSElement", b =>
+                {
+                    b.HasOne("Domain.Entities.Cost.Control.ControlAccount", "ControlAccount")
+                        .WithMany("WorkPackages")
+                        .HasForeignKey("ControlAccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.WBS.WBSElement", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Organization.Core.Phase", null)
+                        .WithMany("WBSElements")
+                        .HasForeignKey("PhaseId");
+
+                    b.HasOne("Domain.Entities.Organization.Core.Project", "Project")
+                        .WithMany("WBSElements")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ControlAccount");
+
+                    b.Navigation("Parent");
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("Domain.Entities.WBS.WorkPackageDetails", b =>
+                {
+                    b.HasOne("Domain.Entities.Organization.Core.Discipline", "PrimaryDiscipline")
+                        .WithMany()
+                        .HasForeignKey("PrimaryDisciplineId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Auth.Security.User", "ResponsibleUser")
+                        .WithMany()
+                        .HasForeignKey("ResponsibleUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.WBS.WBSElement", "WBSElement")
+                        .WithOne("WorkPackageDetails")
+                        .HasForeignKey("Domain.Entities.WBS.WorkPackageDetails", "WBSElementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PrimaryDiscipline");
+
+                    b.Navigation("ResponsibleUser");
+
+                    b.Navigation("WBSElement");
+                });
+
             modelBuilder.Entity("OBSNodeMembers", b =>
                 {
                     b.HasOne("Domain.Entities.Organization.Core.OBSNode", null)
@@ -14373,16 +14208,9 @@ namespace Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Domain.Entities.Auth.Permissions.Permission", b =>
-                {
-                    b.Navigation("UserProjectPermissions");
-                });
-
             modelBuilder.Entity("Domain.Entities.Auth.Security.User", b =>
                 {
                     b.Navigation("ProjectTeamMembers");
-
-                    b.Navigation("UserProjectPermissions");
                 });
 
             modelBuilder.Entity("Domain.Entities.Change.Core.ChangeOrder", b =>
@@ -14665,33 +14493,22 @@ namespace Infrastructure.Migrations
 
                     b.Navigation("RAMAssignments");
 
-                    b.Navigation("UserProjectPermissions");
-
                     b.Navigation("WBSElements");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.Activity", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.Activity", b =>
                 {
                     b.Navigation("Resources");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.Equipment", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.Equipment", b =>
                 {
                     b.Navigation("ResourceAllocations");
                 });
 
-            modelBuilder.Entity("Domain.Entities.Projects.Progress.ScheduleVersion", b =>
+            modelBuilder.Entity("Domain.Entities.Progress.ScheduleVersion", b =>
                 {
                     b.Navigation("Activities");
-                });
-
-            modelBuilder.Entity("Domain.Entities.Projects.WBS.WBSElement", b =>
-                {
-                    b.Navigation("CBSMappings");
-
-                    b.Navigation("Children");
-
-                    b.Navigation("WorkPackageDetails");
                 });
 
             modelBuilder.Entity("Domain.Entities.Risks.Core.Risk", b =>
@@ -14699,6 +14516,15 @@ namespace Infrastructure.Migrations
                     b.Navigation("Responses");
 
                     b.Navigation("Reviews");
+                });
+
+            modelBuilder.Entity("Domain.Entities.WBS.WBSElement", b =>
+                {
+                    b.Navigation("CBSMappings");
+
+                    b.Navigation("Children");
+
+                    b.Navigation("WorkPackageDetails");
                 });
 #pragma warning restore 612, 618
         }

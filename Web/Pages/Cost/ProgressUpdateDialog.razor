@@ -1,0 +1,47 @@
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudText Class="mb-4">
+            Update progress for '@ItemName':
+        </MudText>
+        <MudNumericField T="decimal" @bind-Value="_newProgress" Label="Progress (%)" 
+                         Min="0m" Max="100m" Step="0.1m"
+                         Variant="Variant.Outlined" 
+                         Adornment="Adornment.End" AdornmentText="%" />
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+            Current Progress: @CurrentProgress.ToString("0.#")%
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" 
+                   OnClick="Submit" Disabled="@(_newProgress == CurrentProgress)">
+            Update
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public string ItemName { get; set; } = string.Empty;
+    [Parameter] public decimal CurrentProgress { get; set; }
+    
+    private decimal _newProgress;
+
+    protected override void OnInitialized()
+    {
+        _newProgress = CurrentProgress;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        if (_newProgress < 0) _newProgress = 0;
+        if (_newProgress > 100) _newProgress = 100;
+        
+        MudDialog.Close(DialogResult.Ok(_newProgress));
+    }
+}

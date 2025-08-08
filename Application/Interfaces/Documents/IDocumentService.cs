@@ -78,35 +78,3 @@ public interface IDocumentService : IBaseService<DocumentDto, CreateDocumentDto,
     Task<byte[]> ExportDocumentListAsync(DocumentFilterDto filter, ExportFormat format);
     Task<IEnumerable<DocumentDto>> ImportDocumentsAsync(Stream fileStream, string contentType);
 }
-
-public class DocumentPermissionDto
-{
-    public Guid? UserId { get; set; }
-    public string? UserName { get; set; }
-    public string? RoleName { get; set; }
-    public bool CanView { get; set; }
-    public bool CanDownload { get; set; }
-    public bool CanEdit { get; set; }
-    public bool CanDelete { get; set; }
-    public bool CanComment { get; set; }
-    public bool CanDistribute { get; set; }
-    public bool CanManagePermissions { get; set; }
-    public DateTime? ValidFrom { get; set; }
-    public DateTime? ValidTo { get; set; }
-}
-
-public class DocumentStatisticsDto
-{
-    public int TotalViews { get; set; }
-    public int TotalDownloads { get; set; }
-    public int UniqueViewers { get; set; }
-    public int UniqueDownloaders { get; set; }
-    public DateTime? LastViewed { get; set; }
-    public DateTime? LastDownloaded { get; set; }
-    public int CommentCount { get; set; }
-    public int VersionCount { get; set; }
-    public int DistributionCount { get; set; }
-    public Dictionary<string, int> ViewsByDate { get; set; } = new();
-    public Dictionary<string, int> DownloadsByDate { get; set; } = new();
-}
-

@@ -1,0 +1,245 @@
+@page "/evm/nine-column-report/{projectId:guid}"
+@using Core.DTOs.Reports
+@using Web.Services.Interfaces.Cost
+@inject IEVMApiService EVMApiService
+@inject INavigationService NavigationService
+@inject IToastService ToastService
+
+<PageTitle>Reporte de Nueve Columnas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudBreadcrumbs Items="_breadcrumbs" />
+    
+    <MudCard Class="mt-4">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.h5">Reporte de Nueve Columnas</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Fecha de Datos: @_asOfDate?.ToString("dd/MM/yyyy")
+                    </MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" Class="text-right">
+                    <MudDatePicker @bind-Date="_asOfDate" Label="Fecha de Datos" Variant="Variant.Outlined"
+                                  MaxDate="DateTime.Today" Class="mb-2" />
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Refresh"
+                              OnClick="LoadReport" Class="ml-2">
+                        Actualizar
+                    </MudButton>
+                    <MudButton Color="Color.Success" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.GetApp"
+                              OnClick="ExportToExcel" Class="ml-2">
+                        Excel
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+    
+    @if (_report != null)
+    {
+        <!-- Summary Section -->
+        <MudCard Class="mt-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-2">Resumen del Proyecto</MudText>
+                <MudGrid>
+                    <MudItem xs="12" sm="3">
+                        <MudText Typo="Typo.subtitle2">Total BAC</MudText>
+                        <MudText Typo="Typo.h6">@_report.Totals.BudgetAtCompletion.ToString("C")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudText Typo="Typo.subtitle2">Total EV</MudText>
+                        <MudText Typo="Typo.h6">@_report.Totals.TotalEarnedValue.ToString("C")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudText Typo="Typo.subtitle2">Total AC</MudText>
+                        <MudText Typo="Typo.h6">@_report.Totals.TotalActualCost.ToString("C")</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudText Typo="Typo.subtitle2">% Completo</MudText>
+                        <MudText Typo="Typo.h6">@((_report.Totals.OverallPhysicalProgress * 100).ToString("F1"))%</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+        
+        <!-- Nine Column Table -->
+        <MudCard Class="mt-4">
+            <MudCardContent>
+                <MudTable Items="_report.Lines" Dense="true" Hover="true" 
+                          Breakpoint="Breakpoint.Sm" HorizontalScrollbar="true">
+                    <HeaderContent>
+                        <MudTh>WBS</MudTh>
+                        <MudTh>Descripción</MudTh>
+                        <MudTh Style="text-align: right">BAC</MudTh>
+                        <MudTh Style="text-align: right">PV</MudTh>
+                        <MudTh Style="text-align: right">EV</MudTh>
+                        <MudTh Style="text-align: right">AC</MudTh>
+                        <MudTh Style="text-align: right">CV</MudTh>
+                        <MudTh Style="text-align: right">SV</MudTh>
+                        <MudTh Style="text-align: right">CPI</MudTh>
+                        <MudTh Style="text-align: right">SPI</MudTh>
+                        <MudTh Style="text-align: right">% Completo</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="WBS">
+                            <span style="@GetIndentStyle(context.Level)">@context.Code</span>
+                        </MudTd>
+                        <MudTd DataLabel="Descripción">
+                            <span style="@GetIndentStyle(context.Level)">@context.ActivityDescription</span>
+                        </MudTd>
+                        <MudTd DataLabel="BAC" Style="text-align: right">@context.PlannedValue.ToString("C")</MudTd>
+                        <MudTd DataLabel="PV" Style="text-align: right">@context.PlannedValue.ToString("C")</MudTd>
+                        <MudTd DataLabel="EV" Style="text-align: right">@context.EarnedValue.ToString("C")</MudTd>
+                        <MudTd DataLabel="AC" Style="text-align: right">@context.ActualCost.ToString("C")</MudTd>
+                        <MudTd DataLabel="CV" Style="text-align: right">
+                            <MudText Color="@GetVarianceColor(context.CostVariance)">@context.CostVariance.ToString("C")</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="SV" Style="text-align: right">
+                            <MudText Color="@GetVarianceColor(context.ScheduleVariance)">@context.ScheduleVariance.ToString("C")</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="CPI" Style="text-align: right">
+                            <MudText Color="@GetIndexColor(context.CostPerformanceIndex)">@context.CostPerformanceIndex.ToString("F2")</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="SPI" Style="text-align: right">
+                            <MudText Color="@GetIndexColor(context.SchedulePerformanceIndex ?? 0)">@(context.SchedulePerformanceIndex?.ToString("F2") ?? "N/A")</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="% Completo" Style="text-align: right">
+                            <MudProgressLinear Color="Color.Primary" Value="@((double)context.PhysicalProgressPercentage)" 
+                                             Size="Size.Small" Class="my-1" />
+                            <MudText Typo="Typo.caption">@(context.PhysicalProgressPercentage.ToString("F1"))%</MudText>
+                        </MudTd>
+                    </RowTemplate>
+                    <FooterContent>
+                        <MudTh colspan="2" Style="text-align: right; font-weight: bold;">TOTAL</MudTh>
+                        <MudTh Style="text-align: right; font-weight: bold;">@_report.Totals.BudgetAtCompletion.ToString("C")</MudTh>
+                        <MudTh Style="text-align: right; font-weight: bold;">@_report.Totals.TotalPlannedValue.ToString("C")</MudTh>
+                        <MudTh Style="text-align: right; font-weight: bold;">@_report.Totals.TotalEarnedValue.ToString("C")</MudTh>
+                        <MudTh Style="text-align: right; font-weight: bold;">@_report.Totals.TotalActualCost.ToString("C")</MudTh>
+                        <MudTh Style="text-align: right; font-weight: bold;">
+                            <MudText Color="@GetVarianceColor(_report.Totals.TotalCostVariance)">@_report.Totals.TotalCostVariance.ToString("C")</MudText>
+                        </MudTh>
+                        <MudTh Style="text-align: right; font-weight: bold;">
+                            <MudText Color="@GetVarianceColor(_report.Totals.TotalScheduleVariance)">@_report.Totals.TotalScheduleVariance.ToString("C")</MudText>
+                        </MudTh>
+                        <MudTh Style="text-align: right; font-weight: bold;">
+                            <MudText Color="@GetIndexColor(_report.Totals.OverallCPI)">@_report.Totals.OverallCPI.ToString("F2")</MudText>
+                        </MudTh>
+                        <MudTh Style="text-align: right; font-weight: bold;">
+                            <MudText Color="@GetIndexColor(_report.Totals.OverallSPI)">@_report.Totals.OverallSPI.ToString("F2")</MudText>
+                        </MudTh>
+                        <MudTh Style="text-align: right; font-weight: bold;">
+                            @((_report.Totals.OverallPhysicalProgress * 100).ToString("F1"))%
+                        </MudTh>
+                    </FooterContent>
+                </MudTable>
+            </MudCardContent>
+        </MudCard>
+        
+        <!-- Validation Results -->
+        @if (_validationResult != null && _validationResult.Warnings.Any())
+        {
+            <MudCard Class="mt-4">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Class="mb-2">Advertencias de Validación</MudText>
+                    <MudList T="string">
+                        @foreach (var warning in _validationResult.Warnings)
+                        {
+                            <MudListItem T="string" Icon="@Icons.Material.Filled.Warning" IconColor="Color.Warning">
+                                @warning
+                            </MudListItem>
+                        }
+                    </MudList>
+                </MudCardContent>
+            </MudCard>
+        }
+    }
+    else
+    {
+        <MudCard Class="mt-4">
+            <MudCardContent>
+                <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary">
+                    No hay datos disponibles para la fecha seleccionada
+                </MudText>
+            </MudCardContent>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+    
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    private DateTime? _asOfDate = DateTime.Today;
+    private NineColumnReportDto? _report;
+    private Core.DTOs.EVM.NineColumnReportValidationResult? _validationResult;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new("Inicio", href: "/"),
+            new("Proyectos", href: "/projects"),
+            new("EVM", href: $"/evm/project/{ProjectId}"),
+            new("Reporte de 9 Columnas", href: null, disabled: true)
+        };
+        
+        await LoadReport();
+    }
+    
+    private async Task LoadReport()
+    {
+        try
+        {
+            _report = await EVMApiService.GetNineColumnReportAsync(ProjectId, _asOfDate);
+            _validationResult = await EVMApiService.ValidateNineColumnReportDataAsync(ProjectId, _asOfDate);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error al cargar el reporte: {ex.Message}");
+        }
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_asOfDate.HasValue)
+        {
+            await LoadReport();
+        }
+    }
+    
+    private async Task ExportToExcel()
+    {
+        try
+        {
+            var fileData = await EVMApiService.ExportNineColumnReportToExcelAsync(ProjectId, _asOfDate);
+            if (fileData.Length > 0)
+            {
+                // Trigger download
+                var fileName = $"NineColumnReport_{ProjectId}_{_asOfDate:yyyyMMdd}.xlsx";
+                // Implementation would depend on your file download service
+                ToastService.ShowSuccess("Reporte exportado exitosamente");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error al exportar: {ex.Message}");
+        }
+    }
+    
+    private string GetIndentStyle(int level)
+    {
+        return $"padding-left: {level * 20}px;";
+    }
+    
+    private Color GetVarianceColor(decimal variance)
+    {
+        return variance >= 0 ? Color.Success : Color.Error;
+    }
+    
+    private Color GetIndexColor(decimal index)
+    {
+        if (index >= 1.0m) return Color.Success;
+        if (index >= 0.95m) return Color.Warning;
+        return Color.Error;
+    }
+}

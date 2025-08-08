@@ -1,0 +1,459 @@
+@page "/progress/schedules/{ProjectId:guid}"
+@using Core.DTOs.Progress.Schedules
+@using Core.Enums
+@using Core.Enums.Progress
+@using Web.Services.Interfaces.Progress
+@inject IScheduleApiService ScheduleService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+<PageTitle>Gestión de Cronogramas</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+    <MudBreadcrumbs Items="_breadcrumbs" />
+    
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid>
+            <MudGrid xs="12" md="8">
+                <MudText Typo="Typo.h4" Class="mb-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="mr-2" />
+                    Gestión de Cronogramas
+                </MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary">
+                    Administre las versiones del cronograma del proyecto
+                </MudText>
+            </MudGrid>
+            <MudGrid xs="12" md="4" Class="d-flex justify-end align-center">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="CreateNewVersion"
+                           Disabled="!_canCreateNewVersion">
+                    Nueva Versión
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Upload"
+                           OnClick="ImportSchedule"
+                           Class="ml-2">
+                    Importar
+                </MudButton>
+            </MudGrid>
+        </MudGrid>
+    </MudPaper>
+
+    @if (_currentSchedule != null || _baselineSchedule != null)
+    {
+        <MudGrid>
+            @if (_currentSchedule != null)
+            {
+                <MudItem xs="12" md="6">
+                    <MudCard>
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Cronograma Actual</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudChip Color="Color.Success" Size="Size.Small">Activo</MudChip>
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudText><strong>Versión:</strong> @_currentSchedule.Version</MudText>
+                            <MudText><strong>Estado:</strong> @GetStatusDisplay(_currentSchedule.Status)</MudText>
+                            <MudText><strong>Fecha Inicio:</strong> @_currentSchedule.StartDate.ToShortDateString()</MudText>
+                            <MudText><strong>Fecha Fin:</strong> @_currentSchedule.EndDate.ToShortDateString()</MudText>
+                            <MudText><strong>Actividades:</strong> @_currentSchedule.TotalActivities</MudText>
+                            <MudText><strong>Ruta Crítica:</strong> @_currentSchedule.CriticalActivities actividades</MudText>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton Color="Color.Primary" Size="Size.Small" OnClick="() => ViewScheduleDetails(_currentSchedule.Id)">
+                                Ver Detalles
+                            </MudButton>
+                            <MudButton Color="Color.Secondary" Size="Size.Small" OnClick="() => ExportSchedule(_currentSchedule.Id)">
+                                Exportar
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+            
+            @if (_baselineSchedule != null)
+            {
+                <MudItem xs="12" md="6">
+                    <MudCard>
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Línea Base</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudChip Color="Color.Info" Size="Size.Small">Baseline</MudChip>
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudText><strong>Versión:</strong> @_baselineSchedule.Version</MudText>
+                            <MudText><strong>Aprobado:</strong> @_baselineSchedule.ApprovalDate?.ToShortDateString()</MudText>
+                            <MudText><strong>Fecha Inicio:</strong> @_baselineSchedule.StartDate.ToShortDateString()</MudText>
+                            <MudText><strong>Fecha Fin:</strong> @_baselineSchedule.EndDate.ToShortDateString()</MudText>
+                            <MudText><strong>Actividades:</strong> @_baselineSchedule.TotalActivities</MudText>
+                            <MudText><strong>Duración:</strong> @(_baselineSchedule.TotalFloat) días</MudText>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton Color="Color.Primary" Size="Size.Small" OnClick="() => ViewScheduleDetails(_baselineSchedule.Id)">
+                                Ver Detalles
+                            </MudButton>
+                            @if (_currentSchedule != null)
+                            {
+                                <MudButton Color="Color.Warning" Size="Size.Small" OnClick="CompareWithBaseline">
+                                    Comparar
+                                </MudButton>
+                            }
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+    <MudPaper Class="pa-4 mt-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Historial de Versiones</MudText>
+        
+        <MudTable Items="_scheduleVersions" Dense="true" Hover="true" Loading="_loading">
+            <HeaderContent>
+                <MudTh>Versión</MudTh>
+                <MudTh>Nombre</MudTh>
+                <MudTh>Estado</MudTh>
+                <MudTh>Fecha Inicio</MudTh>
+                <MudTh>Fecha Fin</MudTh>
+                <MudTh>Actividades</MudTh>
+                <MudTh>Creado Por</MudTh>
+                <MudTh>Acciones</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Versión">
+                    <MudText>@context.Version</MudText>
+                    @if (context.IsBaseline)
+                    {
+                        <MudChip Color="Color.Info" Size="Size.Small">Baseline</MudChip>
+                    }
+                    @if (context.IsCurrent)
+                    {
+                        <MudChip Color="Color.Success" Size="Size.Small">Actual</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Nombre">@context.Name</MudTd>
+                <MudTd DataLabel="Estado">
+                    <MudChip Color="@GetStatusColor(context.Status)" Size="Size.Small">
+                        @GetStatusDisplay(context.Status)
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Fecha Inicio">@context.StartDate.ToShortDateString()</MudTd>
+                <MudTd DataLabel="Fecha Fin">@context.EndDate.ToShortDateString()</MudTd>
+                <MudTd DataLabel="Actividades">@context.TotalActivities</MudTd>
+                <MudTd DataLabel="Creado Por">@context.CreatedBy</MudTd>
+                <MudTd DataLabel="Acciones">
+                    <MudIconButton Icon="@Icons.Material.Filled.Visibility" 
+                                   Size="Size.Small" 
+                                   OnClick="() => ViewScheduleDetails(context.Id)"
+                                   Title="Ver Detalles" />
+                    
+                    @if (context.Status == ScheduleStatus.Draft)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                       Size="Size.Small" 
+                                       OnClick="() => EditSchedule(context.Id)"
+                                       Title="Editar" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Send" 
+                                       Size="Size.Small" 
+                                       OnClick="() => SubmitForApproval(context.Id)"
+                                       Title="Enviar para Aprobación" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                       Size="Size.Small" 
+                                       Color="Color.Error"
+                                       OnClick="() => DeleteSchedule(context.Id)"
+                                       Title="Eliminar" />
+                    }
+                    
+                    @if (context.Status == ScheduleStatus.InReview)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" 
+                                       Size="Size.Small" 
+                                       Color="Color.Success"
+                                       OnClick="() => ApproveSchedule(context.Id)"
+                                       Title="Aprobar" />
+                    }
+                    
+                    @if (context.Status == ScheduleStatus.Approved && !context.IsBaseline)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Flag" 
+                                       Size="Size.Small" 
+                                       Color="Color.Warning"
+                                       OnClick="() => SetAsBaseline(context.Id)"
+                                       Title="Establecer como Línea Base" />
+                    }
+                    
+                    <MudIconButton Icon="@Icons.Material.Filled.Download" 
+                                   Size="Size.Small" 
+                                   OnClick="() => ExportSchedule(context.Id)"
+                                   Title="Exportar" />
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+    
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    private List<ScheduleVersionDto> _scheduleVersions = new();
+    private ScheduleVersionDto? _currentSchedule;
+    private ScheduleVersionDto? _baselineSchedule;
+    private bool _loading;
+    private bool _canCreateNewVersion = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Inicio", href: "/", icon: Icons.Material.Filled.Home),
+            new BreadcrumbItem("Proyectos", href: "/projects"),
+            new BreadcrumbItem("Progreso", href: $"/projects/{ProjectId}"),
+            new BreadcrumbItem("Cronogramas", href: null, disabled: true)
+        };
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+
+        try
+        {
+            // Load current and baseline schedules
+            _currentSchedule = await ScheduleService.GetCurrentScheduleAsync(ProjectId);
+            _baselineSchedule = await ScheduleService.GetBaselineScheduleAsync(ProjectId);
+            
+            // Check if can create new version
+            _canCreateNewVersion = await ScheduleService.CanCreateNewVersionAsync(ProjectId);
+            
+            // Load all versions
+            var filter = new ScheduleFilterDto 
+            { 
+                ProjectId = ProjectId,
+                PageSize = 20,
+                SortBy = "Version",
+                SortDescending = true
+            };
+            
+            var result = await ScheduleService.GetScheduleVersionsAsync(filter);
+            _scheduleVersions = result.Items;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar los cronogramas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task CreateNewVersion()
+    {
+        var parameters = new DialogParameters
+        {
+            ["ProjectId"] = ProjectId
+        };
+
+        var dialog = await DialogService.ShowAsync<CreateScheduleDialog>("Nueva Versión de Cronograma", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadData();
+        }
+    }
+
+    private async Task ImportSchedule()
+    {
+        var parameters = new DialogParameters
+        {
+            ["ProjectId"] = ProjectId
+        };
+
+        var dialog = await DialogService.ShowAsync<ImportScheduleDialog>("Importar Cronograma", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadData();
+        }
+    }
+
+    private void ViewScheduleDetails(Guid scheduleId)
+    {
+        Navigation.NavigateTo($"/progress/schedules/{ProjectId}/details/{scheduleId}");
+    }
+
+    private void EditSchedule(Guid scheduleId)
+    {
+        Navigation.NavigateTo($"/progress/schedules/{ProjectId}/edit/{scheduleId}");
+    }
+
+    private async Task SubmitForApproval(Guid scheduleId)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Enviar para Aprobación",
+            "¿Está seguro de que desea enviar este cronograma para aprobación?",
+            yesText: "Enviar", cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            try
+            {
+                await ScheduleService.SubmitForApprovalAsync(scheduleId);
+                Snackbar.Add("Cronograma enviado para aprobación", Severity.Success);
+                await LoadData();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error al enviar el cronograma: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ApproveSchedule(Guid scheduleId)
+    {
+        var parameters = new DialogParameters
+        {
+            ["ScheduleId"] = scheduleId
+        };
+
+        var dialog = await DialogService.ShowAsync<ApproveScheduleDialog>("Aprobar Cronograma", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadData();
+        }
+    }
+
+    private async Task SetAsBaseline(Guid scheduleId)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Establecer como Línea Base",
+            "¿Está seguro de que desea establecer este cronograma como línea base del proyecto?",
+            yesText: "Establecer", cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            try
+            {
+                await ScheduleService.SetAsBaselineAsync(scheduleId);
+                Snackbar.Add("Línea base establecida exitosamente", Severity.Success);
+                await LoadData();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error al establecer la línea base: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteSchedule(Guid scheduleId)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Eliminar Versión",
+            "¿Está seguro de que desea eliminar esta versión del cronograma?",
+            yesText: "Eliminar", cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            try
+            {
+                await ScheduleService.DeleteScheduleVersionAsync(scheduleId);
+                Snackbar.Add("Versión eliminada exitosamente", Severity.Success);
+                await LoadData();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error al eliminar la versión: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ExportSchedule(Guid scheduleId)
+    {
+        var parameters = new DialogParameters
+        {
+            ["ScheduleId"] = scheduleId
+        };
+
+        var dialog = await DialogService.ShowAsync<ExportScheduleDialog>("Exportar Cronograma", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is string format)
+        {
+            try
+            {
+                var bytes = await ScheduleService.ExportScheduleAsync(scheduleId, format);
+                var fileName = $"Schedule_{DateTime.Now:yyyyMMdd}.{GetFileExtension(format)}";
+                await JSRuntime.InvokeVoidAsync("downloadFile", fileName, bytes);
+                Snackbar.Add("Cronograma exportado exitosamente", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error al exportar el cronograma: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task CompareWithBaseline()
+    {
+        if (_currentSchedule != null && _baselineSchedule != null)
+        {
+            Navigation.NavigateTo($"/progress/schedules/{ProjectId}/compare?baseline={_baselineSchedule.Id}&current={_currentSchedule.Id}");
+        }
+    }
+
+    private string GetStatusDisplay(ScheduleStatus status)
+    {
+        return status switch
+        {
+            ScheduleStatus.Draft => "Borrador",
+            ScheduleStatus.InReview => "En Revisión",
+            ScheduleStatus.Approved => "Aprobado",
+            ScheduleStatus.Active => "Activo",
+            ScheduleStatus.Superseded => "Reemplazado",
+            _ => status.ToString()
+        };
+    }
+
+    private Color GetStatusColor(ScheduleStatus status)
+    {
+        return status switch
+        {
+            ScheduleStatus.Draft => Color.Default,
+            ScheduleStatus.InReview => Color.Warning,
+            ScheduleStatus.Approved => Color.Success,
+            ScheduleStatus.Active => Color.Primary,
+            ScheduleStatus.Superseded => Color.Secondary,
+            _ => Color.Default
+        };
+    }
+
+    private string GetFileExtension(string format)
+    {
+        return format.ToLower() switch
+        {
+            "msproject" => "mpp",
+            "primavera" => "xer",
+            "excel" => "xlsx",
+            _ => "xml"
+        };
+    }
+}

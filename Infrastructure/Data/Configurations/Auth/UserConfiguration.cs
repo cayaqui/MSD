@@ -51,24 +51,15 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.PhoneNumber)
             .HasMaxLength(50);
 
-        builder.Property(u => u.Department)
-            .HasMaxLength(128);
-
-        builder.Property(u => u.OfficeLocation)
-            .HasMaxLength(256);
-
-        builder.Property(u => u.MobilePhone)
-            .HasMaxLength(50);
-
-        builder.Property(u => u.BusinessPhone)
-            .HasMaxLength(50);
-
         builder.Property(u => u.CompanyId)
             .HasMaxLength(100);
 
         builder.Property(u => u.PreferredLanguage)
             .HasMaxLength(10)
             .HasDefaultValue("en");
+            
+        builder.Property(u => u.SystemRole)
+            .HasMaxLength(50);
 
         // Audit properties
         builder.Property(u => u.CreatedAt)
@@ -92,11 +83,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasMany(u => u.ProjectTeamMembers)
             .WithOne(ptm => ptm.User)
             .HasForeignKey(ptm => ptm.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasMany(u => u.UserProjectPermissions)
-            .WithOne(upp => upp.User)
-            .HasForeignKey(upp => upp.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Global query filter for soft delete

@@ -1,10 +1,15 @@
 ﻿using Application.Interfaces.Reports;
 using Application.Interfaces.Auth;
 using Application.Interfaces.Storage;
+using Application.Interfaces.Common;
+using Application.Interfaces.Notifications;
 using Infrastructure.Data;
 using Infrastructure.Services.Auth;
 using Infrastructure.Services.Storage;
+using Infrastructure.Services.Excel;
+using Infrastructure.Services.Notifications;
 using Microsoft.Extensions.Logging;
+using SendGrid;
 namespace Infrastructure;
 
 /// <summary>
@@ -70,6 +75,20 @@ public static class DependencyInjection
         
         // Register Storage services
         services.AddScoped<IBlobStorageService, AzureBlobStorageService>();
+        
+        // Register Excel services
+        services.AddScoped<IExcelExportService, ExcelExportService>();
+        services.AddScoped<IExcelImportService, ExcelImportService>();
+        
+        // Register Notification services
+        services.AddScoped<IEmailService, EmailService>();
+        
+        // Register SendGrid client
+        services.AddSingleton<ISendGridClient>(provider =>
+        {
+            var apiKey = configuration["Email:SendGridApiKey"];
+            return new SendGridClient(apiKey);
+        });
 
         return services;
     }

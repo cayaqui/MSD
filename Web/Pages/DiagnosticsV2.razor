@@ -1,0 +1,234 @@
+@page "/diagnostics-v2"
+@inject HttpClient Http
+@inject IHttpClientFactory HttpClientFactory
+@inject IConfiguration Configuration
+@inject IJSRuntime JS
+
+<PageTitle>Diagnostics V2</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">API Connection Diagnostics</MudText>
+    
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6">Configuration</MudText>
+                    <MudSimpleTable Dense="true">
+                        <tbody>
+                            <tr>
+                                <td>API Base URL</td>
+                                <td>@_apiBaseUrl</td>
+                            </tr>
+                            <tr>
+                                <td>Environment</td>
+                                <td>@_environment</td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6">Tests</MudText>
+                    <MudStack>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Test1_DirectFetch" FullWidth="true">
+                            1. Direct Fetch (No Auth)
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Test2_HttpClient" FullWidth="true">
+                            2. HttpClient (No Auth)
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Test3_TestAPI" FullWidth="true">
+                            3. Test API (No Auth)
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Test4_NamedHttpClient" FullWidth="true">
+                            4. Named HttpClient (With Auth)
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Test5_ApiService" FullWidth="true">
+                            5. ApiService Call
+                        </MudButton>
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+    
+    @if (_results.Any())
+    {
+        <MudCard Class="mt-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6">Test Results</MudText>
+                @foreach (var result in _results)
+                {
+                    <MudAlert Severity="@(result.Success ? Severity.Success : Severity.Error)" Class="mb-2">
+                        <MudText Typo="Typo.subtitle2">@result.TestName</MudText>
+                        <MudText Typo="Typo.body2">@result.Message</MudText>
+                        @if (!string.IsNullOrEmpty(result.Details))
+                        {
+                            <MudText Typo="Typo.caption" Class="mt-1">
+                                <pre style="white-space: pre-wrap; word-wrap: break-word;">@result.Details</pre>
+                            </MudText>
+                        }
+                    </MudAlert>
+                }
+            </MudCardContent>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    private string _apiBaseUrl = "";
+    private string _environment = "";
+    private List<TestResult> _results = new();
+
+    private class TestResult
+    {
+        public string TestName { get; set; } = "";
+        public bool Success { get; set; }
+        public string Message { get; set; } = "";
+        public string? Details { get; set; }
+    }
+
+    protected override void OnInitialized()
+    {
+        _apiBaseUrl = Configuration["ApiSettings:BaseUrl"] ?? "Not configured";
+        _environment = Configuration["AppSettings:AppName"] ?? "Unknown";
+    }
+
+    private async Task Test1_DirectFetch()
+    {
+        var result = new TestResult { TestName = "Direct Fetch (No Auth)" };
+        
+        try
+        {
+            // Use JavaScript fetch to bypass Blazor's HttpClient
+            var response = await JS.InvokeAsync<object>("fetch", $"{_apiBaseUrl}health");
+            result.Success = true;
+            result.Message = "Successfully connected to API using fetch";
+            result.Details = "This confirms the API is reachable from the browser";
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Message = "Failed to connect using fetch";
+            result.Details = ex.Message;
+        }
+        
+        _results.Insert(0, result);
+    }
+
+    private async Task Test2_HttpClient()
+    {
+        var result = new TestResult { TestName = "HttpClient (No Auth)" };
+        
+        try
+        {
+            using var client = new HttpClient();
+            client.BaseAddress = new Uri(_apiBaseUrl);
+            
+            var response = await client.GetAsync("health");
+            result.Success = response.IsSuccessStatusCode;
+            result.Message = $"Status: {response.StatusCode}";
+            result.Details = await response.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Message = "Failed to connect";
+            result.Details = $"{ex.GetType().Name}: {ex.Message}";
+        }
+        
+        _results.Insert(0, result);
+    }
+
+    private async Task Test3_TestAPI()
+    {
+        var result = new TestResult { TestName = "Test API Client (No Auth)" };
+        
+        try
+        {
+            var client = HttpClientFactory.CreateClient("TestAPI");
+            
+            result.Details = $"BaseAddress: {client.BaseAddress}\n";
+            result.Details += $"Timeout: {client.Timeout}\n";
+            
+            var response = await client.GetAsync("health");
+            result.Success = response.IsSuccessStatusCode;
+            result.Message = $"Status: {response.StatusCode}";
+            result.Details += $"\nResponse: {await response.Content.ReadAsStringAsync()}";
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Message = "Failed to connect";
+            result.Details = $"{ex.GetType().Name}: {ex.Message}";
+        }
+        
+        _results.Insert(0, result);
+    }
+
+    private async Task Test4_NamedHttpClient()
+    {
+        var result = new TestResult { TestName = "Named HttpClient (EzProAPI)" };
+        
+        try
+        {
+            var client = HttpClientFactory.CreateClient("EzProAPI");
+            
+            // Log client configuration
+            result.Details = $"BaseAddress: {client.BaseAddress}\n";
+            result.Details += $"Timeout: {client.Timeout}\n";
+            result.Details += "Headers:\n";
+            foreach (var header in client.DefaultRequestHeaders)
+            {
+                result.Details += $"  {header.Key}: {string.Join(", ", header.Value)}\n";
+            }
+            
+            var response = await client.GetAsync("health");
+            result.Success = response.IsSuccessStatusCode;
+            result.Message = $"Status: {response.StatusCode}";
+            result.Details += $"\nResponse: {await response.Content.ReadAsStringAsync()}";
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Message = "Failed to connect";
+            result.Details += $"\nError: {ex.GetType().Name}: {ex.Message}";
+        }
+        
+        _results.Insert(0, result);
+    }
+
+    private async Task Test5_ApiService()
+    {
+        var result = new TestResult { TestName = "ApiService Call" };
+        
+        try
+        {
+            // This would use your actual ApiService
+            var client = HttpClientFactory.CreateClient("EzProAPI");
+            var response = await client.GetAsync("api/test");
+            
+            result.Success = response.IsSuccessStatusCode;
+            result.Message = $"Status: {response.StatusCode}";
+            result.Details = await response.Content.ReadAsStringAsync();
+        }
+        catch (TaskCanceledException)
+        {
+            result.Success = false;
+            result.Message = "Request timed out";
+            result.Details = "The request took too long to complete. This might indicate a CORS issue.";
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Message = "Failed to call API";
+            result.Details = $"{ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}";
+        }
+        
+        _results.Insert(0, result);
+    }
+}

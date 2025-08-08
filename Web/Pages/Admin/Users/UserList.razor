@@ -1,0 +1,396 @@
+@page "/admin/users"
+@using Core.DTOs.Auth.Users
+@using Core.DTOs.Common
+@using Web.Services.Interfaces.Auth
+@inject IUserApiService UserApiService
+@inject INavigationService NavigationService
+@inject IToastService ToastService
+@inject IDialogService DialogService
+
+<PageTitle>Administración de Usuarios</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudBreadcrumbs Items="_breadcrumbs" />
+    
+    <MudCard Class="mt-4">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.h5">Usuarios del Sistema</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" Class="text-right">
+                    <MudButton Color="Color.Secondary" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Sync"
+                               OnClick="SyncWithAzure" Class="mr-2">
+                        Sincronizar con Azure AD
+                    </MudButton>
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="CreateNewUser">
+                        Nuevo Usuario
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+            
+            <MudGrid Class="mt-4">
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="_searchTerm" Label="Buscar" Variant="Variant.Outlined"
+                                  Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                                  DebounceInterval="500" OnDebounceIntervalElapsed="OnSearchChanged" />
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="bool?" Label="Estado" @bind-Value="_isActive" Variant="Variant.Outlined">
+                        <MudSelectItem T="bool?" Value="@(null)">Todos</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="@(true)">Activos</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="@(false)">Inactivos</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudTextField @bind-Value="_selectedRole" Label="Rol (filtro de texto)" Variant="Variant.Outlined"
+                                  Placeholder="Ej: PROJECT_MANAGER" />
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudButton Color="Color.Primary" Variant="Variant.Outlined" FullWidth="true"
+                               OnClick="ApplyFilters" StartIcon="@Icons.Material.Filled.FilterList">
+                        Filtrar
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+    
+    <MudCard Class="mt-4">
+        <MudCardContent>
+            @if (_selectedUsers.Count > 0)
+            {
+                <MudToolBar>
+                    <MudText>@_selectedUsers.Count usuarios seleccionados</MudText>
+                    <MudSpacer />
+                    <MudButton Color="Color.Success" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.CheckCircle"
+                               OnClick="BulkActivate">
+                        Activar
+                    </MudButton>
+                    <MudButton Color="Color.Warning" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Block"
+                               OnClick="BulkDeactivate">
+                        Desactivar
+                    </MudButton>
+                </MudToolBar>
+            }
+            
+            <MudTable T="UserDto" ServerData="@(new Func<TableState, CancellationToken, Task<TableData<UserDto>>>(ServerReload))"
+                      Dense="true" Hover="true" @ref="_table">
+                <HeaderContent>
+                    <MudTh>
+                        <MudCheckBox T="bool" Value="@(_selectedUsers.Count == _users.Count && _users.Any())"
+                                     ValueChanged="@(value => SelectAll(value))" />
+                    </MudTh>
+                    <MudTh>Usuario</MudTh>
+                    <MudTh>Email</MudTh>
+                    <MudTh>Rol</MudTh>
+                    <MudTh>Departamento</MudTh>
+                    <MudTh>Proyectos</MudTh>
+                    <MudTh>Estado</MudTh>
+                    <MudTh>Último Acceso</MudTh>
+                    <MudTh>Acciones</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>
+                        <MudCheckBox T="bool" Value="@(_selectedUsers.Contains(context.Id))"
+                                     ValueChanged="@(value => ToggleSelection(context.Id, value))" />
+                    </MudTd>
+                    <MudTd DataLabel="Usuario">
+                        <MudStack Row="true" Spacing="2">
+                            <MudAvatar Size="Size.Small">
+                                @if (!string.IsNullOrEmpty(context.PhotoUrl))
+                                {
+                                    <MudImage Src="@context.PhotoUrl" />
+                                }
+                                else
+                                {
+                                    @context.DisplayName.Substring(0, 1).ToUpper()
+                                }
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.body2">@context.DisplayName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@context.JobTitle</MudText>
+                            </div>
+                        </MudStack>
+                    </MudTd>
+                    <MudTd DataLabel="Email">@context.Email</MudTd>
+                    <MudTd DataLabel="Rol">
+                        @if (context.ProjectTeamMembers.Any())
+                        {
+                            <MudText Typo="Typo.caption">Ver en proyectos</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Sin rol asignado</MudText>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Departamento">@context.Department</MudTd>
+                    <MudTd DataLabel="Proyectos">
+                        <MudTooltip Text="Ver proyectos asignados">
+                            <MudButton Color="Color.Primary" Variant="Variant.Text" Size="Size.Small"
+                                       OnClick="@(() => ViewUserProjects(context))">
+                                @context.ProjectTeamMembers.Count proyectos
+                            </MudButton>
+                        </MudTooltip>
+                    </MudTd>
+                    <MudTd DataLabel="Estado">
+                        @if (context.IsActive)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Icon="@Icons.Material.Filled.CheckCircle">
+                                Activo
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error" Icon="@Icons.Material.Filled.Cancel">
+                                Inactivo
+                            </MudChip>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Último Acceso">
+                        @if (context.LastLoginAt.HasValue)
+                        {
+                            @context.LastLoginAt.Value.ToString("dd/MM/yyyy HH:mm")
+                        }
+                        else
+                        {
+                            <MudText Color="Color.Secondary">Nunca</MudText>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Acciones">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                                       OnClick="@(() => EditUser(context))" Title="Editar usuario" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Security" Color="Color.Secondary" Size="Size.Small"
+                                       OnClick="@(() => ManageUserAccess(context))" Title="Gestionar accesos" />
+                        @if (context.IsActive)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Warning" Size="Size.Small"
+                                           OnClick="@(() => DeactivateUser(context))" Title="Desactivar usuario" />
+                        }
+                        else
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"
+                                           OnClick="@(() => ActivateUser(context))" Title="Activar usuario" />
+                        }
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => DeleteUser(context))" Title="Eliminar usuario" />
+                    </MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager />
+                </PagerContent>
+            </MudTable>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private MudTable<UserDto>? _table;
+    private List<UserDto> _users = new();
+    private HashSet<Guid> _selectedUsers = new();
+    private string _searchTerm = string.Empty;
+    private bool? _isActive = true;
+    private string _selectedRole = string.Empty;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    
+    protected override void OnInitialized()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new("Inicio", href: "/"),
+            new("Administración", href: "/admin"),
+            new("Usuarios", href: null, disabled: true)
+        };
+    }
+    
+    private async Task<TableData<UserDto>> ServerReload(TableState state, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var filter = new UserFilterDto
+            {
+                PageNumber = state.Page + 1,
+                PageSize = state.PageSize,
+                SearchTerm = _searchTerm,
+                IsActive = _isActive,
+                Role = string.IsNullOrEmpty(_selectedRole) ? null : _selectedRole
+            };
+            
+            var result = await UserApiService.SearchUsersAsync(filter);
+            _users = result.Items.ToList();
+            
+            return new TableData<UserDto>
+            {
+                Items = result.Items,
+                TotalItems = result.TotalCount
+            };
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error al cargar usuarios: {ex.Message}");
+            return new TableData<UserDto> { Items = new List<UserDto>(), TotalItems = 0 };
+        }
+    }
+    
+    private void OnSearchChanged(string value)
+    {
+        _searchTerm = value;
+        _table?.ReloadServerData();
+    }
+    
+    private void ApplyFilters()
+    {
+        _table?.ReloadServerData();
+    }
+    
+    private void CreateNewUser()
+    {
+        NavigationService.NavigateTo("/admin/users/new");
+    }
+    
+    private void EditUser(UserDto user)
+    {
+        NavigationService.NavigateTo($"/admin/users/{user.Id}/edit");
+    }
+    
+    private async Task ManageUserAccess(UserDto user)
+    {
+        var dialog = await DialogService.ShowAsync<UserProjectAccessDialog>("Gestionar Accesos a Proyectos",
+            new DialogParameters { ["UserId"] = user.Id, ["UserName"] = user.DisplayName },
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+            
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await _table?.ReloadServerData()!;
+        }
+    }
+    
+    private async Task ViewUserProjects(UserDto user)
+    {
+        NavigationService.NavigateTo($"/admin/users/{user.Id}/projects");
+    }
+    
+    private async Task ActivateUser(UserDto user)
+    {
+        var success = await UserApiService.ActivateUserAsync(user.Id);
+        if (success)
+        {
+            ToastService.ShowSuccess($"Usuario {user.DisplayName} activado");
+            await _table?.ReloadServerData()!;
+        }
+        else
+        {
+            ToastService.ShowError("Error al activar el usuario");
+        }
+    }
+    
+    private async Task DeactivateUser(UserDto user)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Confirmar Desactivación",
+            $"¿Está seguro de desactivar al usuario '{user.DisplayName}'? El usuario no podrá acceder al sistema.",
+            yesText: "Desactivar", cancelText: "Cancelar");
+            
+        if (confirm == true)
+        {
+            var success = await UserApiService.DeactivateUserAsync(user.Id);
+            if (success)
+            {
+                ToastService.ShowSuccess($"Usuario {user.DisplayName} desactivado");
+                await _table?.ReloadServerData()!;
+            }
+            else
+            {
+                ToastService.ShowError("Error al desactivar el usuario");
+            }
+        }
+    }
+    
+    private async Task DeleteUser(UserDto user)
+    {
+        var canDelete = await UserApiService.CanDeleteUserAsync(user.Id);
+        if (!canDelete.CanDelete)
+        {
+            await DialogService.ShowMessageBox(
+                "No se puede eliminar",
+                canDelete.Reason,
+                yesText: "Aceptar");
+            return;
+        }
+        
+        var confirm = await DialogService.ShowMessageBox(
+            "Confirmar Eliminación",
+            $"¿Está seguro de eliminar al usuario '{user.DisplayName}'? Esta acción no se puede deshacer.",
+            yesText: "Eliminar", cancelText: "Cancelar");
+            
+        if (confirm == true)
+        {
+            var success = await UserApiService.DeleteUserAsync(user.Id);
+            if (success)
+            {
+                ToastService.ShowSuccess($"Usuario {user.DisplayName} eliminado");
+                await _table?.ReloadServerData()!;
+            }
+            else
+            {
+                ToastService.ShowError("Error al eliminar el usuario");
+            }
+        }
+    }
+    
+    private async Task SyncWithAzure()
+    {
+        var dialog = await DialogService.ShowAsync<AzureAdSyncDialog>("Sincronización con Azure AD",
+            new DialogOptions { MaxWidth = MaxWidth.Medium });
+            
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await _table?.ReloadServerData()!;
+        }
+    }
+    
+    private void ToggleSelection(Guid userId, bool selected)
+    {
+        if (selected)
+            _selectedUsers.Add(userId);
+        else
+            _selectedUsers.Remove(userId);
+    }
+    
+    private void SelectAll(bool selected)
+    {
+        if (selected)
+            _selectedUsers = new HashSet<Guid>(_users.Select(u => u.Id));
+        else
+            _selectedUsers.Clear();
+    }
+    
+    private async Task BulkActivate()
+    {
+        var result = await UserApiService.BulkActivateUsersAsync(_selectedUsers.ToList());
+        ToastService.ShowSuccess($"{result.SuccessCount} usuarios activados");
+        _selectedUsers.Clear();
+        await _table?.ReloadServerData()!;
+    }
+    
+    private async Task BulkDeactivate()
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Confirmar Desactivación Masiva",
+            $"¿Está seguro de desactivar {_selectedUsers.Count} usuarios?",
+            yesText: "Desactivar", cancelText: "Cancelar");
+            
+        if (confirm == true)
+        {
+            var result = await UserApiService.BulkDeactivateUsersAsync(_selectedUsers.ToList());
+            ToastService.ShowSuccess($"{result.SuccessCount} usuarios desactivados");
+            _selectedUsers.Clear();
+            await _table?.ReloadServerData()!;
+        }
+    }
+    
+    private Color GetRoleColor(string role) => Color.Primary;
+}

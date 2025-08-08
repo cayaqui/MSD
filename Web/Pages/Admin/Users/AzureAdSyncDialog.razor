@@ -1,0 +1,213 @@
+@using Core.DTOs.Auth.Users
+@using Web.Services.Interfaces.Auth
+@inject IUserApiService UserApiService
+@inject IToastService ToastService
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6">Sincronización con Azure AD</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                    Esta función sincronizará usuarios desde Azure Active Directory.
+                </MudText>
+            </MudItem>
+            
+            @if (!_isSyncing && !_syncCompleted)
+            {
+                <MudItem xs="12">
+                    <MudRadioGroup @bind-Value="_syncMode">
+                        <MudRadio T="string" Value="@("all")" Color="Color.Primary">
+                            Sincronizar todos los usuarios
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Actualiza información de todos los usuarios existentes desde Azure AD
+                            </MudText>
+                        </MudRadio>
+                        <MudRadio T="string" Value="@("new")" Color="Color.Primary">
+                            Solo usuarios nuevos
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Importa solo usuarios que no existen en el sistema
+                            </MudText>
+                        </MudRadio>
+                        <MudRadio T="string" Value="@("group")" Color="Color.Primary">
+                            Por grupo de Azure AD
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Sincroniza usuarios de un grupo específico
+                            </MudText>
+                        </MudRadio>
+                    </MudRadioGroup>
+                </MudItem>
+                
+                @if (_syncMode == "group")
+                {
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_groupName" Label="Nombre del Grupo"
+                                      Placeholder="Ej: EzPro Users"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                }
+                
+                <MudItem xs="12">
+                    <MudSwitch @bind-Value="_autoActivate" Label="Activar usuarios automáticamente"
+                               Color="Color.Primary" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Los nuevos usuarios serán activados inmediatamente
+                    </MudText>
+                </MudItem>
+                
+                <MudItem xs="12">
+                    <MudSwitch @bind-Value="_sendWelcomeEmail" Label="Enviar email de bienvenida"
+                               Color="Color.Primary" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Se enviará un email de bienvenida a los nuevos usuarios
+                    </MudText>
+                </MudItem>
+            }
+            
+            @if (_isSyncing)
+            {
+                <MudItem xs="12">
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+                    <MudText Align="Align.Center">Sincronizando usuarios desde Azure AD...</MudText>
+                    <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary">
+                        Esto puede tomar varios minutos
+                    </MudText>
+                </MudItem>
+            }
+            
+            @if (_syncCompleted && _syncResult != null)
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="@(_syncResult.HasErrors ? Severity.Warning : Severity.Success)">
+                        Sincronización completada
+                    </MudAlert>
+                    
+                    <MudSimpleTable Class="mt-3" Dense="true">
+                        <tbody>
+                            <tr>
+                                <td>Usuarios procesados:</td>
+                                <td><strong>@_syncResult.TotalProcessed</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Usuarios creados:</td>
+                                <td><strong>@_syncResult.UsersCreated</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Usuarios actualizados:</td>
+                                <td><strong>@_syncResult.UsersUpdated</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Errores:</td>
+                                <td><strong>@_syncResult.Errors</strong></td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                    
+                    @if (_syncResult.ErrorMessages.Any())
+                    {
+                        <MudExpansionPanels Class="mt-3">
+                            <MudExpansionPanel Text="Ver errores" Icon="@Icons.Material.Filled.Error">
+                                <MudList T="string" Dense="true">
+                                    @foreach (var error in _syncResult.ErrorMessages)
+                                    {
+                                        <MudListItem T="string" Icon="@Icons.Material.Filled.ErrorOutline">
+                                            @error
+                                        </MudListItem>
+                                    }
+                                </MudList>
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
+                    }
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        @if (!_isSyncing)
+        {
+            <MudButton OnClick="Cancel">@(_syncCompleted ? "Cerrar" : "Cancelar")</MudButton>
+            @if (!_syncCompleted)
+            {
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="StartSync"
+                           Disabled="@(!CanStartSync())">
+                    Iniciar Sincronización
+                </MudButton>
+            }
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    
+    private string _syncMode = "all";
+    private string _groupName = string.Empty;
+    private bool _autoActivate = true;
+    private bool _sendWelcomeEmail = false;
+    private bool _isSyncing = false;
+    private bool _syncCompleted = false;
+    private SyncResult? _syncResult;
+    
+    private async Task StartSync()
+    {
+        try
+        {
+            _isSyncing = true;
+            _syncResult = null;
+            
+            // Simulate sync process - In real implementation, call your sync API
+            await Task.Delay(3000); // Simulate API call
+            
+            // Mock result - replace with actual API call
+            _syncResult = new SyncResult
+            {
+                TotalProcessed = 150,
+                UsersCreated = 12,
+                UsersUpdated = 138,
+                Errors = 2,
+                HasErrors = true,
+                ErrorMessages = new List<string>
+                {
+                    "Usuario 'john.doe@company.com' no tiene licencia asignada en Azure AD",
+                    "Error al obtener foto de perfil para 'jane.smith@company.com'"
+                }
+            };
+            
+            _syncCompleted = true;
+            
+            if (_syncResult.UsersCreated > 0 || _syncResult.UsersUpdated > 0)
+            {
+                ToastService.ShowSuccess($"Sincronización completada: {_syncResult.UsersCreated} usuarios creados, {_syncResult.UsersUpdated} actualizados");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error durante la sincronización: {ex.Message}");
+            _syncCompleted = true;
+        }
+        finally
+        {
+            _isSyncing = false;
+        }
+    }
+    
+    private bool CanStartSync()
+    {
+        return _syncMode != "group" || !string.IsNullOrWhiteSpace(_groupName);
+    }
+    
+    private void Cancel()
+    {
+        MudDialog.Close(DialogResult.Ok(_syncCompleted));
+    }
+    
+    private class SyncResult
+    {
+        public int TotalProcessed { get; set; }
+        public int UsersCreated { get; set; }
+        public int UsersUpdated { get; set; }
+        public int Errors { get; set; }
+        public bool HasErrors { get; set; }
+        public List<string> ErrorMessages { get; set; } = new();
+    }
+}

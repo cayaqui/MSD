@@ -1,0 +1,264 @@
+@using Core.DTOs.Visualization
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+<div class="gantt-chart-container">
+    <div class="gantt-header">
+        <h3>@ChartData?.Title</h3>
+        <div class="gantt-controls">
+            <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                <MudButton OnClick="@(() => ChangeViewMode("day"))">Day</MudButton>
+                <MudButton OnClick="@(() => ChangeViewMode("week"))">Week</MudButton>
+                <MudButton OnClick="@(() => ChangeViewMode("month"))">Month</MudButton>
+                <MudButton OnClick="@(() => ChangeViewMode("quarter"))">Quarter</MudButton>
+                <MudButton OnClick="@(() => ChangeViewMode("year"))">Year</MudButton>
+            </MudButtonGroup>
+
+            <MudButtonGroup Variant="Variant.Text" Size="Size.Small" Class="ml-4">
+                <MudIconButton Icon="@Icons.Material.Filled.ZoomIn" OnClick="ZoomIn" />
+                <MudIconButton Icon="@Icons.Material.Filled.ZoomOut" OnClick="ZoomOut" />
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="ResetZoom" />
+            </MudButtonGroup>
+
+            <MudMenu Icon="@Icons.Material.Filled.Settings" AnchorOrigin="Origin.BottomRight">
+                <MudMenuItem>
+                    <MudCheckBox T="bool" @bind-Checked="@ShowDependencies" Label="Show Dependencies" />
+                </MudMenuItem>
+                <MudMenuItem>
+                    <MudCheckBox T="bool" @bind-Checked="@ShowProgress" Label="Show Progress" />
+                </MudMenuItem>
+                <MudMenuItem>
+                    <MudCheckBox T="bool" @bind-Checked="@ShowCriticalPath" Label="Show Critical Path" />
+                </MudMenuItem>
+                <MudMenuItem>
+                    <MudCheckBox T="bool" @bind-Checked="@ShowMilestones" Label="Show Milestones" />
+                </MudMenuItem>
+                <MudMenuItem>
+                    <MudCheckBox T="bool" @bind-Checked="@ShowWeekends" Label="Show Weekends" />
+                </MudMenuItem>
+            </MudMenu>
+
+            <MudIconButton Icon="@Icons.Material.Filled.Download" 
+                          Color="Color.Primary" 
+                          OnClick="ExportChart"
+                          Title="Export" />
+        </div>
+    </div>
+
+    <div id="@ChartId" class="gantt-chart" style="width: 100%; height: @(Height)px;">
+        @if (IsLoading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+    </div>
+</div>
+
+<style>
+    .gantt-chart-container {
+        background-color: var(--mud-palette-surface);
+        border-radius: 4px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .gantt-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .gantt-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .gantt-chart {
+        border: 1px solid var(--mud-palette-divider);
+        border-radius: 4px;
+        overflow: auto;
+    }
+
+    /* Custom Gantt styling */
+    .gantt-task {
+        cursor: pointer;
+        transition: opacity 0.2s;
+    }
+
+    .gantt-task:hover {
+        opacity: 0.8;
+    }
+
+    .gantt-task-progress {
+        fill: rgba(0, 0, 0, 0.1);
+    }
+
+    .gantt-milestone {
+        cursor: pointer;
+    }
+
+    .gantt-dependency {
+        stroke: #999;
+        stroke-width: 2;
+        fill: none;
+        marker-end: url(#arrowhead);
+    }
+
+    .gantt-critical-path {
+        stroke: #ff0000;
+        stroke-width: 3;
+    }
+
+    .gantt-today-line {
+        stroke: #ff0000;
+        stroke-width: 2;
+        stroke-dasharray: 5, 5;
+    }
+
+    .gantt-weekend {
+        fill: #f5f5f5;
+    }
+
+    .gantt-tooltip {
+        position: absolute;
+        background-color: var(--mud-palette-surface);
+        border: 1px solid var(--mud-palette-divider);
+        border-radius: 4px;
+        padding: 8px;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 1000;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+</style>
+
+@code {
+    [Parameter] public GanttChartDto? ChartData { get; set; }
+    [Parameter] public int Height { get; set; } = 600;
+    [Parameter] public EventCallback<GanttTaskDto> OnTaskClick { get; set; }
+    [Parameter] public EventCallback<GanttTaskDto> OnTaskUpdate { get; set; }
+    [Parameter] public bool AllowEdit { get; set; } = false;
+    [Parameter] public bool IsLoading { get; set; }
+
+    private string ChartId = $"gantt-{Guid.NewGuid():N}";
+    private bool ShowDependencies = true;
+    private bool ShowProgress = true;
+    private bool ShowCriticalPath = true;
+    private bool ShowMilestones = true;
+    private bool ShowWeekends = false;
+    private DotNetObjectReference<GanttChart>? dotNetHelper;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await InitializeChart();
+        }
+        else if (ChartData != null)
+        {
+            await UpdateChart();
+        }
+    }
+
+    private async Task InitializeChart()
+    {
+        if (ChartData == null) return;
+
+        var config = new
+        {
+            containerId = ChartId,
+            data = ChartData,
+            options = new
+            {
+                viewMode = ChartData.Config.ViewMode,
+                showDependencies = ShowDependencies,
+                showProgress = ShowProgress,
+                showCriticalPath = ShowCriticalPath,
+                showMilestones = ShowMilestones,
+                showWeekends = ShowWeekends,
+                showToday = ChartData.Config.ShowToday,
+                rowHeight = ChartData.Config.RowHeight,
+                headerHeight = ChartData.Config.HeaderHeight,
+                dateFormat = ChartData.Config.DateFormat,
+                allowEdit = AllowEdit
+            },
+            callbacks = new
+            {
+                onTaskClick = nameof(HandleTaskClick),
+                onTaskUpdate = nameof(HandleTaskUpdate)
+            }
+        };
+
+        await JSRuntime.InvokeVoidAsync("ganttChart.initialize", config, dotNetHelper);
+    }
+
+    private async Task UpdateChart()
+    {
+        if (ChartData == null) return;
+
+        await JSRuntime.InvokeVoidAsync("ganttChart.update", ChartId, ChartData);
+    }
+
+    private async Task ChangeViewMode(string viewMode)
+    {
+        if (ChartData != null)
+        {
+            ChartData.Config.ViewMode = viewMode;
+            await JSRuntime.InvokeVoidAsync("ganttChart.changeViewMode", ChartId, viewMode);
+        }
+    }
+
+    private async Task ZoomIn()
+    {
+        await JSRuntime.InvokeVoidAsync("ganttChart.zoomIn", ChartId);
+    }
+
+    private async Task ZoomOut()
+    {
+        await JSRuntime.InvokeVoidAsync("ganttChart.zoomOut", ChartId);
+    }
+
+    private async Task ResetZoom()
+    {
+        await JSRuntime.InvokeVoidAsync("ganttChart.resetZoom", ChartId);
+    }
+
+    private async Task ExportChart()
+    {
+        await JSRuntime.InvokeVoidAsync("ganttChart.export", ChartId, "png");
+    }
+
+    [JSInvokable]
+    public async Task HandleTaskClick(string taskId)
+    {
+        var task = ChartData?.Tasks.FirstOrDefault(t => t.Id == taskId);
+        if (task != null && OnTaskClick.HasDelegate)
+        {
+            await OnTaskClick.InvokeAsync(task);
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleTaskUpdate(string taskId, DateTime newStart, DateTime newEnd, decimal progress)
+    {
+        var task = ChartData?.Tasks.FirstOrDefault(t => t.Id == taskId);
+        if (task != null)
+        {
+            task.StartDate = newStart;
+            task.EndDate = newEnd;
+            task.Progress = progress;
+
+            if (OnTaskUpdate.HasDelegate)
+            {
+                await OnTaskUpdate.InvokeAsync(task);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        dotNetHelper?.Dispose();
+    }
+}

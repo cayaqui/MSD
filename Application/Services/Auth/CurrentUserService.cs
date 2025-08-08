@@ -108,10 +108,10 @@ public class CurrentUserService : ICurrentUserService
     {
         var roleHierarchy = new Dictionary<string, int>
         {
-            { ProjectRoles.Viewer, 1 },
-            { ProjectRoles.TeamMember, 2 },
-            { ProjectRoles.TeamLead, 3 },
-            { ProjectRoles.ProjectManager, 4 }
+            { SimplifiedRoles.Project.Viewer, 1 },
+            { SimplifiedRoles.Project.TeamMember, 2 },
+            { SimplifiedRoles.Project.TeamLead, 3 },
+            { SimplifiedRoles.Project.ProjectManager, 4 }
         };
 
         if (!roleHierarchy.TryGetValue(userRole, out var userLevel) ||

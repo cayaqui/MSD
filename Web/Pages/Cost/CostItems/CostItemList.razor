@@ -1,0 +1,261 @@
+@page "/cost/items/{projectId:guid}"
+@using Core.DTOs.Cost.CostItems
+@using Core.DTOs.Common
+@using Core.Enums.Cost
+@using Web.Services.Interfaces.Cost
+@inject ICostApiService CostApiService
+@inject INavigationService NavigationService
+@inject IToastService ToastService
+@inject IDialogService DialogService
+
+<PageTitle>Elementos de Costo</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudBreadcrumbs Items="_breadcrumbs" />
+    
+    <MudCard Class="mt-4">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.h5">Elementos de Costo</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" Class="text-right">
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add" 
+                               OnClick="CreateNewCostItem">
+                        Nuevo Elemento de Costo
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+            
+            <MudGrid Class="mt-4">
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="_searchTerm" Label="Buscar" Variant="Variant.Outlined" 
+                                  Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                                  DebounceInterval="500" OnDebounceIntervalElapsed="OnSearchChanged" />
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="CostCategory?" Label="Categoría" @bind-Value="_selectedCategory" Variant="Variant.Outlined">
+                        <MudSelectItem T="CostCategory?" Value="@(null)">Todas</MudSelectItem>
+                        <MudSelectItem T="CostCategory?" Value="@(CostCategory.Direct)">Directo</MudSelectItem>
+                        <MudSelectItem T="CostCategory?" Value="@(CostCategory.Indirect)">Indirecto</MudSelectItem>
+                        <MudSelectItem T="CostCategory?" Value="@(CostCategory.Fixed)">Fijo</MudSelectItem>
+                        <MudSelectItem T="CostCategory?" Value="@(CostCategory.Variable)">Variable</MudSelectItem>
+                        <MudSelectItem T="CostCategory?" Value="@(CostCategory.Capital)">Capital</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudDateRangePicker Label="Rango de Fechas" @bind-DateRange="_dateRange" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudButton Color="Color.Primary" Variant="Variant.Outlined" FullWidth="true" 
+                               OnClick="ApplyFilters" StartIcon="@Icons.Material.Filled.FilterList">
+                        Filtrar
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+    
+    <MudCard Class="mt-4">
+        <MudCardContent>
+            <MudTable T="CostItemDto" ServerData="@(new Func<TableState, CancellationToken, Task<TableData<CostItemDto>>>(ServerReload))"
+                      Dense="true" Hover="true" @ref="_table">
+                <HeaderContent>
+                    <MudTh>Código</MudTh>
+                    <MudTh>Descripción</MudTh>
+                    <MudTh>Categoría</MudTh>
+                    <MudTh>Cuenta de Control</MudTh>
+                    <MudTh>Presupuesto</MudTh>
+                    <MudTh>Comprometido</MudTh>
+                    <MudTh>Real</MudTh>
+                    <MudTh>Estado</MudTh>
+                    <MudTh>Acciones</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Código">@context.ItemCode</MudTd>
+                    <MudTd DataLabel="Descripción">@context.Description</MudTd>
+                    <MudTd DataLabel="Categoría">
+                        <MudChip T="string" Size="Size.Small" Color="GetCategoryColor(context.Category)">
+                            @context.Category.ToString()
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Cuenta de Control">@context.ControlAccountCode</MudTd>
+                    <MudTd DataLabel="Presupuesto">@context.PlannedCost.ToString("C")</MudTd>
+                    <MudTd DataLabel="Comprometido">@context.CommittedCost.ToString("C")</MudTd>
+                    <MudTd DataLabel="Real">@context.ActualCost.ToString("C")</MudTd>
+                    <MudTd DataLabel="Estado">
+                        <MudChip T="string" Size="Size.Small" Color="GetStatusColor(context.Status)">
+                            @context.Status.ToString()
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Acciones">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                                       OnClick="@(() => EditCostItem(context.Id))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.AttachMoney" Color="Color.Success" Size="Size.Small"
+                                       OnClick="@(() => RecordCost(context))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => DeleteCostItem(context))" />
+                    </MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager />
+                </PagerContent>
+            </MudTable>
+        </MudCardContent>
+    </MudCard>
+    
+    <MudCard Class="mt-4">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.subtitle2">Total Presupuesto</MudText>
+                    <MudText Typo="Typo.h6">@_totalBudget.ToString("C")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.subtitle2">Total Comprometido</MudText>
+                    <MudText Typo="Typo.h6">@_totalCommitted.ToString("C")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.subtitle2">Total Real</MudText>
+                    <MudText Typo="Typo.h6">@_totalActual.ToString("C")</MudText>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+    
+    private MudTable<CostItemDto>? _table;
+    private string _searchTerm = string.Empty;
+    private CostCategory? _selectedCategory = null;
+    private DateRange? _dateRange;
+    private decimal _totalBudget;
+    private decimal _totalCommitted;
+    private decimal _totalActual;
+    
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new("Inicio", href: "/"),
+            new("Proyectos", href: "/projects"),
+            new("Costos", href: $"/projects/{ProjectId}"),
+            new("Elementos de Costo", href: null, disabled: true)
+        };
+    }
+    
+    private async Task<TableData<CostItemDto>> ServerReload(TableState state, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parameters = new Core.DTOs.Cost.CostQueryParameters
+            {
+                PageNumber = state.Page + 1,
+                PageSize = state.PageSize,
+                SearchTerm = _searchTerm,
+                Category = _selectedCategory,
+                // StartDate and EndDate not available in CostQueryParameters
+                SortBy = state.SortLabel,
+                SortDirection = state.SortDirection == SortDirection.Descending ? "desc" : "asc"
+            };
+            
+            var result = await CostApiService.GetCostItemsAsync(ProjectId, parameters);
+            
+            // Calculate totals
+            _totalBudget = result.Items.Sum(x => x.PlannedCost);
+            _totalCommitted = result.Items.Sum(x => x.CommittedCost);
+            _totalActual = result.Items.Sum(x => x.ActualCost);
+            
+            return new TableData<CostItemDto>
+            {
+                Items = result.Items,
+                TotalItems = result.TotalPages * result.PageSize
+            };
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Error al cargar elementos de costo: {ex.Message}");
+            return new TableData<CostItemDto> { Items = new List<CostItemDto>(), TotalItems = 0 };
+        }
+    }
+    
+    private void OnSearchChanged(string value)
+    {
+        _searchTerm = value;
+        _table?.ReloadServerData();
+    }
+    
+    private void ApplyFilters()
+    {
+        _table?.ReloadServerData();
+    }
+    
+    private void CreateNewCostItem()
+    {
+        NavigationService.NavigateTo($"/cost/items/new?projectId={ProjectId}");
+    }
+    
+    private void EditCostItem(Guid id)
+    {
+        NavigationService.NavigateTo($"/cost/items/{id}/edit");
+    }
+    
+    private async Task RecordCost(CostItemDto item)
+    {
+        var dialog = await DialogService.ShowAsync<RecordCostDialog>("Registrar Costo",
+            new DialogParameters { ["CostItem"] = item },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+            
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await _table?.ReloadServerData()!;
+        }
+    }
+    
+    private async Task DeleteCostItem(CostItemDto item)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Confirmar Eliminación",
+            $"¿Está seguro de eliminar el elemento de costo '{item.Description}'?",
+            yesText: "Eliminar", cancelText: "Cancelar");
+            
+        if (confirm == true)
+        {
+            var success = await CostApiService.DeleteCostItemAsync(item.Id);
+            if (success)
+            {
+                ToastService.ShowSuccess("Elemento de costo eliminado exitosamente");
+                await _table?.ReloadServerData()!;
+            }
+            else
+            {
+                ToastService.ShowError("Error al eliminar el elemento de costo");
+            }
+        }
+    }
+    
+    private Color GetCategoryColor(CostCategory category) => category switch
+    {
+        CostCategory.Direct => Color.Info,
+        CostCategory.Indirect => Color.Success,
+        CostCategory.Fixed => Color.Warning,
+        CostCategory.Variable => Color.Secondary,
+        CostCategory.Capital => Color.Primary,
+        _ => Color.Default
+    };
+    
+    private Color GetStatusColor(CostItemStatus status) => status switch
+    {
+        CostItemStatus.Planned => Color.Default,
+        CostItemStatus.Committed => Color.Warning,
+        CostItemStatus.Actual => Color.Success,
+        CostItemStatus.Forecast => Color.Info,
+        CostItemStatus.Closed => Color.Dark,
+        _ => Color.Default
+    };
+}

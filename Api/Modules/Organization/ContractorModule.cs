@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Modules.Organization;
 
 /// <summary>
-/// Endpoints for contractor management
+/// Endpoints para la gestión de contratistas
 /// </summary>
 public class ContractorModule : CarterModule
 {
@@ -25,71 +25,71 @@ public class ContractorModule : CarterModule
         // Query endpoints
         app.MapGet("/", GetContractorsAsync)
             .WithName("GetContractors")
-            .WithSummary("Get all contractors with pagination")
-            .WithDescription("Returns a paginated list of contractors")
-            .WithTags("Contractors")
+            .WithSummary("Obtener todos los contratistas con paginación")
+            .WithDescription("Devuelve una lista paginada de contratistas")
+            .WithTags("Contratistas")
             .Produces<PagedResult<ContractorDto>>();
 
         app.MapGet("/{id:guid}", GetContractorByIdAsync)
             .WithName("GetContractorById")
-            .WithSummary("Get contractor by ID")
-            .WithDescription("Returns a specific contractor by ID")
-            .WithTags("Contractors")
+            .WithSummary("Obtener contratista por ID")
+            .WithDescription("Devuelve un contratista específico por ID")
+            .WithTags("Contratistas")
             .Produces<ContractorDto>()
             .Produces(404);
 
         app.MapGet("/active", GetActiveContractorsAsync)
             .WithName("GetActiveContractors")
-            .WithSummary("Get active contractors")
-            .WithDescription("Returns all active contractors")
-            .WithTags("Contractors")
+            .WithSummary("Obtener contratistas activos")
+            .WithDescription("Devuelve todos los contratistas activos")
+            .WithTags("Contratistas")
             .Produces<List<ContractorDto>>();
 
         app.MapGet("/by-type/{type}", GetContractorsByTypeAsync)
             .WithName("GetContractorsByType")
-            .WithSummary("Get contractors by type")
-            .WithDescription("Returns all contractors of a specific type")
-            .WithTags("Contractors")
+            .WithSummary("Obtener contratistas por tipo")
+            .WithDescription("Devuelve todos los contratistas de un tipo específico")
+            .WithTags("Contratistas")
             .Produces<List<ContractorDto>>();
 
         app.MapGet("/by-classification/{classification}", GetContractorsByClassificationAsync)
             .WithName("GetContractorsByClassification")
-            .WithSummary("Get contractors by classification")
-            .WithDescription("Returns all contractors of a specific classification")
-            .WithTags("Contractors")
+            .WithSummary("Obtener contratistas por clasificación")
+            .WithDescription("Devuelve todos los contratistas de una clasificación específica")
+            .WithTags("Contratistas")
             .Produces<List<ContractorDto>>();
 
         app.MapGet("/{id:guid}/projects", GetContractorProjectsAsync)
             .WithName("GetContractorProjects")
-            .WithSummary("Get contractor projects")
-            .WithDescription("Returns all projects associated with a contractor")
-            .WithTags("Contractors")
+            .WithSummary("Obtener proyectos del contratista")
+            .WithDescription("Devuelve todos los proyectos asociados con un contratista")
+            .WithTags("Contratistas")
             .Produces<ContractorWithProjectsDto>()
             .Produces(404);
 
         app.MapGet("/{id:guid}/performance", GetContractorPerformanceAsync)
             .WithName("GetContractorPerformance")
-            .WithSummary("Get contractor performance")
-            .WithDescription("Returns performance metrics for a contractor")
-            .WithTags("Contractors")
+            .WithSummary("Obtener rendimiento del contratista")
+            .WithDescription("Devuelve las métricas de rendimiento de un contratista")
+            .WithTags("Contratistas")
             .Produces<ContractorPerformanceDto>()
             .Produces(404);
 
         // Command endpoints
         app.MapPost("/", CreateContractorAsync)
             .WithName("CreateContractor")
-            .WithSummary("Create a new contractor")
-            .WithDescription("Creates a new contractor")
-            .WithTags("Contractors")
+            .WithSummary("Crear un nuevo contratista")
+            .WithDescription("Crea un nuevo contratista")
+            .WithTags("Contratistas")
             .RequireAuthorization("AdminOnly")
             .Produces<Result<Guid>>(201)
             .Produces<Result>(400);
 
         app.MapPut("/{id:guid}", UpdateContractorAsync)
             .WithName("UpdateContractor")
-            .WithSummary("Update contractor")
-            .WithDescription("Updates an existing contractor")
-            .WithTags("Contractors")
+            .WithSummary("Actualizar contratista")
+            .WithDescription("Actualiza un contratista existente")
+            .WithTags("Contratistas")
             .RequireAuthorization("AdminOnly")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -97,9 +97,9 @@ public class ContractorModule : CarterModule
 
         app.MapPut("/{id:guid}/qualifications", UpdateContractorQualificationsAsync)
             .WithName("UpdateContractorQualifications")
-            .WithSummary("Update contractor qualifications")
-            .WithDescription("Updates the qualifications of a contractor")
-            .WithTags("Contractors")
+            .WithSummary("Actualizar calificaciones del contratista")
+            .WithDescription("Actualiza las calificaciones de un contratista")
+            .WithTags("Contratistas")
             .RequireAuthorization("AdminOnly")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -107,9 +107,9 @@ public class ContractorModule : CarterModule
 
         app.MapPost("/{id:guid}/evaluate", EvaluateContractorAsync)
             .WithName("EvaluateContractor")
-            .WithSummary("Evaluate contractor")
-            .WithDescription("Adds an evaluation for a contractor")
-            .WithTags("Contractors")
+            .WithSummary("Evaluar contratista")
+            .WithDescription("Añade una evaluación para un contratista")
+            .WithTags("Contratistas")
             .RequireAuthorization("ContractorEvaluate")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -117,27 +117,27 @@ public class ContractorModule : CarterModule
 
         app.MapPost("/{id:guid}/activate", ActivateContractorAsync)
             .WithName("ActivateContractor")
-            .WithSummary("Activate contractor")
-            .WithDescription("Activates a contractor")
-            .WithTags("Contractors")
+            .WithSummary("Activar contratista")
+            .WithDescription("Activa un contratista")
+            .WithTags("Contratistas")
             .RequireAuthorization("AdminOnly")
             .Produces<Result>()
             .Produces(404);
 
         app.MapPost("/{id:guid}/deactivate", DeactivateContractorAsync)
             .WithName("DeactivateContractor")
-            .WithSummary("Deactivate contractor")
-            .WithDescription("Deactivates a contractor")
-            .WithTags("Contractors")
+            .WithSummary("Desactivar contratista")
+            .WithDescription("Desactiva un contratista")
+            .WithTags("Contratistas")
             .RequireAuthorization("AdminOnly")
             .Produces<Result>()
             .Produces(404);
 
         app.MapPost("/{id:guid}/blacklist", BlacklistContractorAsync)
             .WithName("BlacklistContractor")
-            .WithSummary("Blacklist contractor")
-            .WithDescription("Adds a contractor to the blacklist")
-            .WithTags("Contractors")
+            .WithSummary("Incluir contratista en lista negra")
+            .WithDescription("Añade un contratista a la lista negra")
+            .WithTags("Contratistas")
             .RequireAuthorization("AdminOnly")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -145,9 +145,9 @@ public class ContractorModule : CarterModule
 
         app.MapDelete("/{id:guid}", DeleteContractorAsync)
             .WithName("DeleteContractor")
-            .WithSummary("Delete contractor")
-            .WithDescription("Soft deletes a contractor")
-            .WithTags("Contractors")
+            .WithSummary("Eliminar contratista")
+            .WithDescription("Elimina de forma lógica un contratista")
+            .WithTags("Contratistas")
             .RequireAuthorization("AdminOnly")
             .Produces<Result>()
             .Produces<Result>(400)
@@ -188,7 +188,7 @@ public class ContractorModule : CarterModule
     {
         // Parse the type string to enum
         if (!Enum.TryParse<ContractorType>(type, out var contractorType))
-            return Results.BadRequest("Invalid contractor type");
+            return Results.BadRequest("Tipo de contratista inválido");
         
         var result = await contractorService.GetByTypeAsync(contractorType, cancellationToken);
         return Results.Ok(result);
@@ -248,12 +248,12 @@ public class ContractorModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await contractorService.CreateAsync(dto, userId, cancellationToken);
         
         return result != null 
             ? Results.CreatedAtRoute("GetContractorById", new { id = result.Id }, result)
-            : Results.BadRequest("Failed to create contractor");
+            : Results.BadRequest("Error al crear el contratista");
     }
 
     private static async Task<IResult> UpdateContractorAsync(
@@ -263,7 +263,7 @@ public class ContractorModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await contractorService.UpdateAsync(id, dto, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -276,7 +276,7 @@ public class ContractorModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         // This would need to be implemented using Update method
         var existing = await contractorService.GetByIdAsync(id, cancellationToken);
         if (existing == null) return Results.NotFound();
@@ -302,7 +302,7 @@ public class ContractorModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         // Update performance rating
         var rating = (dto.QualityRating + dto.SafetyRating + dto.ScheduleRating + dto.CostRating + dto.CommunicationRating) / 5;
         var result = await contractorService.UpdatePerformanceRatingAsync(id, rating, userId, cancellationToken);
@@ -316,7 +316,7 @@ public class ContractorModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await contractorService.UpdateStatusAsync(id, ContractorStatus.Active, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -328,7 +328,7 @@ public class ContractorModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await contractorService.UpdateStatusAsync(id, ContractorStatus.Inactive, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -341,7 +341,7 @@ public class ContractorModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await contractorService.UpdateStatusAsync(id, ContractorStatus.Blacklisted, userId, cancellationToken);
         
         return result != null ? Results.Ok(result) : Results.NotFound();
@@ -353,9 +353,9 @@ public class ContractorModule : CarterModule
         [FromServices] ICurrentUserService currentUserService,
         CancellationToken cancellationToken)
     {
-        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("User ID not found");
+        var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException("ID de usuario no encontrado");
         var result = await contractorService.DeleteAsync(id, cancellationToken);
         
-        return result ? Results.Ok("Contractor deleted successfully") : Results.BadRequest("Failed to delete contractor");
+        return result ? Results.Ok("Contratista eliminado exitosamente") : Results.BadRequest("Error al eliminar el contratista");
     }
 }

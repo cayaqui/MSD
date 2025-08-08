@@ -86,16 +86,6 @@ public class NearCriticalPathDto
     public string CriticalityLevel { get; set; } = string.Empty; // High, Medium, Low
 }
 
-public class MilestoneStatusDto
-{
-    public string MilestoneName { get; set; } = string.Empty;
-    public DateTime PlannedDate { get; set; }
-    public DateTime? ForecastDate { get; set; }
-    public DateTime? ActualDate { get; set; }
-    public string Status { get; set; } = string.Empty; // OnTrack, AtRisk, Delayed, Completed
-    public int VarianceDays { get; set; }
-    public string ImpactDescription { get; set; } = string.Empty;
-}
 
 public class ActivityProgressDto
 {

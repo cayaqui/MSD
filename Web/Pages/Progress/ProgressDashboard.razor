@@ -1,0 +1,465 @@
+@page "/progress/dashboard/{ProjectId:guid}"
+@using Core.DTOs.Progress.Activities
+@using Core.DTOs.Progress.Milestones
+@using Core.DTOs.Progress.Schedules
+@using Core.Enums
+@using Core.Enums.Progress
+@using Web.Services.Interfaces.Progress
+@inject IScheduleApiService ScheduleService
+@inject IActivityApiService ActivityService
+@inject IMilestoneApiService MilestoneService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Dashboard de Progreso</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+    <MudBreadcrumbs Items="_breadcrumbs" />
+    
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid>
+            <MudGrid xs="12" md="8">
+                <MudText Typo="Typo.h4" Class="mb-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Dashboard" Class="mr-2" />
+                    Dashboard de Progreso
+                </MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary">
+                    Vista general del avance del proyecto
+                </MudText>
+            </MudGrid>
+            <MudGrid xs="12" md="4" Class="d-flex justify-end align-center">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="RefreshData"
+                           Disabled="_loading">
+                    Actualizar
+                </MudButton>
+            </MudGrid>
+        </MudGrid>
+    </MudPaper>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else
+    {
+        <!-- Schedule Overview -->
+        @if (_currentSchedule != null)
+        {
+            <MudPaper Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="mr-2" />
+                    Resumen del Cronograma
+                </MudText>
+                <MudGrid>
+                    <MudItem xs="12" md="3">
+                        <MudText Typo="Typo.caption">Versión Actual</MudText>
+                        <MudText Typo="Typo.h6">@_currentSchedule.Version</MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudText Typo="Typo.caption">Duración Total</MudText>
+                        <MudText Typo="Typo.h6">@_totalDuration días</MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudText Typo="Typo.caption">Avance General</MudText>
+                        <MudProgressLinear Value="@_overallProgress" Color="Color.Primary">
+                            <MudText Typo="Typo.body2">@_overallProgress.ToString("F1")%</MudText>
+                        </MudProgressLinear>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudText Typo="Typo.caption">Variación del Cronograma</MudText>
+                        <MudText Typo="Typo.h6" Color="@GetVarianceColor(_scheduleVariance)">
+                            @_scheduleVariance.ToString("+#;-#;0") días
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        }
+
+        <!-- Key Metrics -->
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" md="3">
+                <MudPaper Class="pa-4 text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Large" Color="Color.Primary" />
+                    <MudText Typo="Typo.h4">@_totalActivities</MudText>
+                    <MudText Typo="Typo.body2">Total Actividades</MudText>
+                    <MudDivider Class="my-2" />
+                    <MudText Typo="Typo.caption">En Progreso: @_inProgressActivities</MudText>
+                    <MudText Typo="Typo.caption">Completadas: @_completedActivities</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudPaper Class="pa-4 text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Route" Size="Size.Large" Color="Color.Error" />
+                    <MudText Typo="Typo.h4">@_criticalActivities</MudText>
+                    <MudText Typo="Typo.body2">Actividades Críticas</MudText>
+                    <MudDivider Class="my-2" />
+                    <MudText Typo="Typo.caption">En Ruta Crítica</MudText>
+                    <MudProgressLinear Value="@_criticalPathProgress" Color="Color.Error" Class="mt-2" />
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudPaper Class="pa-4 text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Flag" Size="Size.Large" Color="Color.Success" />
+                    <MudText Typo="Typo.h4">@_milestoneDashboard?.CompletedMilestones / @_milestoneDashboard?.TotalMilestones</MudText>
+                    <MudText Typo="Typo.body2">Hitos Completados</MudText>
+                    <MudDivider Class="my-2" />
+                    <MudText Typo="Typo.caption">Próximos: @_milestoneDashboard?.UpcomingMilestones</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Error">Vencidos: @_milestoneDashboard?.OverdueMilestones</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudPaper Class="pa-4 text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Size="Size.Large" Color="Color.Warning" />
+                    <MudText Typo="Typo.h4">@_paymentProgress.ToString("F0")%</MudText>
+                    <MudText Typo="Typo.body2">Pagos Activados</MudText>
+                    <MudDivider Class="my-2" />
+                    <MudText Typo="Typo.caption">@_paymentSummary?.Currency @_paymentSummary?.TriggeredPaymentAmount.ToString("N0")</MudText>
+                    <MudProgressLinear Value="@_paymentProgress" Color="Color.Warning" Class="mt-2" />
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Gantt Chart Placeholder -->
+        <MudPaper Class="pa-4 mb-4">
+            <MudGrid>
+                <MudItem xs="12" md="8">
+                    <MudText Typo="Typo.h6" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.BarChart" Class="mr-2" />
+                        Diagrama de Gantt
+                    </MudText>
+                </MudItem>
+                <MudItem xs="12" md="4" Class="d-flex justify-end">
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" 
+                               OnClick="NavigateToSchedule"
+                               EndIcon="@Icons.Material.Filled.ArrowForward">
+                        Ver Cronograma Completo
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+            <MudAlert Severity="Severity.Info" Class="mt-2">
+                El diagrama de Gantt interactivo estará disponible próximamente
+            </MudAlert>
+        </MudPaper>
+
+        <!-- Activities and Milestones Tables -->
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4">
+                    <MudGrid>
+                        <MudItem xs="8">
+                            <MudText Typo="Typo.h6" Class="mb-3">
+                                <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" />
+                                Actividades Críticas
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="4" Class="d-flex justify-end">
+                            <MudButton Variant="Variant.Text" Size="Size.Small" 
+                                       OnClick="NavigateToActivities"
+                                       EndIcon="@Icons.Material.Filled.ArrowForward">
+                                Ver Todas
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Progreso</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var activity in _criticalPathActivities.Take(5))
+                            {
+                                <tr>
+                                    <td>@activity.ActivityCode</td>
+                                    <td>@activity.Name</td>
+                                    <td>
+                                        <MudProgressLinear Value="@((double)activity.ProgressPercentage)" 
+                                                           Color="@GetProgressColor(activity.ProgressPercentage)"
+                                                           Size="Size.Small">
+                                            <small>@activity.ProgressPercentage%</small>
+                                        </MudProgressLinear>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4">
+                    <MudGrid>
+                        <MudItem xs="8">
+                            <MudText Typo="Typo.h6" Class="mb-3">
+                                <MudIcon Icon="@Icons.Material.Filled.Flag" Class="mr-2" />
+                                Próximos Hitos
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="4" Class="d-flex justify-end">
+                            <MudButton Variant="Variant.Text" Size="Size.Small" 
+                                       OnClick="NavigateToMilestones"
+                                       EndIcon="@Icons.Material.Filled.ArrowForward">
+                                Ver Todos
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Fecha</th>
+                                <th>Días</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var milestone in _upcomingMilestones.Take(5))
+                            {
+                                <tr>
+                                    <td>@milestone.Name</td>
+                                    <td>@milestone.TargetDate.ToShortDateString()</td>
+                                    <td>
+                                        <MudChip Size="Size.Small" 
+                                                 Color="@GetDaysColor((milestone.TargetDate - DateTime.Today).Days)">
+                                            @((milestone.TargetDate - DateTime.Today).Days) días
+                                        </MudChip>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Schedule Variance Analysis -->
+        @if (_scheduleVariances.Any())
+        {
+            <MudPaper Class="pa-4 mt-4">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Analytics" Class="mr-2" />
+                    Análisis de Variaciones
+                </MudText>
+                <MudSimpleTable Dense="true" Hover="true">
+                    <thead>
+                        <tr>
+                            <th>Actividad</th>
+                            <th>Inicio Plan.</th>
+                            <th>Inicio Real</th>
+                            <th>Variación</th>
+                            <th>Impacto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var variance in _scheduleVariances.Take(10))
+                        {
+                            <tr>
+                                <td>@variance.ActivityName</td>
+                                <td>@variance.PlannedStartDate.ToShortDateString()</td>
+                                <td>@variance.ActualStartDate?.ToShortDateString()</td>
+                                <td>
+                                    <MudText Color="@GetVarianceColor(variance.StartVarianceDays)">
+                                        @variance.StartVarianceDays días
+                                    </MudText>
+                                </td>
+                                <td>
+                                    <MudChip Size="Size.Small" Color="@GetImpactColor(variance.ImpactLevel)">
+                                        @variance.ImpactLevel
+                                    </MudChip>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        }
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid ProjectId { get; set; }
+    
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    private bool _loading;
+    
+    // Schedule data
+    private ScheduleVersionDto? _currentSchedule;
+    private ScheduleVersionDto? _baselineSchedule;
+    private List<ScheduleVarianceDto> _scheduleVariances = new();
+    
+    // Activity data
+    private List<ActivityDto> _criticalPathActivities = new();
+    private int _totalActivities;
+    private int _completedActivities;
+    private int _inProgressActivities;
+    private int _criticalActivities;
+    
+    // Milestone data
+    private MilestoneDashboardDto? _milestoneDashboard;
+    private List<MilestoneDto> _upcomingMilestones = new();
+    private PaymentSummaryDto? _paymentSummary;
+    
+    // Calculated metrics
+    private double _overallProgress;
+    private double _criticalPathProgress;
+    private double _paymentProgress;
+    private int _scheduleVariance;
+    private int _totalDuration;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Inicio", href: "/", icon: Icons.Material.Filled.Home),
+            new BreadcrumbItem("Proyectos", href: "/projects"),
+            new BreadcrumbItem("Proyecto", href: $"/projects/{ProjectId}"),
+            new BreadcrumbItem("Dashboard de Progreso", href: null, disabled: true)
+        };
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+
+        try
+        {
+            // Load schedule data
+            _currentSchedule = await ScheduleService.GetCurrentScheduleAsync(ProjectId);
+            _baselineSchedule = await ScheduleService.GetBaselineScheduleAsync(ProjectId);
+            
+            if (_baselineSchedule != null && _currentSchedule != null)
+            {
+                _scheduleVariances = await ScheduleService.GetScheduleVariancesAsync(ProjectId);
+            }
+            
+            // Load activity data
+            var activityFilter = new ActivityFilterDto
+            {
+                ProjectId = ProjectId,
+                PageSize = 100
+            };
+            var activities = await ActivityService.GetActivitiesAsync(activityFilter);
+            _totalActivities = activities.TotalCount;
+            _completedActivities = activities.Items.Count(a => a.Status == ActivityStatus.Completed);
+            _inProgressActivities = activities.Items.Count(a => a.Status == ActivityStatus.InProgress);
+            
+            _criticalPathActivities = await ActivityService.GetCriticalPathActivitiesAsync(ProjectId);
+            _criticalActivities = _criticalPathActivities.Count;
+            
+            // Load milestone data
+            _milestoneDashboard = await MilestoneService.GetMilestoneDashboardAsync(ProjectId);
+            _upcomingMilestones = await MilestoneService.GetUpcomingMilestonesAsync(ProjectId);
+            _paymentSummary = await MilestoneService.GetPaymentSummaryAsync(ProjectId);
+            
+            // Calculate metrics
+            CalculateMetrics(activities.Items);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar el dashboard: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void CalculateMetrics(List<ActivityDto> activities)
+    {
+        if (activities.Any())
+        {
+            _overallProgress = (double)activities.Average(a => a.ProgressPercentage);
+        }
+        
+        if (_criticalPathActivities.Any())
+        {
+            _criticalPathProgress = (double)_criticalPathActivities.Average(a => a.ProgressPercentage);
+        }
+        
+        if (_paymentSummary != null && _paymentSummary.TotalPaymentAmount > 0)
+        {
+            _paymentProgress = (double)_paymentSummary.PaymentProgress;
+        }
+        
+        if (_currentSchedule != null)
+        {
+            _totalDuration = (_currentSchedule.EndDate - _currentSchedule.StartDate).Days;
+            
+            if (_baselineSchedule != null)
+            {
+                _scheduleVariance = (_currentSchedule.EndDate - _baselineSchedule.EndDate).Days;
+            }
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadData();
+    }
+
+    private void NavigateToSchedule()
+    {
+        Navigation.NavigateTo($"/progress/schedules/{ProjectId}");
+    }
+
+    private void NavigateToActivities()
+    {
+        Navigation.NavigateTo($"/progress/activities/{ProjectId}");
+    }
+
+    private void NavigateToMilestones()
+    {
+        Navigation.NavigateTo($"/progress/milestones/{ProjectId}");
+    }
+
+    private Color GetProgressColor(decimal progress)
+    {
+        return progress switch
+        {
+            0 => Color.Default,
+            < 25 => Color.Error,
+            < 50 => Color.Warning,
+            < 75 => Color.Info,
+            < 100 => Color.Primary,
+            100 => Color.Success,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetVarianceColor(int variance)
+    {
+        return variance switch
+        {
+            0 => Color.Success,
+            > 0 => Color.Error,
+            < 0 => Color.Info,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetDaysColor(int days)
+    {
+        return days switch
+        {
+            < 0 => Color.Error,
+            < 7 => Color.Warning,
+            < 30 => Color.Info,
+            _ => Color.Success
+        };
+    }
+
+    private Color GetImpactColor(string impact)
+    {
+        return impact?.ToLower() switch
+        {
+            "high" => Color.Error,
+            "medium" => Color.Warning,
+            "low" => Color.Info,
+            _ => Color.Default
+        };
+    }
+}

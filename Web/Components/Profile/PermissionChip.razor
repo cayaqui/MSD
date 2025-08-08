@@ -1,0 +1,116 @@
+@using MudBlazor
+
+<MudChip T="string" 
+         Icon="@GetPermissionIcon(Permission)" 
+         Color="@GetPermissionColor(Permission)"
+         Size="Size.Small">
+    @GetPermissionDisplayName(Permission)
+</MudChip>
+
+@code {
+    [Parameter] public string Permission { get; set; } = string.Empty;
+
+    private string GetPermissionIcon(string permission)
+    {
+        if (permission.Contains("view")) return Icons.Material.Filled.Visibility;
+        if (permission.Contains("create")) return Icons.Material.Filled.Add;
+        if (permission.Contains("update") || permission.Contains("edit")) return Icons.Material.Filled.Edit;
+        if (permission.Contains("delete")) return Icons.Material.Filled.Delete;
+        if (permission.Contains("approve")) return Icons.Material.Filled.CheckCircle;
+        if (permission.Contains("manage")) return Icons.Material.Filled.ManageAccounts;
+        if (permission.Contains("export")) return Icons.Material.Filled.Download;
+        return Icons.Material.Filled.VpnKey;
+    }
+
+    private Color GetPermissionColor(string permission)
+    {
+        if (permission.Contains("view")) return Color.Info;
+        if (permission.Contains("create")) return Color.Success;
+        if (permission.Contains("update") || permission.Contains("edit")) return Color.Primary;
+        if (permission.Contains("delete")) return Color.Error;
+        if (permission.Contains("approve")) return Color.Warning;
+        if (permission.Contains("manage")) return Color.Secondary;
+        return Color.Default;
+    }
+
+    private string GetPermissionDisplayName(string permission)
+    {
+        // Mapear nombres de permisos a nombres amigables en español
+        var permissionMap = new Dictionary<string, string>
+        {
+            // Proyectos
+            { "projects.view", "Ver Proyectos" },
+            { "projects.create", "Crear Proyectos" },
+            { "projects.update", "Actualizar Proyectos" },
+            { "projects.delete", "Eliminar Proyectos" },
+            { "projects.manage", "Gestionar Proyectos" },
+            
+            // Presupuestos
+            { "budgets.view", "Ver Presupuestos" },
+            { "budgets.create", "Crear Presupuestos" },
+            { "budgets.update", "Actualizar Presupuestos" },
+            { "budgets.delete", "Eliminar Presupuestos" },
+            { "budgets.approve", "Aprobar Presupuestos" },
+            
+            // Control de Costos
+            { "costs.view", "Ver Costos" },
+            { "costs.create", "Registrar Costos" },
+            { "costs.update", "Actualizar Costos" },
+            { "costs.approve", "Aprobar Costos" },
+            
+            // Equipo
+            { "team.view", "Ver Equipo" },
+            { "team.manage", "Gestionar Equipo" },
+            { "team.assign", "Asignar Miembros" },
+            
+            // Reportes
+            { "reports.view", "Ver Reportes" },
+            { "reports.create", "Crear Reportes" },
+            { "reports.export", "Exportar Reportes" },
+            
+            // WBS
+            { "wbs.view", "Ver WBS" },
+            { "wbs.create", "Crear Elementos WBS" },
+            { "wbs.update", "Actualizar WBS" },
+            { "wbs.delete", "Eliminar Elementos WBS" },
+            
+            // Control Accounts
+            { "controlaccounts.view", "Ver Cuentas de Control" },
+            { "controlaccounts.create", "Crear Cuentas de Control" },
+            { "controlaccounts.update", "Actualizar Cuentas de Control" },
+            
+            // Work Packages
+            { "workpackages.view", "Ver Paquetes de Trabajo" },
+            { "workpackages.create", "Crear Paquetes de Trabajo" },
+            { "workpackages.update", "Actualizar Paquetes de Trabajo" },
+            { "workpackages.approve", "Aprobar Paquetes de Trabajo" },
+            
+            // Sistema
+            { "system.admin", "Administración del Sistema" },
+            { "system.users.manage", "Gestionar Usuarios" },
+            { "system.config", "Configuración del Sistema" }
+        };
+
+        return permissionMap.TryGetValue(permission.ToLower(), out var displayName) 
+            ? displayName 
+            : FormatPermissionName(permission);
+    }
+
+    private string FormatPermissionName(string permission)
+    {
+        // Formatear nombres de permisos no mapeados
+        var parts = permission.Split('.');
+        if (parts.Length >= 2)
+        {
+            var module = parts[0];
+            var action = parts[1];
+            
+            module = module.Substring(0, 1).ToUpper() + module.Substring(1);
+            action = action.Substring(0, 1).ToUpper() + action.Substring(1);
+            
+            return $"{action} {module}";
+        }
+        
+        return permission;
+    }
+}

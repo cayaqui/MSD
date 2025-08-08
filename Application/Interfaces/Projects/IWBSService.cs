@@ -91,9 +91,27 @@ public interface IWBSService
         Guid wbsElementId,
         CancellationToken cancellationToken = default);
 
-    Task<ValidationResult> ValidateWBSCodeAsync(
+    Task<Application.Interfaces.Common.ValidationResult> ValidateWBSCodeAsync(
         string code,
         Guid projectId,
         Guid? excludeId = null,
+        CancellationToken cancellationToken = default);
+
+    // Bulk operations
+    Task<BulkOperationResult> BulkCreateWBSElementsAsync(
+        BulkCreateWBSElementsDto dto,
+        string userId,
+        CancellationToken cancellationToken = default);
+
+    // Import/Export operations
+    Task<ImportResult> ImportWBSAsync(
+        Stream fileStream,
+        string fileName,
+        Guid projectId,
+        string userId,
+        CancellationToken cancellationToken = default);
+
+    Task<byte[]> ExportWBSAsync(
+        Guid projectId,
         CancellationToken cancellationToken = default);
 }
