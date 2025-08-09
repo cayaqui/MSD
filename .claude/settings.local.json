@@ -28,7 +28,8 @@
       "Bash(dotnet ef migrations:*)",
       "Bash(git add:*)",
       "Bash(git rm:*)",
-      "Bash(del nul)"
+      "Bash(del nul)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }
